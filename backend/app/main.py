@@ -1,3 +1,8 @@
+import logging
+
+# Silenciar el warning específico de passlib sobre la versión de bcrypt
+logging.getLogger('passlib').setLevel(logging.ERROR)
+
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware

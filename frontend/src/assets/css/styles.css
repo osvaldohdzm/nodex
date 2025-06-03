@@ -1,0 +1,301 @@
+/* GLE FONTS ===============*/
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap");
+
+/* ============ VARIABLES CSS ===============*/
+:root {
+  /* ======= Colors (Inspired by User Image) ==========*/
+  --hue: 200; /* Use hue for cyan/blue tones (e.g., 200 for a bright sky blue/cyan) */
+  --saturation-accent: 100%;
+  --lightness-accent: 50%; /* For a bright #00E5FF like cyan */
+
+  --first-color: hsl(var(--hue), var(--saturation-accent), var(--lightness-accent)); /* Bright Cyan */
+  --first-color-alt: hsl(var(--hue), var(--saturation-accent), 45%); /* Slightly darker cyan for hover */
+  --first-color-light: hsl(var(--hue), var(--saturation-accent), 65%); /* Lighter cyan */
+
+  --bg-dark-primary: #05080D; /* Very dark, almost black with a hint of blue */
+  --bg-form-color: hsla(212, 70%, 10%, 0.75); /* Dark blue, slightly transparent for form background */
+  --input-bg-color: #0E1625; /* Dark blue for input background */
+
+  --title-color: var(--first-color); /* Bright Cyan for titles */
+  --text-color: #C0C8D8; /* Light grayish blue for general text */
+  --text-color-light: #8892b0; /* Muted blue-gray for labels, secondary text */
+  --text-on-accent: var(--bg-dark-primary); /* Dark text for buttons with cyan background */
+
+  --body-color: var(--bg-dark-primary);
+  --container-color: var(--bg-form-color); /* For the form itself */
+  --input-border-color: hsl(var(--hue), var(--saturation-accent), 35%); /* Darker cyan for input border */
+
+  /* ======== Font and typography ==========*/
+  --body-font: 'Poppins', sans-serif;
+  --h1-font-size: 1.75rem;
+  --normal-font-size: .938rem;
+  --small-font-size: .813rem;
+
+  /* ======== z-index ==========*/
+  --z-fixed: 100;
+  --z-modal: 1000;
+}
+
+/* Responsive typography */
+@media screen and (min-width: 968px) {
+  :root {
+    --h1-font-size: 2.25rem;
+    --normal-font-size: 1rem;
+    --small-font-size: .875rem;
+  }
+}
+
+/* ============= BASE ===============*/
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-family: var(--body-font);
+  font-size: var(--normal-font-size);
+  background-color: var(--body-color);
+  background-image: radial-gradient(ellipse at center, hsl(var(--hue), 30%, 10%) 0%, var(--body-color) 70%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+h1 {
+  color: var(--title-color); /* Default h1 color, though login__title overrides */
+}
+
+a {
+  text-decoration: none;
+  color: var(--first-color);
+}
+
+input,
+button {
+  font-family: var(--body-font);
+  border: none;
+  outline: none;
+}
+
+/* ============= LOGIN PAGE STYLES ===============*/
+.login {
+  height: 100vh;
+  display: grid;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.login__form {
+  position: relative;
+  background-color: var(--container-color);
+  border: 1px solid hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.3);
+  padding: 2.5rem 2rem;
+  border-radius: 1rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px 0 hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.15),
+              0 0 25px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.1) inset;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.login__title {
+  font-size: var(--h1-font-size);
+  font-weight: 500;
+  margin-bottom: 2rem;
+  color: var(--title-color);
+  text-shadow: 0 0 8px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.7);
+}
+
+.login__content {
+  display: grid;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.login__box {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  column-gap: 0.75rem;
+  border: 1px solid var(--input-border-color);
+  padding-inline: 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--input-bg-color);
+  transition: border-color .3s, box-shadow .3s;
+}
+
+.login__box:focus-within {
+  border-color: var(--first-color);
+  box-shadow: 0 0 10px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.6);
+}
+
+.login__icon {
+  font-size: 1.25rem;
+  color: var(--first-color-light);
+  transition: color .3s;
+}
+
+.login__box:focus-within .login__icon {
+  color: var(--first-color);
+}
+
+.login__box-input {
+  position: relative; /* Crucial for label positioning */
+}
+
+.login__input {
+  width: 100%;
+  padding-block: 0.9rem;
+  background: none;
+  color: var(--text-color);
+  font-size: var(--normal-font-size);
+  letter-spacing: .5px;
+}
+
+/* Styles for Webkit browser autofill */
+.login__input:-webkit-autofill,
+.login__input:-webkit-autofill:hover, 
+.login__input:-webkit-autofill:focus, 
+.login__input:-webkit-autofill:active  {
+    -webkit-box-shadow: 0 0 0 30px var(--input-bg-color) inset !important; /* Match input background */
+    -webkit-text-fill-color: var(--text-color) !important; /* Match text color */
+    caret-color: var(--first-color) !important; /* Cursor color */
+    border-radius: 0.75rem; /* Ensure autofill respects border radius if box gets it */
+}
+
+
+.login__label {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--small-font-size);
+  color: var(--text-color-light);
+  font-weight: 500;
+  pointer-events: none;
+  transition: top .3s, font-size .3s, color .3s;
+}
+
+.login__eye {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+  color: var(--text-color-light);
+  cursor: pointer;
+  transition: color .3s;
+}
+.login__eye:hover {
+  color: var(--first-color);
+}
+
+/* Input focus or value present: move up label */
+.login__input:focus + .login__label,
+.login__input:not(:placeholder-shown) + .login__label {
+  top: -0.85rem; /* Adjust this value to position label above input field correctly */
+  font-size: .75rem;
+  color: var(--first-color);
+}
+
+.login__check {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  font-size: var(--small-font-size);
+}
+
+.login__check-group {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.login__check-input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--first-color); /* Modern browsers styling for checkbox */
+  cursor: pointer;
+  background-color: var(--input-bg-color); /* Ensure bg matches for non-accent-color scenarios */
+  border: 1px solid var(--input-border-color); /* For consistency */
+}
+.login__check-input:checked {
+    background-color: var(--first-color); /* Explicitly set checked bg */
+}
+
+
+.login__check-label,
+.login__forgot {
+  color: var(--text-color-light);
+  transition: color .3s;
+}
+
+.login__check-label:hover, /* Hover for label to make it feel more interactive */
+.login__forgot:hover {
+  color: var(--first-color);
+}
+
+.login__button {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--first-color);
+  color: var(--text-on-accent);
+  font-weight: 500;
+  font-size: var(--normal-font-size);
+  cursor: pointer;
+  margin-bottom: 2rem;
+  transition: background-color .3s, box-shadow .3s;
+  box-shadow: 0 4px 15px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.3);
+}
+
+.login__button:hover {
+  background-color: var(--first-color-alt);
+  box-shadow: 0 6px 20px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.5);
+}
+
+.login__button:focus-visible { /* Accessibility focus ring */
+  outline: 2px solid var(--first-color-alt);
+  outline-offset: 3px;
+}
+
+.login__register {
+  font-size: var(--small-font-size);
+  text-align: center;
+  color: var(--text-color-light);
+}
+
+.login__register a {
+  color: var(--first-color);
+  font-weight: 500;
+  transition: color .3s, text-decoration .3s;
+}
+
+.login__register a:hover {
+  color: var(--first-color-light);
+  text-decoration: underline;
+}
+
+/* Custom scrollbar (Webkit browsers) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--input-bg-color);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--input-border-color);
+  border-radius: 10px;
+  border: 2px solid var(--input-bg-color); /* Creates a padding effect */
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--first-color);
+}
