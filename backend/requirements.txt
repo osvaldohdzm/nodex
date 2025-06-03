@@ -1,0 +1,6 @@
+fastapi
+neo4j
+pyjwt
+pydantic
+uvicorn[standard]
+python-jose[cryptography]
