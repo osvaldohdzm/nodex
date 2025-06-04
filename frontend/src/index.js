@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles/globals.css'; // MANTENER ESTE (Tailwind y variables principales)
 // import './assets/css/styles.css'; // COMENTAR TEMPORALMENTE para aislar problemas de CSS
 // import './App.css'; // COMENTAR TEMPORALMENTE para aislar problemas de CSS
-import App from './App';
+import App from './App.tsx'; // Changed from App to App.tsx
 
 const container = document.getElementById('root');
 const root = createRoot(container);
