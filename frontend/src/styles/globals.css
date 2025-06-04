@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #03070C; /* Muy oscuro, casi negro azulado */
+  --bg-primary: #03070C; /* Muy oscuro, casi negro azulado HOla*/
   --bg-secondary: #0A0F1A; /* Azul oscuro para elementos secundarios */
   --bg-glass: rgba(10, 15, 26, 0.6 );
   --border-glass: rgba(0, 229, 255, 0.2 );
@@ -63,8 +63,8 @@ body {
   @apply bg-bg-primary text-text-primary font-sans;
   margin: 0 ;
   min-height: 100vh ;
-  -webkit-font -smoothing: antialiased;
-  -moz-osx-font -smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom scrollbar */
@@ -126,3 +126,47 @@ body {
 /* .debug-border {
   border: 2px solid red !important;
 } */
+
+@keyframes nodeEnterAnimation {
+  0% {
+    transform: scale(0.3) translateZ(0); /* translateZ para forzar aceleración por hardware */
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1) translateZ(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1) translateZ(0);
+    opacity: 1;
+  }
+}
+
+@keyframes edgeEnterAnimation {
+  from {
+    opacity: 0;
+    stroke-dasharray: 2000; /* Un valor grande para simular dibujo */
+    stroke-dashoffset: 2000;
+  }
+  to {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Aplicar a la clase que envuelve tu nodo personalizado o al nodo de ReactFlow */
+.react-flow__node.node-appear {
+  animation: nodeEnterAnimation 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  /* cubic-bezier para un efecto de "rebote" sutil */
+}
+
+/* Aplicar a la arista */
+.react-flow__edge.edge-appear .react-flow__edge-path {
+  animation: edgeEnterAnimation 0.4s ease-out forwards;
+  animation-delay: 0.05s; /* Pequeño retraso para que los nodos aparezcan un poco antes */
+}
+
+/* Para aristas añadidas manualmente por el usuario, sin animación de carga */
+.react-flow__edge.edge-appear-static .react-flow__edge-path {
+  opacity: 1; /* Asegurar que sean visibles */
+}

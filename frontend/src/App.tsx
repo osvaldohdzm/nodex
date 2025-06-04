@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
-import GraphPage from './pages/GraphPage';
+import GraphPageWrapper from './pages/GraphPageWrapper';
 import './styles/globals.css';
 
 function App() {
@@ -38,7 +38,7 @@ function App() {
             <Route
               path="/graph"
               element={
-                isAuthenticated ? <GraphPage /> : <Navigate to="/login" replace />
+                isAuthenticated ? <GraphPageWrapper /> : <Navigate to="/login" replace />
               }
             />
             <Route
