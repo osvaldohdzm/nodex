@@ -1,85 +1,88 @@
 #!/bin/bash
 
-# --- Configuration ---
-OUTPUT_FILE="code_context.txt"
-REGEX_FILTER_LINES='^\s*#(?!.*\.py).*' # Exclude comment lines, unless they are in .py files
+set -e
 
+# Asociar grupos con archivos o carpetas
 declare -A GROUP_FILES
 GROUP_FILES[frontend]="frontend"
 GROUP_FILES[backend]="backend"
-GROUP_FILES[full]="frontend backend scripts docker-compose.yml"
+GROUP_FILES[full]="frontend backend docker-compose.yml frontend/Dockerfile"
 
-EXCLUDE_DIRS=(.git node_modules __pycache__ venv scan_results)
-EXCLUDE_FILES=(README.md LICENSE)
+# Extensiones permitidas (sólo para grupos distintos de "full")
+INCLUDE_EXTENSIONS=(py js json yml yaml css html tsx ts r)
 
-# Only include these extensions
-INCLUDE_EXTENSIONS=(py js json yml yaml css html)
+# Directorios a excluir
+EXCLUDE_DIRS=(.git node_modules __pycache__ venv scan_results target build dist .idea .vscode .terraform .serverless)
 
-# Validate input
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <group>"
-    echo "Available GROUP_FILES:"
-    for group_name in "${!GROUP_FILES[@]}"; do
-        echo "  - $group_name"
-    done
-    exit 1
-fi
+# Archivos a excluir (pueden incluir patrones con '*')
+EXCLUDE_FILES=(
+  README.md LICENSE .env .DS_Store "*.log" "*.tmp" "*.swp" "*.bak" "*.old"
+  "frontend/package-lock.json" "frontend/package.json"
+)
 
+# Argumento: nombre del grupo
 GROUP="$1"
+OUTPUT_FILE="code_context.txt"
 
 if [[ -z "${GROUP_FILES[$GROUP]}" ]]; then
-    echo "Invalid group: $GROUP"
-    echo "Available GROUP_FILES:"
-    for group_name in "${!GROUP_FILES[@]}"; do
-        echo "  - $group_name"
-    done
-    exit 1
+  echo "Grupo inválido. Opciones válidas: ${!GROUP_FILES[@]}"
+  exit 1
 fi
 
-echo -n > "$OUTPUT_FILE" # Clear or create the output file
+echo "Selected group: $GROUP"
+echo "Output file: $OUTPUT_FILE"
+> "$OUTPUT_FILE"
 
-# Process each item in the group
-for item in ${GROUP_FILES[$GROUP]}; do
-    TARGET="$PWD/$item"
+# Convertir EXCLUDE_DIRS a opciones -path para find
+find_exclude_dirs=()
+for dir in "${EXCLUDE_DIRS[@]}"; do
+  find_exclude_dirs+=(-path "*/$dir/*" -prune -o)
+done
 
-    if [ -d "$TARGET" ]; then
-        find "$TARGET" \( \
-            $(for dir in "${EXCLUDE_DIRS[@]}"; do echo -n "-name $dir -o "; done | sed 's/ -o $//') \
-        \) -prune -o -type f \( \
-            $(for ext in "${INCLUDE_EXTENSIONS[@]}"; do echo -n "-iname '*.$ext' -o "; done | sed 's/ -o $//') \
-        \) ! \( \
-            $(for file_pattern in "${EXCLUDE_FILES[@]}"; do echo -n "-name '$file_pattern' -o "; done | sed 's/ -o $//') \
-        \) -print0 | while IFS= read -r -d $'\0' file; do
-            echo "===== ${file#$PWD/} =====" >> "$OUTPUT_FILE"
-            cat "$file" >> "$OUTPUT_FILE"
-            echo -e "\n\n" >> "$OUTPUT_FILE"
-        done
-    elif [ -f "$TARGET" ]; then
-        ext="${TARGET##*.}"
-        is_allowed=false
-        for inc_ext in "${INCLUDE_EXTENSIONS[@]}"; do
-            if [[ "$ext" == "$inc_ext" ]]; then
-                is_allowed=true
-                break
-            fi
-        done
+# Convertir INCLUDE_EXTENSIONS en -name opciones
+include_name_args=()
+for ext in "${INCLUDE_EXTENSIONS[@]}"; do
+  include_name_args+=(-name "*.$ext" -o)
+done
+unset 'include_name_args[${#include_name_args[@]}-1]' # Remove last -o
 
-        excluded_by_filename=false
-        for excluded_file in "${EXCLUDE_FILES[@]}"; do
-            if [[ "$(basename "$TARGET")" == "$excluded_file" ]]; then
-                excluded_by_filename=true
-                break
-            fi
-        done
-
-        if $is_allowed && ! $excluded_by_filename; then
-            echo "===== ${item} =====" >> "$OUTPUT_FILE"
-            cat "$TARGET" >> "$OUTPUT_FILE"
-            echo -e "\n\n" >> "$OUTPUT_FILE"
-        fi
-    else
-        echo "Warning: '$item' specified in group '$GROUP' is not a directory or file, skipping."
+# Convertir archivos/patrones a excluir
+should_exclude_file() {
+  local filepath="$1"
+  for pattern in "${EXCLUDE_FILES[@]}"; do
+    if [[ "$filepath" == $pattern ]]; then
+      return 0
     fi
+  done
+  return 1
+}
+
+# Procesar archivos por grupo
+for item in ${GROUP_FILES[$GROUP]}; do
+  if [ -d "$item" ]; then
+    if [ "$GROUP" == "full" ]; then
+      files=$(find "$item" "${find_exclude_dirs[@]}" -type f -print)
+    else
+      files=$(find "$item" "${find_exclude_dirs[@]}" -type f \( "${include_name_args[@]}" \) -print)
+    fi
+  elif [ -f "$item" ]; then
+    files="$item"
+  else
+    echo "Skipping non-existent item: $item"
+    continue
+  fi
+
+  while IFS= read -r file; do
+    rel_path="${file#./}"
+    if should_exclude_file "$rel_path"; then
+      echo "Skipping excluded file: $rel_path"
+      continue
+    fi
+
+    echo "===== $rel_path =====" >> "$OUTPUT_FILE"
+    cat "$file" >> "$OUTPUT_FILE"
+    echo -e "\n" >> "$OUTPUT_FILE"
+  done <<< "$files"
 done
 
 echo "Context successfully written to $OUTPUT_FILE"

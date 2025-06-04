@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 from typing import Any, Dict, List
 from datetime import timedelta
+from fastapi.responses import JSONResponse
 
 from . import crud, models, auth
 
@@ -18,6 +19,7 @@ app = FastAPI(title="SIVG Backend")
 origins = [
     "http://localhost:4545", # Puerto del frontend
     "http://localhost:3000", # Puerto de desarrollo de React
+    "http://192.168.0.4:4545", # Nueva IP añadida
 ]
 
 app.add_middleware(
@@ -37,6 +39,10 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     crud.close_db_connection()
+
+@app.options("/token")
+async def options_token():
+    return JSONResponse(status_code=200, content={"message": "CORS preflight successful"})
 
 @app.post("/token", response_model=models.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):

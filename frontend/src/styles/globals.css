@@ -14,6 +14,35 @@
   --input-bg: #101827;
   --input-border: #303F5E;
   --input-focus-border: var(--accent-cyan);
+
+  --graph-bg: var(--bg-primary);
+  --node-person-bg: var(--bg-secondary);
+  --node-person-border: var(--accent-cyan-darker);
+  --node-company-bg: var(--bg-secondary);
+  --node-company-border: var(--accent-cyan);
+  --shadow-node-glow: 0 0 15px var(--accent-cyan);
+
+  --edge-employer: #82DDFF;
+  --edge-bestfriend: #A78BFA;
+  --edge-boardmember: #F472B6;
+  --edge-default: #94A3B8;
+
+  --hue: 200;
+  --saturation-accent: 100%;
+  --lightness-accent: 50%;
+  --first-color: hsl(var(--hue), var(--saturation-accent), var(--lightness-accent));
+  --first-color-alt: hsl(var(--hue), var(--saturation-accent), 45%);
+  --first-color-light: hsl(var(--hue), var(--saturation-accent), 65%);
+  --bg-dark-primary: #05080D;
+  --bg-form-color: hsla(212, 70%, 10%, 0.75);
+  --input-bg-color: #0E1625;
+  --title-color: var(--first-color);
+  --text-color: #C0C8D8;
+  --text-color-light: #8892b0;
+  --text-on-accent: var(--bg-dark-primary);
+  --body-color: var(--bg-dark-primary);
+  --container-color: var(--bg-form-color);
+  --input-border-color: hsl(var(--hue), var(--saturation-accent), 35%);
 }
 
 body {
@@ -56,4 +85,8 @@ body {
 }
 .react-flow__attribution {
   display: none;
+}
+
+.debug-border {
+  border: 2px solid red !important;
 }

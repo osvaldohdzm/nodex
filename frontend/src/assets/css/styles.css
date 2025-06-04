@@ -89,13 +89,30 @@ button {
   padding: 1.5rem;
 }
 
+#loginBackgroundCanvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  background-color: var(--body-color);
+}
+
+.login-page-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .login__form {
   position: relative;
+  z-index: 1;
   background-color: var(--container-color);
-  border: 1px solid hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.3);
+  border: 1px solid hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2);
+  backdrop-filter: blur(8px);
   padding: 2.5rem 2rem;
   border-radius: 1rem;
-  backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px 0 hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.15),
               0 0 25px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.1) inset;
   width: 100%;
@@ -123,7 +140,7 @@ button {
   align-items: center;
   column-gap: 0.75rem;
   border: 1px solid var(--input-border-color);
-  padding-inline: 1rem;
+  padding: 0.5rem 1rem;
   border-radius: 0.75rem;
   background-color: var(--input-bg-color);
   transition: border-color .3s, box-shadow .3s;
@@ -145,16 +162,17 @@ button {
 }
 
 .login__box-input {
-  position: relative; /* Crucial for label positioning */
+  position: relative;
+  width: 100%;
 }
 
 .login__input {
   width: 100%;
-  padding-block: 0.9rem;
+  padding: 0.9rem 0.25rem;
   background: none;
   color: var(--text-color);
   font-size: var(--normal-font-size);
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
 }
 
 /* Styles for Webkit browser autofill */
@@ -162,23 +180,25 @@ button {
 .login__input:-webkit-autofill:hover, 
 .login__input:-webkit-autofill:focus, 
 .login__input:-webkit-autofill:active  {
-    -webkit-box-shadow: 0 0 0 30px var(--input-bg-color) inset !important; /* Match input background */
-    -webkit-text-fill-color: var(--text-color) !important; /* Match text color */
-    caret-color: var(--first-color) !important; /* Cursor color */
-    border-radius: 0.75rem; /* Ensure autofill respects border radius if box gets it */
+    -webkit-box-shadow: 0 0 0 30px var(--input-bg-color) inset !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+    caret-color: var(--first-color) !important;
+    border-radius: 0.75rem;
 }
-
 
 .login__label {
   position: absolute;
-  left: 0;
+  left: 0.25rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: var(--small-font-size);
+  padding: 0 0.25rem;
+  font-size: var(--normal-font-size);
   color: var(--text-color-light);
-  font-weight: 500;
+  font-weight: 400;
   pointer-events: none;
-  transition: top .3s, font-size .3s, color .3s;
+  transition: all 0.2s ease-out;
+  background-color: var(--input-bg-color);
+  line-height: 1;
 }
 
 .login__eye {

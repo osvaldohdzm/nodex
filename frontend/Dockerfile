@@ -1,12 +1,15 @@
-FROM node:16
+FROM node:18-alpine
 
 WORKDIR /app
 
-COPY package.json package.json
-# Added a comment to force Docker to rebuild the npm install layer
-RUN npm install
+COPY package.json ./
+COPY package-lock.json ./
+COPY tsconfig.json ./
+COPY eslint.config.mjs ./
 
-COPY . .
+RUN npm install --verbose
+
+EXPOSE 3000
 
 CMD ["npm", "start"]
 

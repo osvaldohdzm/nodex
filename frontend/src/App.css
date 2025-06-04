@@ -12,5 +12,5 @@ body {
 }
 
 main {
-  padding: 20px;
+  padding: 0; /* Remove padding to avoid layout issues for GraphPage */
 }

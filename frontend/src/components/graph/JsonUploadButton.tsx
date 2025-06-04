@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { UploadCloud } from 'lucide-react';
 
 interface JsonUploadButtonProps {
-  onJsonUploaded: (jsonData: any) => void;
+  onJsonUploaded: (jsonData: any, fileName?: string) => void; // Añadir fileName opcional
 }
 
 const JsonUploadButton: React.FC<JsonUploadButtonProps> = ({ onJsonUploaded }) => {
@@ -15,7 +15,7 @@ const JsonUploadButton: React.FC<JsonUploadButtonProps> = ({ onJsonUploaded }) =
       reader.onload = (e) => {
         try {
           const json = JSON.parse(e.target?.result as string);
-          onJsonUploaded(json);
+          onJsonUploaded(json, file.name); // Pasar file.name
         } catch (error) {
           console.error("Error parsing JSON:", error);
           alert("Failed to parse JSON file. Please ensure it's valid JSON.");
@@ -42,7 +42,7 @@ const JsonUploadButton: React.FC<JsonUploadButtonProps> = ({ onJsonUploaded }) =
         reader.onload = (e) => {
             try {
                 const json = JSON.parse(e.target?.result as string);
-                onJsonUploaded(json);
+                onJsonUploaded(json, file.name); // Pasar file.name
             } catch (error) {
                 console.error("Error parsing JSON:", error);
                 alert("Failed to parse JSON file. Please ensure it's valid JSON.");

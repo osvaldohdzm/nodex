@@ -1,67 +1,105 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../../assets/css/styles.css';
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Loading state
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    if (loading) return; // Prevent multiple submissions
 
-    // Simulated login logic
-    if (email === 'test@example.com' && password === 'password') {
-      console.log('Login successful (simulated)');
-      localStorage.setItem('token', 'fake-jwt-token');
+    setError('');
+    setLoading(true); // Set loading state
+
+    try {
+      console.log('Attempting fetch to http://192.168.0.4:8000/token');
+
+      const response = await fetch('http://192.168.0.4:8000/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ username, password }).toString(),
+      });
+
+      console.log('Fetch response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Login failed:', errorData);
+        setError(errorData.detail || 'Login failed');
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Token from backend:', data.access_token);
+      localStorage.setItem('access_token', data.access_token);
       onLoginSuccess();
       navigate('/graph');
-    } else {
-      setError('Invalid email or password. (Use test@example.com and password)');
+    } catch (err) {
+      console.error('Login fetch CATCH block error:', err);
+      setError('An error occurred during login. Check console for details.');
+    } finally {
+      setLoading(false); // Reset loading state
+      console.log('handleSubmit finally block, loading set to false');
     }
   };
 
   return (
-    <div className="w-full max-w-sm p-8 space-y-6 bg-bg-glass backdrop-blur-md rounded-xl shadow-2xl border border-border-glass">
-      <h1 className="text-3xl font-bold text-center text-accent-cyan">Login</h1>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="w-full px-4 py-3 rounded-md bg-input-bg border border-input-border text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-cyan focus:border-transparent transition-colors"
-          />
+    <div className="login"> {/* This class ensures proper styling for the login form */}
+      <form className="login__form" onSubmit={handleSubmit}>
+        <h1 className="login__title">Login</h1>
+
+        {error && (
+          <p className="text-sm text-red-500 mb-4 text-center bg-red-900 bg-opacity-50 p-2 rounded">
+            {error}
+          </p>
+        )}
+
+        <div className="login__content">
+          <div className="login__box">
+            <div className="login__box-input">
+              <input
+                type="text"
+                className="login__input"
+                placeholder=" "
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                id="login-username"
+                required
+              />
+              <label htmlFor="login-username" className="login__label">Username</label>
+            </div>
+          </div>
+
+          <div className="login__box">
+            <div className="login__box-input">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="login__input"
+                placeholder=" "
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                id="login-password"
+                required
+              />
+              <label htmlFor="login-password" className="login__label">Password</label>
+            </div>
+          </div>
         </div>
-        <div>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="w-full px-4 py-3 rounded-md bg-input-bg border border-input-border text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent-cyan focus:border-transparent transition-colors"
-          />
-        </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        <button
-          type="submit"
-          className="w-full py-3 rounded-md bg-accent-cyan text-bg-primary font-bold hover:bg-accent-cyan-darker transition-colors"
-        >
-          Login
+
+        <button type="submit" className="login__button" disabled={loading}> {/* Disable button when loading */}
+          {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
     </div>
