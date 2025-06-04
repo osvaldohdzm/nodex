@@ -28,3 +28,6 @@ else
 fi
 
 echo "✅ Cambios guardados y enviados a remoto en '$current_branch'."
+
+
+./scripts/start.sh
