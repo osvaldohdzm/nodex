@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react'; // Añadir useEffect
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+// import { CSSProperties } from 'react'; // No se usa CSSProperties directamente
 import ReactFlow, {
   Controls,
   Background,
@@ -11,9 +12,9 @@ import ReactFlow, {
   Connection,
   BackgroundVariant,
   MarkerType,
-  ReactFlowInstance, // Para controlar fitView programáticamente
-  useReactFlow, // Hook para acceder a la instancia
-  ReactFlowProvider, // Importar el provider
+  // ReactFlowInstance, // No se usa directamente si usamos el hook
+  useReactFlow,
+  ReactFlowProvider, // Mover ReactFlowProvider al componente que usa GraphPage
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
@@ -28,7 +29,6 @@ const nodeTypes = {
 };
 
 interface JsonData {
-  // ... (tu interfaz JsonData existente)
   _id?: { $oid: string };
   curp_online?: { data?: { registros?: Array<any> } };
   ine1?: { data?: Array<any> };
@@ -43,21 +43,20 @@ interface JsonData {
 }
 
 interface OnlineProfile {
-  // ... (tu interfaz OnlineProfile existente)
   link: string;
   title: string;
   snippet?: string;
   source: string;
 }
 
-const GraphPage: React.FC = () => {
+export const GraphPage: React.FC = () => {
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
   
-  const reactFlowInstance = useReactFlow(); // Hook para obtener la instancia
+  const reactFlowInstance = useReactFlow();
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
@@ -71,7 +70,7 @@ const GraphPage: React.FC = () => {
           animated: false,
           style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-          className: 'edge-appear-static' // Clase para aristas añadidas manualmente
+          className: 'edge-appear-static'
         }, eds));
       }
     },
@@ -79,6 +78,7 @@ const GraphPage: React.FC = () => {
   );
 
   const processJsonToGraph = useCallback((data: JsonData): { initialNodes: Node[]; initialEdges: Edge[] } => {
+    // ... (tu lógica de processJsonToGraph sin cambios, solo asegúrate de que addNodeSafely y addEdgeInternal añadan las clases 'node-appear' y 'edge-appear')
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
     const nodeIds = new Set<string>();
@@ -92,7 +92,6 @@ const GraphPage: React.FC = () => {
         newNodes.push({ ...node, className: 'node-appear' }); // Añadir clase para animación
         nodeIds.add(node.id);
       } else {
-        // Lógica para fusionar datos si el nodo ya existe (opcional)
         const existingNode = newNodes.find(n => n.id === node.id);
         if (existingNode) {
           existingNode.data = { ...existingNode.data, ...node.data, details: { ...existingNode.data.details, ...node.data.details } };
@@ -124,8 +123,6 @@ const GraphPage: React.FC = () => {
 
     if (!data) return { initialNodes: [], initialEdges: [] };
 
-    // --- INICIO DE TU LÓGICA DE PROCESAMIENTO DE JSON ---
-    // (Esta parte es la misma que tenías, solo asegúrate que addNodeSafely y addEdgeInternal se usen)
     if (data.curp_online?.data?.registros?.[0]) {
       const personData = data.curp_online.data.registros[0];
       mainPersonNodeId = personData.curp || `person-curp-${Date.now()}`;
@@ -307,9 +304,7 @@ const GraphPage: React.FC = () => {
             }
         }
     }
-    // --- FIN DE TU LÓGICA DE PROCESAMIENTO DE JSON ---
 
-    // Ordenar nodos: principal primero, luego el resto.
     const sortedNodes = newNodes.sort((a, b) => {
         if (a.id === mainPersonNodeId) return -1;
         if (b.id === mainPersonNodeId) return 1;
@@ -321,18 +316,17 @@ const GraphPage: React.FC = () => {
 
   const animateGraphLoad = useCallback((allNodes: Node[], allEdges: Edge[]) => {
     setIsLoadingGraph(true);
-    setNodes([]);
-    setEdges([]);
+    setNodes([]); // Limpiar nodos existentes antes de la animación
+    setEdges([]); // Limpiar aristas existentes
 
-    // Ajusta estos valores para la velocidad deseada
-    const nodeBatchSize = Math.max(1, Math.floor(allNodes.length / 5)); // ~5 lotes de nodos
-    const edgeBatchSize = Math.max(1, Math.floor(allEdges.length / 5)); // ~5 lotes de aristas
-    const delayBetweenNodeBatches = 20; // ms - Rápido
-    const delayBetweenEdgeBatches = 15; // ms - Rápido
+    const nodeBatchSize = Math.max(1, Math.floor(allNodes.length / 5));
+    const edgeBatchSize = Math.max(1, Math.floor(allEdges.length / 5));
+    const delayBetweenNodeBatches = 20; 
+    const delayBetweenEdgeBatches = 15;
 
     let currentNodeIndex = 0;
     let currentEdgeIndex = 0;
-    let animationTimeoutId: NodeJS.Timeout;
+    let animationTimeoutId: NodeJS.Timeout | null = null; // Permitir que sea null
 
     function addNextNodeBatch() {
       if (currentNodeIndex < allNodes.length) {
@@ -341,7 +335,6 @@ const GraphPage: React.FC = () => {
         currentNodeIndex += batch.length;
         animationTimeoutId = setTimeout(addNextNodeBatch, delayBetweenNodeBatches);
       } else {
-        // Todos los nodos añadidos, empezar a añadir aristas
         addNextEdgeBatch();
       }
     }
@@ -353,10 +346,8 @@ const GraphPage: React.FC = () => {
         currentEdgeIndex += batch.length;
         animationTimeoutId = setTimeout(addNextEdgeBatch, delayBetweenEdgeBatches);
       } else {
-        // Todo cargado
         setIsLoadingGraph(false);
         console.log("Carga animada completada.");
-        // Forzar fitView después de un breve retraso para asegurar que todos los elementos estén renderizados
         setTimeout(() => {
           if (reactFlowInstance) {
             reactFlowInstance.fitView({ duration: 400, padding: 0.2 });
@@ -365,10 +356,11 @@ const GraphPage: React.FC = () => {
       }
     }
 
-    addNextNodeBatch(); // Iniciar la animación de nodos
+    addNextNodeBatch();
 
-    // Devolver una función de limpieza para cancelar el timeout si el componente se desmonta
-    return () => clearTimeout(animationTimeoutId);
+    return () => {
+      if (animationTimeoutId) clearTimeout(animationTimeoutId);
+    };
 
   }, [setNodes, setEdges, reactFlowInstance]);
 
@@ -384,94 +376,95 @@ const GraphPage: React.FC = () => {
     } else {
       setNodes([]);
       setEdges([]);
-      setIsLoadingGraph(false);
+      setIsLoadingGraph(false); // Asegurar que se detenga la carga si no hay nodos
     }
   }, [processJsonToGraph, animateGraphLoad]);
 
-  // Efecto para limpiar timeouts si el componente se desmonta durante la animación
+  // Limpieza de timeouts
   useEffect(() => {
-    let cleanupAnimation: (() => void) | undefined;
-    if (isLoadingGraph && jsonData) { // Solo si estamos cargando activamente
-        const { initialNodes, initialEdges } = processJsonToGraph(jsonData);
-        // La animación se inicia desde handleJsonUploaded, pero podríamos querer
-        // reiniciar si jsonData cambia mientras isLoadingGraph es true (poco probable aquí)
-        // La función animateGraphLoad ya devuelve su propia limpieza.
-    }
-    return () => {
-        if (cleanupAnimation) cleanupAnimation();
-    };
-  }, [isLoadingGraph, jsonData, processJsonToGraph]);
+    // La función animateGraphLoad ya devuelve su propia función de limpieza
+    // que se activa cuando cambian sus dependencias o el componente se desmonta.
+    // No es necesario un useEffect adicional aquí para la limpieza del timeout de animación.
+  }, []);
 
 
   return (
-    <div className="h-full w-full flex flex-col bg-bg-primary text-text-primary p-4">
-      <div className="mb-4 p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0">
-        <h2 className="text-xl font-semibold mb-3 text-accent-cyan">
+    <div className="h-full w-full flex flex-col bg-bg-primary text-text-primary p-4 space-y-4">
+      <div className="p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0">
+        <h2 className="text-xl font-semibold mb-3 text-accent-cyan text-center">
           Cargar Archivo JSON del Grafo
         </h2>
         <JsonUploadButton onJsonUploaded={handleJsonUploaded} />
-        {fileName && <p className="text-xs text-text-secondary mt-2">Archivo cargado: {fileName}</p>}
-        {isLoadingGraph && <p className="text-sm text-accent-cyan mt-2 animate-pulse">Cargando grafo...</p>}
+        {fileName && <p className="text-xs text-text-secondary mt-2 text-center">Archivo cargado: {fileName}</p>}
+        {isLoadingGraph && <p className="text-sm text-accent-cyan mt-2 animate-pulse text-center">Cargando grafo...</p>}
       </div>
 
-      <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg overflow-hidden">
-        <div style={{ width: '100%', height: '100%' }}>
-          {(nodes.length > 0 || isLoadingGraph) ? (
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodeTypes={memoizedNodeTypes}
-              // fitView // fitView se llamará programáticamente al final
-              fitViewOptions={{ duration: 300, padding: 0.2 }}
-              minZoom={0.1}
-              maxZoom={2} // Limitar zoom máximo
-              className="themed-flow"
-              onlyRenderVisibleElements={true}
-              defaultViewport={{ x: 0, y: 0, zoom: 0.5 }} // Vista inicial
-            >
-              <Controls position="bottom-right" />
-              <MiniMap 
-                nodeStrokeWidth={3}
-                nodeColor={(n) => {
-                  if (n.type === 'person') return 'var(--node-person-icon-color)';
-                  if (n.type === 'company') return 'var(--node-company-icon-color)';
-                  return 'var(--text-secondary)';
-                }}
-                nodeBorderRadius={2}
-                pannable 
-                zoomable
-                position="top-right"
-              />
-              <Background 
-                variant={BackgroundVariant.Lines} 
-                gap={24} 
-                size={0.4} 
-                color="var(--graph-lines-color)" 
-              />
-            </ReactFlow>
-          ) : jsonData ? (
-            <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4">
-              <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo.</p>
-              <p className="mb-2 text-sm">Verifica la consola para errores o la estructura del JSON.</p>
-              <details className="w-full max-w-2xl mt-4">
-                <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON</summary>
-                <pre className="text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-96 mt-2 p-3 bg-input-bg rounded-md">
-                  {JSON.stringify(jsonData, null, 2)}
-                </pre>
-              </details>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-text-secondary text-lg">
-              <p>Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
-            </div>
-          )}
-        </div>
+      <div 
+        className="flex-grow rounded-lg shadow-lg bg-graph-bg overflow-hidden graph-container" 
+        style={{ border: '5px solid red', backgroundColor: 'rgba(0, 0, 255, 0.1)' }}
+      >
+        {(nodes.length > 0 || isLoadingGraph) ? (
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={memoizedNodeTypes}
+            fitViewOptions={{ duration: 300, padding: 0.2 }}
+            minZoom={0.1}
+            maxZoom={2}
+            className="themed-flow"
+            onlyRenderVisibleElements={true}
+            defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <Controls position="bottom-right" />
+            <MiniMap 
+              nodeStrokeWidth={3}
+              nodeColor={(n) => {
+                if (n.type === 'person') return 'var(--node-person-icon-color)';
+                if (n.type === 'company') return 'var(--node-company-icon-color)';
+                return 'var(--text-secondary)';
+              }}
+              nodeBorderRadius={2}
+              pannable 
+              zoomable
+              position="top-right"
+            />
+            <Background 
+              variant={BackgroundVariant.Lines} 
+              gap={24} 
+              size={0.4} 
+              color="var(--graph-lines-color)" 
+            />
+          </ReactFlow>
+        ) : jsonData ? (
+          <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4 text-center">
+            <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo.</p>
+            <p className="mb-2 text-sm">Verifica la consola para errores o la estructura del JSON.</p>
+            <details className="w-full max-w-2xl mt-4">
+              <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON</summary>
+              <pre className="text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-96 mt-2 p-3 bg-input-bg rounded-md">
+                {JSON.stringify(jsonData, null, 2)}
+              </pre>
+            </details>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4 text-center">
+            <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
+            <p className="mb-2 text-sm">Utiliza el área de carga de arriba.</p>
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}
 
-export default GraphPage;
+const GraphPageWithProvider: React.FC = () => (
+  <ReactFlowProvider>
+    <GraphPage />
+  </ReactFlowProvider>
+);
+
+export default GraphPageWithProvider;

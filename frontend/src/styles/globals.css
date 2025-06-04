@@ -1,135 +1,160 @@
 @tailwind base;
-@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* React Flow specific styles */
+/* Estas clases ya no son necesarias aquí si el layout se maneja bien con flex/grid y w-full/h-full */
+/* .react-flow-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.react-flow__viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.react-flow__background {
+  width: 100%;
+  height: 100%;
+} */
+
+/* Ensure proper sizing for the graph container */
+/* Esta clase es buena, la usaremos */
+.graph-container {
+  width: 100%;
+  /* height: 100%; Let flex-grow determine height */
+  min-height: 300px; /* Fallback minimum height */
+  position: relative; /* Important for ReactFlow's positioning context */
+}
+
 :root {
-  --bg-primary: #03070C; /* Muy oscuro, casi negro azulado HOla*/
+  --bg-primary: #03070C; /* Muy oscuro, casi negro azulado */
   --bg-secondary: #0A0F1A; /* Azul oscuro para elementos secundarios */
-  --bg-glass: rgba(10, 15, 26, 0.6 );
-  --border-glass: rgba(0, 229, 255, 0.2 );
+  --bg-glass: rgba(10, 15, 26, 0.6);
+  --border-glass: rgba(0, 229, 255, 0.2);
   --text-primary: #E0E7FF; /* Texto principal, azul claro/lavanda */
   --text-secondary: #94A3B8; /* Texto secundario, gris azulado */
   --accent-cyan: #00E5FF; /* Acento principal, cian brillante */
   --accent-cyan-darker: #00B8D4; /* Cian más oscuro para bordes o estados hover */
   
-  --accent-pink: #F472B6 ;
-  --accent-purple: #A78BFA ;
-  --accent-orange: #F59E0B ;
-  --accent-green: #34D399 ;
+  --accent-pink: #F472B6;
+  --accent-purple: #A78BFA;
+  --accent-orange: #F59E0B;
+  --accent-green: #34D399;
 
   --input-bg: #101827; /* Fondo para inputs */
   --input-border: #303F5E; /* Borde para inputs y elementos sutiles del grafo */
-  --input-focus-border: var (--accent-cyan);
+  --input-focus-border: var(--accent-cyan); /* Corregido: sin espacio */
 
   /* Estilos específicos del Grafo */
-  --graph-bg: var (--bg-primary);
-  --graph-lines-color: var(--input-border); /* Color para las líneas del fondo del grafo */
+  --graph-bg: var(--bg-primary); /* Corregido: sin espacio */
+  --graph-lines-color: var(--input-border);
 
-  --node-bg: var(--bg-secondary); /* Fondo base para nodos */
-  --node-border: var(--accent-cyan-darker); /* Borde normal para nodos */
-  --node-border-selected: var(--accent-cyan); /* Borde para nodos seleccionados/resaltados */
-  --node-shadow-selected: 0 0 15px var(--accent-cyan); /* Sombra/glow para nodos seleccionados */
+  --node-bg: var(--bg-secondary);
+  --node-border: var(--accent-cyan-darker);
+  --node-border-selected: var(--accent-cyan);
+  --node-shadow-selected: 0 0 15px var(--accent-cyan);
   
   /* Colores específicos por tipo de nodo (ejemplos) */
-  --node-person-icon-color: var (--accent-cyan);
-  --node-company-icon-color: var (--accent-pink);
-  --node-generic-icon-color: var (--text-secondary);
+  --node-person-icon-color: var(--accent-cyan); /* Corregido */
+  --node-company-icon-color: var(--accent-pink); /* Corregido */
+  --node-generic-icon-color: var(--text-secondary); /* Corregido */
 
-  --edge-default-color: #6B7280; /* Un gris más oscuro y sutil para las aristas */
-  --edge-selected-color: var (--accent-cyan);
-  --edge-label-color: var (--text-secondary);
+  --edge-default-color: #6B7280;
+  --edge-selected-color: var(--accent-cyan); /* Corregido */
+  --edge-label-color: var(--text-secondary); /* Corregido */
 
   /* Variables de styles.css (para consistencia si se usan en otros lados) */
-  --hue: 200 ;
-  --saturation-accent: 100% ;
-  --lightness-accent: 50% ;
-  --first-color: hsl(var(--hue), var(--saturation-accent), var (--lightness-accent));
-  --first-color-alt: hsl(var(--hue), var(--saturation-accent), 45% );
-  --first-color-light: hsl(var(--hue), var(--saturation-accent), 65% );
-  --bg-dark-primary: #05080D ;
-  --bg-form-color: hsla(212, 70%, 10%, 0.75 );
-  --input-bg-color: #0E1625 ;
-  --title-color: var (--first-color); 
-  --text-color: #C0C8D8 ;
-  --text-color-light: #8892b0 ;
-  --text-on-accent: var (--bg-dark-primary);
-  --body-color: var (--bg-dark-primary);
-  --container-color: var (--bg-form-color);
-  --input-border-color: hsl(var(--hue), var(--saturation-accent), 35% );
+  --hue: 200;
+  --saturation-accent: 100%;
+  --lightness-accent: 50%;
+  --first-color: hsl(var(--hue), var(--saturation-accent), var(--lightness-accent)); /* Corregido */
+  --first-color-alt: hsl(var(--hue), var(--saturation-accent), 45%);
+  --first-color-light: hsl(var(--hue), var(--saturation-accent), 65%);
+  --bg-dark-primary: #05080D;
+  --bg-form-color: hsla(212, 70%, 10%, 0.75);
+  --input-bg-color: #0E1625;
+  --title-color: var(--first-color); /* Corregido */
+  --text-color: #C0C8D8;
+  --text-color-light: #8892b0;
+  --text-on-accent: var(--bg-dark-primary); /* Corregido */
+  --body-color: var(--bg-dark-primary); /* Corregido */
+  --container-color: var(--bg-form-color); /* Corregido */
+  --input-border-color: hsl(var(--hue), var(--saturation-accent), 35%);
 }
 
-body {
+body, #root, .App {
   @apply bg-bg-primary text-text-primary font-sans;
-  margin: 0 ;
-  min-height: 100vh ;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Asegurar que ocupen toda la altura disponible */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px ;
-  height: 8px ;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var (--bg-secondary);
+  background: var(--bg-secondary); /* Corregido */
 }
 ::-webkit-scrollbar-thumb {
-  background: var (--accent-cyan-darker);
-  border-radius: 4px ;
+  background: var(--accent-cyan-darker); /* Corregido */
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var (--accent-cyan);
+  background: var(--accent-cyan); /* Corregido */
 }
 
 /* React Flow specific styles */
 .react-flow__minimap {
-  background-color: var(--bg-secondary) !important ;
-  border: 1px solid var(--accent-cyan-darker) !important ;
-  border-radius: 4px ;
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--accent-cyan-darker) !important;
+  border-radius: 4px;
 }
 .react-flow__controls-button {
-  background-color: var(--bg-secondary) !important ;
-  border: 1px solid var(--accent-cyan-darker) !important ;
-  color: var(--accent-cyan) !important ;
-  fill: var(--accent-cyan) !important ;
-  box-shadow: none !important ;
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--accent-cyan-darker) !important;
+  color: var(--accent-cyan) !important;
+  fill: var(--accent-cyan) !important;
+  box-shadow: none !important;
 }
 .react-flow__controls-button:hover {
-  background-color: var(--input-bg) !important ;
+  background-color: var(--input-bg) !important;
 }
 .react-flow__attribution {
-  display : none;
+  display: none;
 }
 
 /* Estilo para las aristas */
 .react-flow__edge-path {
-  stroke-width: 1.5; /* Ligeramente más delgadas */
+  stroke-width: 1.5;
 }
-.react-flow__edge.selected .react-flow__edge-path ,
+.react-flow__edge.selected .react-flow__edge-path,
 .react-flow__edge:hover .react-flow__edge-path {
-  stroke: var (--edge-selected-color);
+  stroke: var(--edge-selected-color); /* Corregido */
 }
 
 .react-flow__handle {
-  width: 8px !important ;
-  height: 8px !important ;
-  background-color: var(--accent-cyan-darker) !important ;
-  border: 1px solid var(--bg-secondary) !important ;
+  width: 8px !important;
+  height: 8px !important;
+  background-color: var(--accent-cyan-darker) !important;
+  border: 1px solid var(--bg-secondary) !important;
 }
 .react-flow__handle-connecting {
-  background-color: var(--accent-cyan) !important ;
+  background-color: var(--accent-cyan) !important;
 }
 
-/* Remover bordes de depuración si ya no son necesarios */
-/* .debug-border {
-  border: 2px solid red !important;
-} */
 
 @keyframes nodeEnterAnimation {
   0% {
-    transform: scale(0.3) translateZ(0); /* translateZ para forzar aceleración por hardware */
+    transform: scale(0.3) translateZ(0);
     opacity: 0;
   }
   70% {
@@ -145,7 +170,7 @@ body {
 @keyframes edgeEnterAnimation {
   from {
     opacity: 0;
-    stroke-dasharray: 2000; /* Un valor grande para simular dibujo */
+    stroke-dasharray: 2000;
     stroke-dashoffset: 2000;
   }
   to {
@@ -154,19 +179,15 @@ body {
   }
 }
 
-/* Aplicar a la clase que envuelve tu nodo personalizado o al nodo de ReactFlow */
 .react-flow__node.node-appear {
   animation: nodeEnterAnimation 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  /* cubic-bezier para un efecto de "rebote" sutil */
 }
 
-/* Aplicar a la arista */
 .react-flow__edge.edge-appear .react-flow__edge-path {
   animation: edgeEnterAnimation 0.4s ease-out forwards;
-  animation-delay: 0.05s; /* Pequeño retraso para que los nodos aparezcan un poco antes */
+  animation-delay: 0.05s; 
 }
 
-/* Para aristas añadidas manualmente por el usuario, sin animación de carga */
 .react-flow__edge.edge-appear-static .react-flow__edge-path {
-  opacity: 1; /* Asegurar que sean visibles */
+  opacity: 1;
 }
