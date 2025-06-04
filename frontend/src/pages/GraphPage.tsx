@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -8,11 +8,13 @@ import ReactFlow, {
   addEdge,
   Node,
   Edge,
-  Position // Importado para posible uso futuro, no estrictamente necesario para MiniMap nodeColor
+  Connection,
+  BackgroundVariant,
+  Position,
 } from 'reactflow';
-import 'reactflow/dist/style.css'; // Estilo base de React Flow
-import '../styles/react-flow-theme.css'; // Tus estilos personalizados para React Flow
-import '../styles/globals.css'; // Asegura que las variables CSS estén disponibles
+import 'reactflow/dist/style.css';
+import '../styles/react-flow-theme.css';
+import '../styles/globals.css';
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
@@ -22,30 +24,74 @@ import CompanyNode from '../components/graph/CompanyNode';
 const nodeTypes = {
   person: PersonNode,
   company: CompanyNode,
-  // Podrías añadir más tipos aquí, ej: location: LocationNode,
 };
+
+interface JsonData {
+  curp_online?: {
+    data?: {
+      registros?: Array<{
+        curp: string;
+        nombres: string;
+        primerApellido: string;
+        segundoApellido: string;
+      }>;
+    };
+  };
+  ine1?: {
+    data?: Array<{
+      nombre: string;
+      paterno: string;
+      materno: string;
+      ocupacion: string;
+      cve: string;
+    }>;
+  };
+  buro1?: {
+    data?: Array<{
+      comercios: Array<{
+        institucion: string;
+        [key: string]: any;
+      }>;
+    }>;
+  };
+  [key: string]: any;
+}
 
 const GraphPage: React.FC = () => {
   console.log("GraphPage IS RENDERING - Now with Graph Display Logic");
-  const [jsonData, setJsonData] = useState<any>(null);
+  const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
 
-  // Estados para los nodos y aristas del grafo
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // Callback para cuando se conectan nodos manualmente (si se habilita la funcionalidad)
+  // Memoize nodeTypes para evitar re-renders innecesarios
+  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+
+  // Callback para cuando se conectan nodos manualmente
   const onConnect = useCallback(
-    (params: Edge) => setEdges((eds) => addEdge(params, eds)),
+    (params: Connection) => {
+      if (params.source && params.target) {
+        setEdges((eds) => addEdge({
+          ...params,
+          id: `e${Date.now()}`,
+          type: 'smoothstep',
+          animated: true,
+          style: { stroke: 'var(--edge-default)' },
+        }, eds));
+      }
+    },
     [setEdges]
   );
 
   // Función para procesar el JSON y convertirlo en nodos y aristas para React Flow
-  const processJsonToGraph = (data: any): { initialNodes: Node[], initialEdges: Edge[] } => {
+  const processJsonToGraph = (data: JsonData): { initialNodes: Node[]; initialEdges: Edge[] } => {
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
-    const nodeIds = new Set<string>(); // Para evitar duplicar nodos con el mismo ID
-    let edgeIdCounter = 0; // Para generar IDs únicos para las aristas
+    const nodeIds = new Set<string>();
+    let edgeIdCounter = 0;
+    let mainPersonNodeId = '';
+    let mainPersonName = '';
 
     const addNodeSafely = (node: Node) => {
       if (!nodeIds.has(node.id)) {
@@ -54,47 +100,40 @@ const GraphPage: React.FC = () => {
       }
     };
 
-    const addEdgeInternal = (sourceId: string, targetId: string, label: string, animated: boolean = false) => {
-      // Asegurarse que source y target existen como nodos antes de crear la arista
+    const addEdgeInternal = (sourceId: string, targetId: string, label: string) => {
       if (nodeIds.has(sourceId) && nodeIds.has(targetId)) {
         newEdges.push({
           id: `e${edgeIdCounter++}`,
           source: sourceId,
           target: targetId,
-          label: label,
-          animated: animated,
-          style: { stroke: 'var(--edge-default)' }, // Estilo por defecto
+          label,
+          type: 'smoothstep',
+          animated: false,
+          style: { stroke: 'var(--edge-default)' },
         });
-      } else {
-        console.warn(`No se pudo crear arista: ${sourceId} -> ${targetId}. Uno o ambos nodos no existen.`);
       }
     };
 
     if (!data) return { initialNodes: [], initialEdges: [] };
 
-    let mainPersonNodeId: string | null = null;
-    let mainPersonName: string = "Persona Principal";
-
-    // 1. Nodo Persona Principal
+    // Crear nodo principal
     if (data.curp_online?.data?.registros?.[0]) {
       const personData = data.curp_online.data.registros[0];
-      mainPersonNodeId = personData.curp;
+      mainPersonNodeId = personData.curp || `person-${Date.now()}`;
       mainPersonName = `${personData.nombres} ${personData.primerApellido} ${personData.segundoApellido}`;
-      const ocupacion = data.ine1?.data?.[0]?.ocupacion || 'Individuo Principal';
       addNodeSafely({
         id: mainPersonNodeId,
         type: 'person',
-        position: { x: 250, y: 50 }, // Posición inicial
+        position: { x: 250, y: 50 },
         data: {
           name: mainPersonName,
-          title: ocupacion,
-          curp: personData.curp,
-          details: { ...personData, ine: data.ine1?.data?.[0], fullJson: data }, // Incluir todo el JSON para detalles
+          title: data.ine1?.data?.[0]?.ocupacion || 'Individuo Principal',
+          details: { ...personData, ine: data.ine1?.data?.[0], fullJson: data },
         },
       });
-    } else if (data.ine1?.data?.[0]) { // Fallback si curp_online no está
+    } else if (data.ine1?.data?.[0]) {
       const personData = data.ine1.data[0];
-      mainPersonNodeId = personData.cve || `person-${personData.nombre.replace(/\s+/g, '_')}`;
+      mainPersonNodeId = personData.cve || `person-${Date.now()}-${personData.nombre.replace(/\s+/g, '_')}`;
       mainPersonName = `${personData.nombre} ${personData.paterno} ${personData.materno}`;
       addNodeSafely({
         id: mainPersonNodeId,
@@ -103,40 +142,41 @@ const GraphPage: React.FC = () => {
         data: {
           name: mainPersonName,
           title: personData.ocupacion,
-          cve_ine: personData.cve,
           details: { ...personData, fullJson: data },
+        },
+      });
+    } else {
+      mainPersonNodeId = data._id?.$oid || `json-root-${Date.now()}`;
+      mainPersonName = "Raíz del JSON";
+      addNodeSafely({
+        id: mainPersonNodeId,
+        type: 'person',
+        position: { x: 250, y: 50 },
+        data: {
+          name: mainPersonName,
+          title: "Datos Centrales",
+          details: { id: data._id?.$oid, fullJson: data },
         },
       });
     }
 
-    if (!mainPersonNodeId) {
-      mainPersonNodeId = data._id?.$oid || "json_root_node";
-      mainPersonName = "Raíz del JSON";
-      addNodeSafely({
-          id: mainPersonNodeId,
-          type: 'person', // O un tipo 'generic'
-          position: { x: 250, y: 50 },
-          data: { name: mainPersonName, title: "Datos Centrales", details: { id: data._id?.$oid, fullJson: data } }
-      });
-    }
-
-    // 2. Nodos de Empresas y Relaciones (Buro1)
-    if (mainPersonNodeId && data.buro1?.data?.[0]?.comercios) {
-      data.buro1.data[0].comercios.forEach((comercio: any, index: number) => {
-        const empresaId = (comercio.institucion || `buro1-empresa-${index}`).replace(/\s+/g, '_');
+    // Procesar empresas del buró
+    if (data.buro1?.data?.[0]?.comercios) {
+      data.buro1.data[0].comercios.forEach((comercio, index) => {
+        const empresaId = `empresa-${index}-${(comercio.institucion || 'unknown').replace(/\s+/g, '_')}`;
         addNodeSafely({
           id: empresaId,
           type: 'company',
           position: { x: 50 + index * 200, y: 250 },
           data: {
-            name: comercio.institucion,
+            name: comercio.institucion || 'Empresa sin nombre',
             details: comercio,
           },
         });
-        addEdgeInternal(mainPersonNodeId!, empresaId, 'Relación Financiera');
+        addEdgeInternal(mainPersonNodeId, empresaId, 'Relación Financiera');
       });
     }
-    
+
     // 3. Nodo Empresa y Relaciones (Socios Empresas)
     if (mainPersonNodeId && data.socios_empresas?.data?.datos_subconsulta?.[0]) {
       const empresaSociaData = data.socios_empresas.data.datos_subconsulta[0];
@@ -224,20 +264,19 @@ const GraphPage: React.FC = () => {
     return { initialNodes: newNodes, initialEdges: newEdges };
   };
 
-  const handleJsonUploaded = (data: any, name?: string) => {
+  const handleJsonUploaded = useCallback((data: JsonData, name?: string) => {
     console.log("JSON data received in GraphPage:", data);
-    setJsonData(data); // Guardar JSON original por si se necesita
+    setJsonData(data);
     if (name) {
       setFileName(name);
     }
     const { initialNodes, initialEdges } = processJsonToGraph(data);
     setNodes(initialNodes);
     setEdges(initialEdges);
-  };
+  }, []);
 
   return (
-    <div className="h-full w-full p-2 flex flex-col bg-bg-secondary text-text-primary box-sizing-border-box">
-      {/* Área de carga de JSON */}
+    <div className="h-full w-full p-2 flex flex-col bg-bg-secondary text-text-primary">
       <div className="mb-4 p-3 bg-bg-primary shadow-md rounded-md flex-shrink-0">
         <h2 className="text-xl font-semibold mb-3 text-accent-cyan">
           Cargar Archivo JSON del Grafo
@@ -246,7 +285,6 @@ const GraphPage: React.FC = () => {
         {fileName && <p className="text-xs text-text-secondary mt-2">Archivo cargado: {fileName}</p>}
       </div>
 
-      {/* Área para el grafo o mensajes */}
       <div className="flex-grow mt-2 rounded-lg shadow-lg bg-graph-bg relative">
         {nodes.length > 0 ? (
           <ReactFlow
@@ -255,7 +293,7 @@ const GraphPage: React.FC = () => {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            nodeTypes={nodeTypes}
+            nodeTypes={memoizedNodeTypes}
             fitView
             fitViewOptions={{ padding: 0.1 }}
             minZoom={0.1}
@@ -263,7 +301,7 @@ const GraphPage: React.FC = () => {
             <Controls />
             <MiniMap 
               nodeStrokeWidth={3}
-              nodeColor={(n: Node) => {
+              nodeColor={(n) => {
                 if (n.type === 'person') return 'var(--node-person-border)';
                 if (n.type === 'company') return 'var(--node-company-border)';
                 return 'var(--text-secondary)';
@@ -271,14 +309,19 @@ const GraphPage: React.FC = () => {
               pannable 
               zoomable
             />
-            <Background variant="dots" gap={16} size={0.7} color="var(--input-border)" />
+            <Background 
+              variant={BackgroundVariant.Dots} 
+              gap={16} 
+              size={0.7} 
+              color="var(--input-border)" 
+            />
           </ReactFlow>
         ) : jsonData ? (
           <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4">
-            <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo o el procesamiento está en curso.</p>
-            <p className="mb-2 text-sm">Puede que el JSON no contenga la estructura esperada para extraer entidades graficables, o que las entidades encontradas no tuvieran identificadores claros.</p>
+            <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo.</p>
+            <p className="mb-2 text-sm">El JSON podría no contener la estructura esperada para generar el grafo.</p>
             <details className="w-full max-w-2xl mt-4">
-              <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON cargado</summary>
+              <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON</summary>
               <pre className="text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-96 mt-2 p-3 bg-input-bg rounded-md">
                 {JSON.stringify(jsonData, null, 2)}
               </pre>
