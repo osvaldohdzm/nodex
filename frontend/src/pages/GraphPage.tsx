@@ -13,7 +13,7 @@ import ReactFlow, {
   Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import '../styles/react-flow-theme.css';
+// import '../styles/react-flow-theme.css'; // Module not found - Commented out
 import '../styles/globals.css';
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
@@ -273,7 +273,7 @@ const GraphPage: React.FC = () => {
     const { initialNodes, initialEdges } = processJsonToGraph(data);
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, []);
+  }, [setNodes, setEdges]); // Added dependencies
 
   return (
     <div className="h-full w-full p-2 flex flex-col bg-bg-secondary text-text-primary">

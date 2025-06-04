@@ -29,9 +29,12 @@
       "@utils/*": [
         "utils/*"
       ]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types"] // Added ./src/types for custom type definitions
   },
   "include": [
-    "src"
-  ]
+    "src", // Standard include
+    "src/types" // Include custom types directory if you create one (e.g., src/types/custom.d.ts)
+  ],
+  "exclude": ["node_modules"] // Standard exclude
 }
