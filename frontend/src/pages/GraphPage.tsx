@@ -330,9 +330,8 @@ const GraphPage: React.FC = () => {
       {/* Graph Section - this should take all remaining vertical space */}
       {/* Added mt-2 here for margin above the graph area */}
       <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg mt-2">
-        {/* This inner div is CRITICAL for React Flow. It MUST have a defined height. */}
-        {/* By making its parent a flex-grow item, and this h-full (via style), it should work. */}
-        <div style={{ width: '100%', height: '100%' }}> 
+        {/* TEMPORARY: Hardcode dimensions for debugging */}
+        <div style={{ width: '800px', height: '600px', border: '2px solid red' }}> {/* HARDCODED FOR DEBUG */}
           {nodes.length > 0 ? (
             <ReactFlow
               nodes={nodes}
