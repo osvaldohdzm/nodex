@@ -1,80 +1,75 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-// Asegúrate de que estas importaciones de CSS estén comentadas o eliminadas si no las necesitas aquí directamente
-// import './App.css'; // Comentado si los estilos principales están en globals.css o son de Tailwind
-import LoginPage from './pages/LoginPage'; // .tsx extension is usually not needed here
-import GraphPage from './pages/GraphPage'; // .tsx extension is usually not needed here
-// import PrivateRoute from './components/auth/PrivateRoute'; // Module not found - Commented out
-import './styles/globals.css'; // Importante: tus estilos globales y Tailwind
+// import PrivateRoute from './components/auth/PrivateRoute'; // Still missing, using manual check
+import LoginPage from './pages/LoginPage';
+import GraphPage from './pages/GraphPage';
+import './styles/globals.css';
 
 function App() {
   console.log("App component is rendering");
-  // Esta variable isAuthenticated se usa para la redirección inicial en la ruta "/"
-  // PrivateRoute maneja la autenticación para las rutas protegidas después de eso.
-  // const isAuthenticated = !!localStorage.getItem('access_token'); // Used below
+  // This check will run on every render of App. For a more robust solution,
+  // this state would be managed by a context or global state manager.
+  const isAuthenticated = !!localStorage.getItem('access_token');
 
   return (
     <Router>
-      {/* Contenedor principal de la aplicación */}
-      <div className="App flex flex-col h-screen bg-gray-700"> {/* Fondo gris oscuro para ver el contenedor App */}
+      <div className="App flex flex-col h-screen bg-gray-700">
         <header
-          className="App-header" // Puedes añadir clases de Tailwind aquí si quieres
+          className="App-header"
           style={{
-            backgroundColor: '#1e1e1e', // Un color de header distintivo
+            backgroundColor: '#1e1e1e',
             padding: '20px',
             textAlign: 'center',
             color: 'white',
-            flexShrink: 0, // Importante: Evita que el header se encoja si el contenido de main es grande
-            borderBottom: '2px solid var(--accent-cyan)' // Un borde para distinguirlo
+            flexShrink: 0,
+            borderBottom: '2px solid var(--accent-cyan)'
           }}
         >
           <h1>Nodex</h1>
         </header>
 
-        {/* Contenedor principal del contenido */}
         <main
-          className="flex-grow overflow-auto" // Tailwind classes para que ocupe el espacio y permita scroll
+          className="flex-grow overflow-auto"
           style={{
-            border: '5px solid limegreen', // Borde verde para depurar <main>
-            backgroundColor: 'rgba(50, 50, 150, 0.3)', // Fondo azulado semi-transparente para <main>
-            // minHeight: '0', // Asegura que flex-grow pueda funcionar correctamente.
-            // display: 'flex', // Si quieres que el contenido interno use flex
-            // flexDirection: 'column', // Si quieres que el contenido interno se apile verticalmente
+            border: '5px solid limegreen', // Debug border
+            backgroundColor: 'rgba(50, 50, 150, 0.3)', // Debug background
           }}
         >
-          {/* Div interno para probar el layout dentro de main */}
           <div style={{
-              border: '3px dashed yellow',
-              // flexGrow: 1, // Descomenta si main tiene display:flex y flexDirection:column y quieres que este div crezca
-              minHeight: '100%', // Intenta que este div ocupe toda la altura de main
-              backgroundColor: 'rgba(255, 255, 0, 0.1)',
-              padding: '10px', // Añade padding para ver el contenido
-              display: 'flex', // Para que GraphPage pueda usar flex si es necesario
-              flexDirection: 'column' // Para que GraphPage pueda usar flex si es necesario
+              border: '3px dashed yellow', // Debug border
+              minHeight: '100%', // Ensure this div tries to fill main
+              backgroundColor: 'rgba(255, 255, 0, 0.1)', // Debug background
+              padding: '10px',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
-            <p style={{color: 'yellow', textAlign: 'center', flexShrink: 0}}>CONTENIDO INTERNO DE MAIN - ¿VES ESTO EN AMARILLO?</p>
+            <p style={{color: 'yellow', textAlign: 'center', flexShrink: 0}}>CONTENIDO INTERNO DE MAIN</p>
             
-            {/* Las Rutas van aquí, dentro del div amarillo para ver si se renderizan */}
-            <div style={{ flexGrow: 1, border: '2px solid orange', position: 'relative' /* Para ReactFlow */}}> {/* Contenedor para las rutas */}
+            <div style={{ flexGrow: 1, border: '2px solid orange', position: 'relative' /* For ReactFlow */}}>
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
-                {/* <Route element={<PrivateRoute />}> // PrivateRoute.tsx not found
-                  <Route path="/graph" element={<GraphPage />} />
-                </Route> */}
-                {/* Temporarily making /graph public for testing without PrivateRoute */}
-                <Route path="/graph" element={<GraphPage />} />
-                <Route
-                  path="/"
+                
+                {/* Protected Route for GraphPage */}
+                <Route 
+                  path="/graph" 
                   element={
-                    // Re-evaluar aquí para la redirección inicial
-                    localStorage.getItem('access_token') ? <Navigate to="/graph" replace /> : <Navigate to="/login" replace />
-                  }
+                    isAuthenticated ? <GraphPage /> : <Navigate to="/login" replace />
+                  } 
                 />
-                {/* Ruta catch-all para redirigir si no se encuentra la ruta */}
-                <Route
-                  path="*"
-                  element={<Navigate to="/" replace />}
+                
+                {/* Default route: redirect based on authentication status */}
+                <Route 
+                  path="/" 
+                  element={
+                    isAuthenticated ? <Navigate to="/graph" replace /> : <Navigate to="/login" replace />
+                  } 
+                />
+                
+                {/* Catch-all route */}
+                <Route 
+                  path="*" 
+                  element={<Navigate to="/" replace />} 
                 />
               </Routes>
             </div>

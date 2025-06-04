@@ -30,13 +30,15 @@
       "@utils/*": [
         "utils/*"
       ]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types"] // Added ./src/types for custom type definitions
   },
   "include": [
-    "src"
-  ]
+    "src", // Standard include
+    "src/types" // Include custom types directory if you create one (e.g., src/types/custom.d.ts)
+  ],
+  "exclude": ["node_modules"] // Standard exclude
 }
-
 
 ===== frontend/.babelrc =====
 {
@@ -168,16 +170,16 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 // Asegúrate de que estas importaciones de CSS estén comentadas o eliminadas si no las necesitas aquí directamente
 // import './App.css'; // Comentado si los estilos principales están en globals.css o son de Tailwind
-import LoginPage from './pages/LoginPage.tsx';
-import GraphPage from './pages/GraphPage.tsx';
-import PrivateRoute from './components/auth/PrivateRoute.tsx';
+import LoginPage from './pages/LoginPage'; // .tsx extension is usually not needed here
+import GraphPage from './pages/GraphPage'; // .tsx extension is usually not needed here
+// import PrivateRoute from './components/auth/PrivateRoute'; // Module not found - Commented out
 import './styles/globals.css'; // Importante: tus estilos globales y Tailwind
 
 function App() {
   console.log("App component is rendering");
   // Esta variable isAuthenticated se usa para la redirección inicial en la ruta "/"
   // PrivateRoute maneja la autenticación para las rutas protegidas después de eso.
-  const isAuthenticated = !!localStorage.getItem('access_token');
+  // const isAuthenticated = !!localStorage.getItem('access_token'); // Used below
 
   return (
     <Router>
@@ -225,10 +227,11 @@ function App() {
             <div style={{ flexGrow: 1, border: '2px solid orange', position: 'relative' /* Para ReactFlow */}}> {/* Contenedor para las rutas */}
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
-                <Route element={<PrivateRoute />}>
-                  {/* GraphPage es el div rojo/azul de depuración */}
+                {/* <Route element={<PrivateRoute />}> // PrivateRoute.tsx not found
                   <Route path="/graph" element={<GraphPage />} />
-                </Route>
+                </Route> */}
+                {/* Temporarily making /graph public for testing without PrivateRoute */}
+                <Route path="/graph" element={<GraphPage />} />
                 <Route
                   path="/"
                   element={
@@ -277,7 +280,7 @@ import { createRoot } from 'react-dom/client';
 import './styles/globals.css'; // MANTENER ESTE (Tailwind y variables principales)
 // import './assets/css/styles.css'; // COMENTAR TEMPORALMENTE para aislar problemas de CSS
 // import './App.css'; // COMENTAR TEMPORALMENTE para aislar problemas de CSS
-import App from './App';
+import App from './App.tsx'; // Changed from App to App.tsx
 
 const container = document.getElementById('root');
 const root = createRoot(container);
@@ -287,6 +290,80 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+===== frontend/src/App.tsx =====
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// import PrivateRoute from './components/auth/PrivateRoute'; // Commented out due to missing file
+import LoginPage from './pages/LoginPage';
+import GraphPage from './pages/GraphPage';
+import './styles/globals.css';
+
+function App() {
+  console.log("App component is rendering");
+  const isAuthenticated = !!localStorage.getItem('access_token');
+
+  return (
+    <Router>
+      <div className="App flex flex-col h-screen bg-gray-700">
+        <header
+          className="App-header"
+          style={{
+            backgroundColor: '#1e1e1e',
+            padding: '20px',
+            textAlign: 'center',
+            color: 'white',
+            flexShrink: 0,
+            borderBottom: '2px solid var(--accent-cyan)'
+          }}
+        >
+          <h1>Nodex</h1>
+        </header>
+
+        <main
+          className="flex-grow overflow-auto"
+          style={{
+            border: '5px solid limegreen',
+            backgroundColor: 'rgba(50, 50, 150, 0.3)',
+          }}
+        >
+          <div style={{
+              border: '3px dashed yellow',
+              minHeight: '100%',
+              backgroundColor: 'rgba(255, 255, 0, 0.1)',
+              padding: '10px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <p style={{color: 'yellow', textAlign: 'center', flexShrink: 0}}>CONTENIDO INTERNO DE MAIN - ¿VES ESTO EN AMARILLO?</p>
+            <div style={{ flexGrow: 1, border: '2px solid orange', position: 'relative' }}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route
+                  path="/graph"
+                  element={
+                    isAuthenticated ? <GraphPage /> : <Navigate to="/login" replace />
+                  }
+                />
+                <Route
+                  path="/"
+                  element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
+                />
+                <Route
+                  path="*"
+                  element={<Navigate to="/" replace />}
+                />
+              </Routes>
+            </div>
+          </div>
+        </main>
+      </div>
+    </Router>
+  );
+}
+
+export default App;
 
 ===== frontend/src/assets/css/styles.css =====
 /* GLE FONTS ===============*/
@@ -628,7 +705,7 @@ import ReactFlow, {
   Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import '../styles/react-flow-theme.css';
+// import '../styles/react-flow-theme.css'; // Module not found - Commented out
 import '../styles/globals.css';
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
@@ -888,7 +965,7 @@ const GraphPage: React.FC = () => {
     const { initialNodes, initialEdges } = processJsonToGraph(data);
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, []);
+  }, [setNodes, setEdges]); // Added dependencies
 
   return (
     <div className="h-full w-full p-2 flex flex-col bg-bg-secondary text-text-primary">
@@ -900,7 +977,7 @@ const GraphPage: React.FC = () => {
         {fileName && <p className="text-xs text-text-secondary mt-2">Archivo cargado: {fileName}</p>}
       </div>
 
-      <div className="flex-grow mt-2 rounded-lg shadow-lg bg-graph-bg relative">
+      <div className="flex-grow h-full mt-2 rounded-lg shadow-lg bg-graph-bg relative">
         {nodes.length > 0 ? (
           <ReactFlow
             nodes={nodes}
@@ -1442,6 +1519,248 @@ function GraphDisplay() {
 }
 
 export default GraphDisplay;
+
+
+===== frontend/src/components/AnimatedBackground.js =====
+import React, { useEffect, useRef } from 'react';
+
+const AnimatedBackground = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const can = canvasRef.current;
+    if (!can) return;
+
+    const ctx = can.getContext('2d');
+    let animationFrameId;
+    let pulseTimeoutId;
+
+    // Get theme colors from CSS variables
+    const computedStyle = getComputedStyle(document.documentElement);
+    const bgColorPrimary = computedStyle.getPropertyValue('--body-color').trim() || '#05080D';
+    const accentHue = parseInt(computedStyle.getPropertyValue('--hue').trim(), 10) || 200;
+
+    // Convert bgColorPrimary to RGB
+    let bgR = 5, bgG = 8, bgB = 13;
+    if (bgColorPrimary.startsWith('#')) {
+      const hex = bgColorPrimary.substring(1);
+      if (hex.length === 3) {
+        bgR = parseInt(hex[0] + hex[0], 16);
+        bgG = parseInt(hex[1] + hex[1], 16);
+        bgB = parseInt(hex[2] + hex[2], 16);
+      } else if (hex.length === 6) {
+        bgR = parseInt(hex.substring(0, 2), 16);
+        bgG = parseInt(hex.substring(2, 4), 16);
+        bgB = parseInt(hex.substring(4, 6), 16);
+      }
+    }
+    const trailColor = `rgba(${bgR}, ${bgG}, ${bgB}, 0.15)`;
+    const particleTrailColor = `rgba(${bgR}, ${bgG}, ${bgB}, 0.07)`;
+
+    can.width = window.innerWidth;
+    can.height = window.innerHeight;
+
+    const particles = [];
+    const maxParticles = 60;
+    const connectionDistance = 150;
+    const particleBaseRadius = 1.5;
+
+    function drawBackgroundEffect() {
+      ctx.fillStyle = trailColor;
+      ctx.fillRect(0, 0, can.width, can.height);
+      ctx.fillStyle = particleTrailColor;
+      ctx.fillRect(0, 0, can.width, can.height);
+    }
+
+    function Particle(x, y, speed, color, radius) {
+      this.x = x;
+      this.y = y;
+      this.vx = speed.x;
+      this.vy = speed.y;
+      this.color = color;
+      this.radius = radius;
+      this.initialLife = Math.random() * 150 + 150;
+      this.life = this.initialLife;
+      this.connections = 0;
+      this.maxConnections = 3;
+
+      this.draw = function () {
+        const currentRadius = this.radius * (this.life / this.initialLife);
+        if (currentRadius < 0.5) return;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2, false);
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = this.color;
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      };
+
+      this.update = function () {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= 0.5;
+        // Soft bounce
+        if (this.x + this.radius > can.width || this.x - this.radius < 0) {
+          this.vx *= -0.7;
+          this.x = Math.max(this.radius, Math.min(can.width - this.radius, this.x));
+        }
+        if (this.y + this.radius > can.height || this.y - this.radius < 0) {
+          this.vy *= -0.7;
+          this.y = Math.max(this.radius, Math.min(can.height - this.radius, this.y));
+        }
+        // Gentle random direction change
+        if (Math.random() < 0.02) {
+          const angleChange = (Math.random() - 0.5) * (Math.PI / 4);
+          const currentAngle = Math.atan2(this.vy, this.vx);
+          const magnitude = Math.sqrt(this.vx ** 2 + this.vy ** 2) * (0.8 + Math.random() * 0.4);
+          this.vx = Math.cos(currentAngle + angleChange) * magnitude;
+          this.vy = Math.sin(currentAngle + angleChange) * magnitude;
+        }
+        // Limit speed
+        const maxSpeed = 1.5;
+        const currentSpeed = Math.sqrt(this.vx ** 2 + this.vy ** 2);
+        if (currentSpeed > maxSpeed) {
+          this.vx = (this.vx / currentSpeed) * maxSpeed;
+          this.vy = (this.vy / currentSpeed) * maxSpeed;
+        }
+      };
+    }
+
+    function connectParticles() {
+      particles.forEach(p => p.connections = 0);
+      for (let i = 0; i < particles.length; i++) {
+        if (particles[i].connections >= particles[i].maxConnections) continue;
+        for (let j = i + 1; j < particles.length; j++) {
+          if (particles[j].connections >= particles[j].maxConnections) continue;
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < connectionDistance) {
+            const opacity = Math.max(0, 1 - (distance / connectionDistance) * 0.8);
+            ctx.beginPath();
+            const connectionHue = accentHue;
+            const connectionLightness = 60 + Math.random() * 10;
+            ctx.strokeStyle = `hsla(${connectionHue}, 100%, ${connectionLightness}%, ${opacity * 0.4})`;
+            ctx.lineWidth = 0.6;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+            particles[i].connections++;
+            particles[j].connections++;
+            if (particles[i].connections >= particles[i].maxConnections) break;
+          }
+        }
+      }
+    }
+
+    const particleBaseSpeed = 0.5;
+    const pulsePeriod = 1200;
+    const particlesPerPulse = 2;
+
+    function pulse() {
+      if (particles.length < maxParticles) {
+        const numToSpawn = Math.min(particlesPerPulse, maxParticles - particles.length);
+        for (let i = 0; i < numToSpawn; i++) {
+          // Spawn from edges or random
+          const edge = Math.floor(Math.random() * 4);
+          let startX, startY;
+          switch(edge) {
+            case 0: // Top
+              startX = Math.random() * can.width;
+              startY = 0 - particleBaseRadius * 5;
+              break;
+            case 1: // Right
+              startX = can.width + particleBaseRadius * 5;
+              startY = Math.random() * can.height;
+              break;
+            case 2: // Bottom
+              startX = Math.random() * can.width;
+              startY = can.height + particleBaseRadius * 5;
+              break;
+            case 3: // Left
+              startX = 0 - particleBaseRadius * 5;
+              startY = Math.random() * can.height;
+              break;
+            default:
+              startX = can.width / 2;
+              startY = can.height / 2;
+          }
+          const angleToCenter = Math.atan2(can.height / 2 - startY, can.width / 2 - startX);
+          const speedMagnitude = particleBaseSpeed * (0.7 + Math.random() * 0.6);
+          const currentHue = accentHue + (Math.random() * 30 - 15);
+          const color = `hsl(${currentHue}, 100%, 60%)`;
+          particles.push(
+            new Particle(
+              startX,
+              startY,
+              {
+                x: Math.cos(angleToCenter) * speedMagnitude + (Math.random() - 0.5) * 0.2,
+                y: Math.sin(angleToCenter) * speedMagnitude + (Math.random() - 0.5) * 0.2,
+              },
+              color,
+              particleBaseRadius + Math.random() * 2
+            )
+          );
+        }
+      }
+      pulseTimeoutId = setTimeout(pulse, pulsePeriod + Math.random() * 800);
+    }
+
+    function gameMove() {
+      drawBackgroundEffect();
+      for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].life <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+      connectParticles();
+      animationFrameId = requestAnimationFrame(gameMove);
+    }
+
+    const handleResize = () => {
+      can.width = window.innerWidth;
+      can.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Inicializar con algunas partículas
+    for(let k=0; k < Math.min(15, maxParticles); k++) {
+      const angle = Math.random() * Math.PI * 2;
+      const currentHue = accentHue + (Math.random() * 40 - 20);
+      const color = `hsl(${currentHue}, 100%, 60%)`;
+      particles.push(
+        new Particle(
+          can.width / 2 + (Math.random() - 0.5) * can.width * 0.5,
+          can.height / 2 + (Math.random() - 0.5) * can.height * 0.5,
+          {
+            x: (Math.random() - 0.5) * particleBaseSpeed,
+            y: (Math.random() - 0.5) * particleBaseSpeed,
+          },
+          color,
+          particleBaseRadius + Math.random() * 1.5
+        )
+      );
+    }
+
+    pulse();
+    gameMove();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameId);
+      clearTimeout(pulseTimeoutId);
+      particles.length = 0;
+    };
+  }, []);
+
+  return <canvas id="loginBackgroundCanvas" ref={canvasRef} />;
+};
+
+export default AnimatedBackground;
 
 
 ===== frontend/src/components/LoginForm.js =====
