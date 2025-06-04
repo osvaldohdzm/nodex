@@ -10,17 +10,16 @@ import ReactFlow, {
   Edge,
   Connection,
   BackgroundVariant,
-  // Position, // Position is not directly used in this version of processJsonToGraph for layout
+  // Position, // Not directly used for layout here
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-// import '../styles/react-flow-theme.css'; // Module not found - Still commented out
+// import '../styles/react-flow-theme.css'; // Still commented out
 import '../styles/globals.css';
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
 
-// Define los tipos de nodos personalizados que React Flow usará
 const nodeTypes = {
   person: PersonNode,
   company: CompanyNode,
@@ -37,7 +36,7 @@ interface JsonData {
   internet1?: { data?: { ResultadosGoogle?: { resultados?: Array<any> }; ResultadosBing?: { [key: string]: any } } };
   internet2?: { data?: Array<any> };
   socios_empresas?: { data?: { datos_subconsulta?: Array<any>; socios?: Array<any> } };
-  [key: string]: any; // Allow other properties
+  [key: string]: any;
 }
 
 // Define el tipo para los perfiles en línea
@@ -63,7 +62,7 @@ const GraphPage: React.FC = () => {
       if (params.source && params.target) {
         setEdges((eds) => addEdge({
           ...params,
-          id: `e${Date.now()}-${Math.random()}`, // Ensure unique edge ID
+          id: `e${Date.now()}-${Math.random()}`,
           type: 'smoothstep',
           animated: true,
           style: { stroke: 'var(--edge-default)' },
@@ -80,15 +79,13 @@ const GraphPage: React.FC = () => {
     let edgeIdCounter = 0;
     let mainPersonNodeId = '';
     let mainPersonName = '';
-    let mainPersonDetails: any = { fullJson: data }; // Store all raw data related to the main person
+    let mainPersonDetails: any = { fullJson: data };
 
-    // Helper to generate unique IDs and add nodes
     const addNodeSafely = (node: Node) => {
       if (!nodeIds.has(node.id)) {
         newNodes.push(node);
         nodeIds.add(node.id);
       } else {
-        // If node exists, merge data (simple merge, can be more sophisticated)
         const existingNode = newNodes.find(n => n.id === node.id);
         if (existingNode) {
           existingNode.data = { ...existingNode.data, ...node.data, details: { ...existingNode.data.details, ...node.data.details } };
@@ -118,7 +115,6 @@ const GraphPage: React.FC = () => {
 
     if (!data) return { initialNodes: [], initialEdges: [] };
 
-    // 1. Crear nodo principal (Persona)
     if (data.curp_online?.data?.registros?.[0]) {
       const personData = data.curp_online.data.registros[0];
       mainPersonNodeId = personData.curp || `person-curp-${Date.now()}`;
@@ -135,7 +131,6 @@ const GraphPage: React.FC = () => {
       mainPersonDetails = { ...mainPersonDetails, id: data._id?.$oid, source: 'root' };
     }
     
-    // Consolidate INE data if available
     if (data.ine1?.data?.[0]) {
         mainPersonDetails.ine1 = data.ine1.data[0];
         if (!mainPersonDetails.ocupacion) mainPersonDetails.ocupacion = data.ine1.data[0].ocupacion;
@@ -145,7 +140,6 @@ const GraphPage: React.FC = () => {
     }
      if (data.ine2?.data?.[0]) mainPersonDetails.ine2 = data.ine2.data[0];
      if (data.ine3?.data?.[0]) mainPersonDetails.ine3 = data.ine3.data[0];
-
 
     addNodeSafely({
       id: mainPersonNodeId,
@@ -157,9 +151,8 @@ const GraphPage: React.FC = () => {
         details: mainPersonDetails,
       },
     });
-    currentX += xSpacing + 100; // Shift for next column of nodes
+    currentX += xSpacing + 100; 
 
-    // 2. Procesar empresas del buró (buro1 y buro2)
     const buroComercios = [
         ...(data.buro1?.data?.[0]?.comercios || []),
         ...(data.buro2?.data?.[0]?.comercios2 || [])
@@ -185,8 +178,6 @@ const GraphPage: React.FC = () => {
     });
     if (buroComercios.length > 0) currentX = Math.max(currentX, buroX + buroComercios.length * xSpacing);
 
-
-    // 3. Nodo Empresa y Relaciones (Socios Empresas)
     let sociosY = yOffset + ySpacing * 2;
     if (data.socios_empresas?.data?.datos_subconsulta?.[0]) {
       const empresaSociaData = data.socios_empresas.data.datos_subconsulta[0];
@@ -208,7 +199,7 @@ const GraphPage: React.FC = () => {
       if (data.socios_empresas.data.socios) {
         data.socios_empresas.data.socios.forEach((socio: any, index: number) => {
           const socioNameFull = `${socio.nombre || ''} ${socio.apellido_paterno || ''} ${socio.apellido_materno || ''}`.trim();
-          if (socioNameFull.toLowerCase() !== mainPersonName.toLowerCase()) { // Avoid self-loop if main person is listed as socio
+          if (socioNameFull.toLowerCase() !== mainPersonName.toLowerCase()) { 
             const socioId = `persona-socio-${(socio.rfc || socioNameFull.replace(/\s+/g, '_') || `socioidx-${index}`).substring(0,50)}`;
             addNodeSafely({
               id: socioId,
@@ -226,7 +217,6 @@ const GraphPage: React.FC = () => {
       }
     }
 
-    // 4. Contacto de Emergencia (Pasaportes 2022 y 2023)
     let contactoY = yOffset + ySpacing * 1.5;
     const pasaportesData = [...(data.pasaportes2022?.data || []), ...(data.pasaportes2023?.data || [])];
     const emergencyContacts = new Map<string, any>();
@@ -256,8 +246,6 @@ const GraphPage: React.FC = () => {
         addEdgeInternal(mainPersonNodeId, contactoId, 'Contacto de Emergencia');
     });
 
-
-    // 5. Resultados de Internet (internet1, internet2)
     let internetX = currentX + xSpacing;
     let internetY = yOffset;
     const onlineProfiles: OnlineProfile[] = []; // Tipo explícito para evitar errores
@@ -281,13 +269,12 @@ const GraphPage: React.FC = () => {
     const uniqueOnlineProfiles = Array.from(new Map(onlineProfiles.map(p => [p.link, p])).values());
 
     uniqueOnlineProfiles.forEach((profile, index) => {
-        // Heuristic: if main person's first name is in title, connect to main person
         const connectToMain = mainPersonName && profile.title.toLowerCase().includes(mainPersonName.split(" ")[0].toLowerCase());
         if (connectToMain) {
             const perfilId = `online-profile-${profile.link.substring(0,30).replace(/[^a-zA-Z0-9]/g, '_')}-${index}`;
             addNodeSafely({
                 id: perfilId,
-                type: 'company', // Using 'company' type for visual distinction, could be a new 'profile' type
+                type: 'company', 
                 position: { x: internetX, y: internetY + index * 80 },
                 data: {
                     name: profile.title.substring(0, 40) + (profile.title.length > 40 ? "..." : ""),
@@ -299,19 +286,16 @@ const GraphPage: React.FC = () => {
         }
     });
     
-    // Add address from pasaporte to mainPersonDetails if not already present from INE
     if (!mainPersonDetails.direccion_principal && pasaportesData.length > 0) {
         const passDir = pasaportesData[0]?.solicitud?.datos_personales?.direccion;
         if (passDir) {
             mainPersonDetails.direccion_pasaporte = `${passDir.direccion || ''}, Col. ${passDir.colonia || ''}, ${passDir.ciudad || ''}, CP ${passDir.cod_postal || ''}`.trim();
-            // Update the main person node's data
             const mainNode = newNodes.find(n => n.id === mainPersonNodeId);
             if (mainNode) {
                 mainNode.data.details = mainPersonDetails;
             }
         }
     }
-
 
     console.log("Nodos generados:", newNodes);
     console.log("Aristas generadas:", newEdges);
@@ -330,7 +314,11 @@ const GraphPage: React.FC = () => {
   }, [setNodes, setEdges]);
 
   return (
-    <div className="h-full w-full flex flex-col bg-bg-secondary text-text-primary">
+    // This is the main container for GraphPage, it should fill its parent from App.tsx
+    // Added p-2 here for overall page padding, removed from direct children previously.
+    <div className="h-full w-full flex flex-col bg-bg-secondary text-text-primary p-2">
+      
+      {/* Upload Section - this will take some fixed height */}
       <div className="mb-4 p-3 bg-bg-primary shadow-md rounded-md flex-shrink-0">
         <h2 className="text-xl font-semibold mb-3 text-accent-cyan">
           Cargar Archivo JSON del Grafo
@@ -339,8 +327,12 @@ const GraphPage: React.FC = () => {
         {fileName && <p className="text-xs text-text-secondary mt-2">Archivo cargado: {fileName}</p>}
       </div>
 
-      <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg">
-        <div style={{ width: '100%', height: '100%' }}>
+      {/* Graph Section - this should take all remaining vertical space */}
+      {/* Added mt-2 here for margin above the graph area */}
+      <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg mt-2">
+        {/* This inner div is CRITICAL for React Flow. It MUST have a defined height. */}
+        {/* By making its parent a flex-grow item, and this h-full (via style), it should work. */}
+        <div style={{ width: '100%', height: '100%' }}> 
           {nodes.length > 0 ? (
             <ReactFlow
               nodes={nodes}
