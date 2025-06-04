@@ -10,11 +10,12 @@ import ReactFlow, {
   Edge,
   Connection,
   BackgroundVariant,
+  MarkerType, // Importar MarkerType
   // Position, // Not directly used for layout here
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-// import '../styles/react-flow-theme.css'; // Still commented out
-import '../styles/globals.css';
+// import '../styles/react-flow-theme.css'; // Comentado, usamos globals.css
+import '../styles/globals.css'; // Asegúrate que tus estilos globales se apliquen
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
@@ -39,7 +40,6 @@ interface JsonData {
   [key: string]: any;
 }
 
-// Define el tipo para los perfiles en línea
 interface OnlineProfile {
   link: string;
   title: string;
@@ -48,7 +48,7 @@ interface OnlineProfile {
 }
 
 const GraphPage: React.FC = () => {
-  console.log("GraphPage IS RENDERING - Now with Graph Display Logic");
+  console.log("GraphPage IS RENDERING");
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
 
@@ -63,9 +63,10 @@ const GraphPage: React.FC = () => {
         setEdges((eds) => addEdge({
           ...params,
           id: `e${Date.now()}-${Math.random()}`,
-          type: 'smoothstep',
-          animated: true,
-          style: { stroke: 'var(--edge-default)' },
+          type: 'smoothstep', // O 'default' para líneas rectas
+          animated: false, // Bloodhound usualmente no tiene aristas animadas
+          style: { stroke: 'var(--edge-default-color)' },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
         }, eds));
       }
     },
@@ -100,21 +101,24 @@ const GraphPage: React.FC = () => {
           source: sourceId,
           target: targetId,
           label,
-          type: 'smoothstep',
-          animated: false,
-          style: { stroke: 'var(--edge-default)' },
+          type: 'smoothstep', // O 'default'
+          animated: false, // Sin animación para un look más limpio
+          style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
           data: edgeData,
         });
       }
     };
     
     let yOffset = 50;
-    const xSpacing = 220;
-    const ySpacing = 180;
+    const xSpacing = 250; // Aumentar un poco el espaciado
+    const ySpacing = 200; // Aumentar un poco el espaciado
     let currentX = 250;
 
     if (!data) return { initialNodes: [], initialEdges: [] };
 
+    // (Tu lógica de procesamiento de JSON existente va aquí... sin cambios en esta parte)
+    // ... (inicio de tu lógica)
     if (data.curp_online?.data?.registros?.[0]) {
       const personData = data.curp_online.data.registros[0];
       mainPersonNodeId = personData.curp || `person-curp-${Date.now()}`;
@@ -248,7 +252,7 @@ const GraphPage: React.FC = () => {
 
     let internetX = currentX + xSpacing;
     let internetY = yOffset;
-    const onlineProfiles: OnlineProfile[] = []; // Tipo explícito para evitar errores
+    const onlineProfiles: OnlineProfile[] = []; 
 
     if (data.internet1?.data?.ResultadosGoogle?.resultados) {
         data.internet1.data.ResultadosGoogle.resultados.forEach(res => {
@@ -296,6 +300,7 @@ const GraphPage: React.FC = () => {
             }
         }
     }
+    // ... (fin de tu lógica)
 
     console.log("Nodos generados:", newNodes);
     console.log("Aristas generadas:", newEdges);
@@ -311,15 +316,13 @@ const GraphPage: React.FC = () => {
     const { initialNodes, initialEdges } = processJsonToGraph(uploadedData);
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, processJsonToGraph]); // Añadir processJsonToGraph a las dependencias
 
   return (
-    // This is the main container for GraphPage, it should fill its parent from App.tsx
-    // Added p-2 here for overall page padding, removed from direct children previously.
-    <div className="h-full w-full flex flex-col bg-bg-secondary text-text-primary p-2">
+    // Este div debe llenar el 'main' de App.tsx
+    <div className="h-full w-full flex flex-col bg-bg-primary text-text-primary p-4"> {/* Usar bg-bg-primary y p-4 */}
       
-      {/* Upload Section - this will take some fixed height */}
-      <div className="mb-4 p-3 bg-bg-primary shadow-md rounded-md flex-shrink-0">
+      <div className="mb-4 p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0"> {/* Usar bg-bg-secondary y p-4 */}
         <h2 className="text-xl font-semibold mb-3 text-accent-cyan">
           Cargar Archivo JSON del Grafo
         </h2>
@@ -327,11 +330,10 @@ const GraphPage: React.FC = () => {
         {fileName && <p className="text-xs text-text-secondary mt-2">Archivo cargado: {fileName}</p>}
       </div>
 
-      {/* Graph Section - this should take all remaining vertical space */}
-      {/* Added mt-2 here for margin above the graph area */}
-      <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg mt-2">
-        {/* TEMPORARY: Hardcode dimensions for debugging */}
-        <div style={{ width: '800px', height: '600px', border: '2px solid red' }}> {/* HARDCODED FOR DEBUG */}
+      {/* Esta sección debe ocupar el espacio restante */}
+      <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg overflow-hidden"> {/* overflow-hidden */}
+        {/* Este div interno debe tener 100% de alto y ancho para que ReactFlow se renderice correctamente */}
+        <div style={{ width: '100%', height: '100%' }}>
           {nodes.length > 0 ? (
             <ReactFlow
               nodes={nodes}
@@ -341,31 +343,35 @@ const GraphPage: React.FC = () => {
               onConnect={onConnect}
               nodeTypes={memoizedNodeTypes}
               fitView
-              fitViewOptions={{ padding: 0.2 }}
+              fitViewOptions={{ padding: 0.2, maxZoom: 1.5 }} // Ajustar maxZoom
               minZoom={0.1}
+              className="themed-flow" // Clase para estilos específicos si es necesario
             >
-              <Controls />
+              <Controls position="bottom-right" />
               <MiniMap 
                 nodeStrokeWidth={3}
                 nodeColor={(n) => {
-                  if (n.type === 'person') return 'var(--node-person-border)';
-                  if (n.type === 'company') return 'var(--node-company-border)';
+                  // Puedes personalizar colores basados en tipo o datos del nodo
+                  if (n.type === 'person') return 'var(--node-person-icon-color)';
+                  if (n.type === 'company') return 'var(--node-company-icon-color)';
                   return 'var(--text-secondary)';
                 }}
+                nodeBorderRadius={2}
                 pannable 
                 zoomable
+                position="top-right"
               />
               <Background 
-                variant={BackgroundVariant.Dots} 
-                gap={16} 
-                size={0.7} 
-                color="var(--input-border)" 
+                variant={BackgroundVariant.Lines} // Cambiado a Lines
+                gap={24} // Espaciado de las líneas
+                size={0.4} // Grosor de las líneas
+                color="var(--graph-lines-color)" // Usar variable CSS
               />
             </ReactFlow>
           ) : jsonData ? (
             <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4">
               <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo.</p>
-              <p className="mb-2 text-sm">El JSON podría no contener la estructura esperada o suficiente para generar el grafo.</p>
+              <p className="mb-2 text-sm">Verifica la consola para errores o la estructura del JSON.</p>
               <details className="w-full max-w-2xl mt-4">
                 <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON</summary>
                 <pre className="text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-96 mt-2 p-3 bg-input-bg rounded-md">

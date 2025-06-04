@@ -10,65 +10,46 @@ function App() {
 
   return (
     <Router>
-      <div className="App flex flex-col h-screen bg-gray-700">
+      <div className="App flex flex-col h-screen bg-bg-primary"> {/* Usar variable CSS */}
         <header
-          className="App-header"
+          className="App-header" // Puedes añadir clases de Tailwind aquí si quieres
           style={{
-            backgroundColor: '#1e1e1e',
-            padding: '20px',
+            backgroundColor: 'var(--bg-secondary)', // Usar variable CSS
+            padding: '1rem', // Ajustar padding
             textAlign: 'center',
-            color: 'white',
-            flexShrink: 0,
-            borderBottom: '2px solid var(--accent-cyan)'
+            color: 'var(--text-primary)', // Usar variable CSS
+            flexShrink: 0, 
+            borderBottom: '1px solid var(--input-border)' // Borde más sutil
           }}
         >
-          <h1>Nodex</h1>
+          <h1 className="text-2xl font-semibold text-accent-cyan">Nodex</h1> {/* Estilo al título */}
         </header>
 
-        {/* SIMPLIFIED MAIN SECTION FOR DEBUGGING */}
+        {/* Contenedor principal del contenido */}
         <main
-          className="flex-grow"
+          className="flex-grow overflow-hidden" // overflow-hidden para que el contenido interno maneje su scroll
           style={{
-            border: '5px solid limegreen',
-            backgroundColor: 'rgba(50, 50, 150, 0.3)',
-            position: 'relative'
+            position: 'relative' // Necesario para que ReactFlow se posicione bien
           }}
         >
-          <div style={{
-              width: '100%',
-              height: '100%',
-              border: '3px dashed yellow',
-              backgroundColor: 'rgba(255, 255, 0, 0.1)',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <div style={{ 
-                flexGrow: 1, 
-                border: '2px solid orange', 
-                position: 'relative',
-                width: '100%',
-                height: '100%'
-            }}>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route
-                  path="/graph"
-                  element={
-                    isAuthenticated ? <GraphPage /> : <Navigate to="/login" replace />
-                  }
-                />
-                <Route
-                  path="/"
-                  element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
-                />
-                <Route
-                  path="*"
-                  element={<Navigate to="/" replace />}
-                />
-              </Routes>
-            </div>
-          </div>
+          {/* Las Rutas van aquí, y el componente de ruta debe llenar este 'main' */}
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/graph"
+              element={
+                isAuthenticated ? <GraphPage /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/"
+              element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
+            />
+            <Route
+              path="*" // Catch-all
+              element={<Navigate to="/" replace />}
+            />
+          </Routes>
         </main>
       </div>
     </Router>
