@@ -22,4 +22,9 @@ fi
 upstream=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || true)
 if [[ -z "$upstream" ]]; then
   echo "🔁 Estableciendo upstream para '$current_branch'..."
-  git push --set-upstream origin "$current_bran_
+  git push --set-upstream origin "$current_branch"
+else
+  git push
+fi
+
+echo "✅ Cambios guardados y enviados a remoto en '$current_branch'."
