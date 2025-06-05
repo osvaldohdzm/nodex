@@ -20,7 +20,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
-import { UploadCloud, Replace, Layers, Download } from 'lucide-react';
+import { UploadCloud, Replace, Layers, Download, X } from 'lucide-react';
 import { JsonData, DemoNodeData } from '../types/graph';
 import { processJsonToSinglePersonNode } from '../utils/jsonProcessor';
 import JsonDetailModal from '../components/modals/JsonDetailModal';
@@ -55,6 +55,7 @@ export const GraphPage: React.FC = () => {
   const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
   const [detailPanelWidth, setDetailsPanelWidth] = useState(400); // Default width for the details section
   const uploadPanelRef = useRef<HTMLDivElement>(null);
+  const graphWrapperRef = useRef<HTMLDivElement>(null);
   const [uploadPanelActualHeight, setUploadPanelActualHeight] = useState(0);
 
   // Define the height for the details panel
@@ -554,7 +555,7 @@ export const GraphPage: React.FC = () => {
   }, [setNodes, setEdges, detailsNode]);
 
   return (
-    <div className="graph-page-container flex flex-col h-full w-full">
+    <div className="graph-page-container flex flex-col h-full w-full overflow-hidden">
       <div className="upload-panel" ref={uploadPanelRef} style={{ flexShrink: 0 }}>
         <h2 className="panel-title">Cargar Archivo JSON de Persona</h2>
         <div 
@@ -613,105 +614,94 @@ export const GraphPage: React.FC = () => {
         </div>
       </div>
 
-      <div
-        className="graph-viewport-container relative"
-        style={{
-          height: graphViewportHeight,
-          minHeight: '300px',
-          flexGrow: 1,
-          width: '100%',
-          position: 'relative',
-        }}
-      >
-        <div 
-          style={{ 
-            width: '100%', 
-            height: '100%', 
-            position: 'absolute', 
-            top: 0, 
-            left: 0 
-          }}
-        >
-          <ReactFlow
-            nodes={nodes.map(node => ({
-              ...node,
-              data: {
+      <PanelGroup direction="horizontal" className="flex-grow min-h-0 mt-4">
+        <Panel defaultSize={detailsNode ? 70 : 100} minSize={30} className="flex flex-col">
+            <div 
+            ref={graphWrapperRef}
+            className="graph-viewport-wrapper flex-grow relative bg-bg-primary rounded-md"
+            style={{ minHeight: '300px' }}
+            >
+            <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+              <ReactFlow
+              nodes={nodes.map(node => ({
+                ...node,
+                data: {
                 ...node.data,
                 onImageUpload: node.type === 'person' ? handleImageUploadForNode : undefined,
-              }
-            }))}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={onNodeClick}
-            onEdgeClick={onEdgeClick}
-            onNodesDelete={(nodesToDelete) => {
-              const nodeIds = new Set(nodesToDelete.map(n => n.id));
-              setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
-              if (detailsNode && nodeIds.has(detailsNode.id)) {
+                }
+              }))}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+              onEdgeClick={onEdgeClick}
+              onNodesDelete={(nodesToDelete) => {
+                const nodeIds = new Set(nodesToDelete.map(n => n.id));
+                setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
+                if (detailsNode && nodeIds.has(detailsNode.id)) {
                 setDetailsNode(null);
-              }
-            }}
-            onEdgesDelete={(edgesToDelete) => {
-              const edgeIdsToRemove = new Set(edgesToDelete.map(e => e.id));
-              setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
-            }}
-            nodeTypes={memoizedNodeTypes}
-            fitView={false}
-            minZoom={0.1}
-            maxZoom={2.5}
-            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-            proOptions={{ hideAttribution: true }}
-            className="graph-viewport"
-            connectionLineComponent={CustomConnectionLine}
-            connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
-            deleteKeyCode={['Backspace', 'Delete']}
-            isValidConnection={isValidConnection}
-          >
-            <Background />
-            <Controls />
-            {nodes.length === 0 && (
-              <div className="placeholder-message">
+                }
+              }}
+              onEdgesDelete={(edgesToDelete) => {
+                const edgeIdsToRemove = new Set(edgesToDelete.map(e => e.id));
+                setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
+              }}
+              nodeTypes={memoizedNodeTypes}
+              fitView={false}
+              minZoom={0.1}
+              maxZoom={2.5}
+              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+              proOptions={{ hideAttribution: true }}
+              className="graph-viewport"
+              connectionLineComponent={CustomConnectionLine}
+              connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
+              deleteKeyCode={['Backspace', 'Delete']}
+              isValidConnection={isValidConnection}
+              >
+              <Background />
+              <Controls />
+              {nodes.length === 0 && (
+                <div className="placeholder-message">
                 <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
                 <p className="mb-4">Carga un archivo JSON para visualizar a la persona en el grafo.</p>
                 <p className="mb-2 text-sm">Utiliza el panel de carga de arriba.</p>
-              </div>
-            )}
-          </ReactFlow>
-        </div>
-      </div>
+                </div>
+              )}
+              </ReactFlow>
+            </div>
+            </div>
+        </Panel>
 
-      {detailsNode && detailsNode.data?.rawJsonData && (
-        <div
-          className="details-panel bg-bg-secondary border-t-2 border-accent-cyan-darker overflow-hidden"
-          style={{ 
-            height: `${detailPanelHeight}px`, 
-            marginTop: '1rem', 
-            flexShrink: 0,
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <div className="flex justify-between items-center p-3 border-b border-input-border">
-            <h3 className="text-lg font-semibold text-accent-cyan">
-              Detalles de: {detailsNode.data.name}
-            </h3>
-            <button
-              onClick={() => setDetailsNode(null)}
-              className="text-text-secondary hover:text-accent-cyan transition-colors text-xl font-semibold"
-              aria-label="Cerrar panel de detalles"
-            >
-              ×
-            </button>
-          </div>
-          <div className="flex-grow overflow-auto p-4">
-            <pre className="text-xs text-text-secondary whitespace-pre-wrap break-words scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-bg-secondary">
-              {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
+        {detailsNode && (
+          <>
+            <PanelResizeHandle className="w-2 bg-input-border hover:bg-accent-cyan transition-colors flex items-center justify-center group">
+              <div className="w-[3px] h-8 bg-bg-secondary rounded-full"></div>
+            </PanelResizeHandle>
+            <Panel defaultSize={30} minSize={20} maxSize={60} id="details-panel-resizable">
+              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden rounded-md border-l border-input-border">
+                <div className="p-3 border-b border-input-border flex justify-between items-center flex-shrink-0">
+                  <h3 className="text-base font-semibold text-accent-cyan truncate" title={detailsNode.data.name}>
+                    Detalles: {detailsNode.data.name}
+                  </h3>
+                  <button 
+                    onClick={() => setDetailsNode(null)} 
+                    className="text-text-secondary hover:text-accent-red p-1 rounded-full hover:bg-accent-red/10 transition-colors"
+                    aria-label="Cerrar panel de detalles"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="flex-grow overflow-auto p-3">
+                  <pre className="text-xs text-text-secondary whitespace-pre-wrap break-words scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-bg-input-bg bg-input-bg p-2 rounded-sm">
+                    {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </Panel>
+          </>
+        )}
+      </PanelGroup>
 
       <RelationshipModal
         isOpen={isRelationshipModalOpen}
