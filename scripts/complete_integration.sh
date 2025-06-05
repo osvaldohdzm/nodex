@@ -42,19 +42,6 @@ update_branch() {
   git pull origin "$branch_name"
 }
 
-# Función para ejecutar pruebas (placeholder)
-run_tests() {
-  local branch_name=$1
-  read -rp "¿Ejecutar pruebas para '$branch_name'? (s/n): " answer
-  if [[ "$answer" == "s" ]]; then
-    echo "🧪 Ejecutando pruebas para $branch_name (placeholder)..."
-    # Aquí pon tu comando real de pruebas, ej:
-    # ./run-tests.sh
-    echo "✅ Pruebas (simuladas) pasaron para $branch_name."
-  else
-    echo "⚠️ Omitiendo pruebas para $branch_name."
-  fi
-}
 
 # Detectar todas las ramas locales inicialmente
 mapfile -t initial_local_branches < <(git for-each-ref --format='%(refname:short)' refs/heads/)
@@ -145,8 +132,6 @@ for branch in "${current_remaining_branches[@]}"; do
     git push --set-upstream origin "$branch"
   fi
   
-  run_tests "$branch" # Run tests on branch before rebase
-
   echo "🔄 Actualizando '$branch' con los últimos cambios de '$DEVELOP_BRANCH' (usando rebase)..."
   if ! git rebase "$DEVELOP_BRANCH"; then
     echo "❌ El rebase de '$branch' sobre '$DEVELOP_BRANCH' falló."
