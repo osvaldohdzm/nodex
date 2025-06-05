@@ -4,11 +4,101 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh; /* Full viewport height */
+  height: 100vh;
   min-height: 100vh;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden; /* Prevent scrolling on the container */
+  overflow: hidden;
+}
+
+/* Barra superior */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--input-border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* Botones de acción */
+.graph-action-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid transparent;
+}
+
+.graph-action-button:hover:not(:disabled) {
+  background-color: var(--accent-cyan/10);
+  color: var(--accent-cyan);
+}
+
+.graph-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Contenedor del grafo */
+.graph-viewport-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: var(--graph-bg);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* Panel de detalles */
+.details-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--bg-secondary);
+  border-left: 1px solid var(--input-border);
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.details-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--input-border);
+  flex-shrink: 0;
+}
+
+.details-panel-content {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+/* Mensaje de placeholder */
+.placeholder-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  background-color: var(--bg-primary);
+  pointer-events: none;
 }
 
 .upload-panel {
@@ -77,39 +167,6 @@
   margin-top: 1rem;
 }
 
-.graph-action-button {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.5rem;
-  transition: all 0.3s ease-in-out;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background-color: var(--input-bg);
-  color: var(--accent-cyan);
-  border: 1px solid var(--accent-cyan-darker);
-  box-shadow: 0 0 10px 0px rgba(0, 0, 0, 0.2);
-}
-
-.graph-action-button:hover:not(:disabled) {
-  background-color: var(--accent-cyan-darker);
-  color: var(--bg-primary);
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 15px 2px rgba(0, 0, 0, 0.4);
-  transform: translateY(-1px);
-}
-
-.graph-action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: var(--input-bg);
-  color: var(--text-secondary);
-  border-color: var(--input-border);
-  box-shadow: none;
-}
-
 .graph-viewport-container {
   flex: 1 1 auto; /* Changed from flex-grow/flex-shrink/flex-basis to shorthand */
   display: flex; /* Added to ensure proper flex behavior */
@@ -134,20 +191,6 @@
   right: 0;
   bottom: 0;
   box-sizing: border-box;
-}
-
-.placeholder-message {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  padding: 1.5rem;
-  text-align: center;
-  background-color: var(--bg-primary);
 }
 
 .json-details-viewer {
@@ -226,14 +269,34 @@
   background-color: var(--accent-cyan);
 }
 
+/* Estilos para los nodos */
+.react-flow__node {
+  transition: all 0.2s ease;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__node:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px var(--accent-cyan), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 /* Estilos para los handles */
 .react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-cyan);
+  border: 2px solid var(--bg-primary);
   transition: all 0.2s ease;
 }
 
 .react-flow__handle:hover {
-  opacity: 1 !important;
   transform: scale(1.2);
+  background-color: var(--accent-cyan-darker);
 }
 
 .handle-source {
@@ -250,31 +313,34 @@
 }
 
 .react-flow__edge:hover {
-  filter: drop-shadow(0 0 2px var(--accent-cyan));
+  filter: brightness(1.2);
 }
 
 .react-flow__edge.selected {
-  filter: drop-shadow(0 0 3px var(--accent-cyan));
+  filter: brightness(1.4);
 }
 
 .react-flow__edge-path {
+  stroke-width: 2;
   transition: all 0.2s ease;
 }
 
 .react-flow__edge-text {
-  font-size: 12px;
-  fill: var(--node-text);
-  font-weight: 500;
-  text-shadow: 0 0 2px var(--node-bg);
+  font-size: 0.75rem;
+  fill: var(--text-primary);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  transition: all 0.2s ease;
 }
 
 .react-flow__edge-text:hover {
   fill: var(--accent-cyan);
 }
 
-/* Animaciones para aristas */
+/* Animaciones */
 .edge-appear {
-  animation: edgeAppear 1s ease-out forwards;
+  animation: edgeAppear 0.4s ease-out forwards;
 }
 
 .edge-appear-static {
@@ -282,35 +348,50 @@
 }
 
 @keyframes edgeAppear {
-  from {
+  0% {
     opacity: 0;
     stroke-dasharray: 5;
     stroke-dashoffset: 100;
   }
-  to {
+  100% {
     opacity: 1;
     stroke-dasharray: none;
     stroke-dashoffset: 0;
   }
 }
 
-/* Estilos para la línea de conexión durante el arrastre */
+.node-appear {
+  animation: nodeAppear 0.4s ease-out forwards;
+}
+
+.node-appear-static {
+  animation: none;
+}
+
+@keyframes nodeAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Línea de conexión */
 .react-flow__connection-path {
-  stroke: var(--accent-cyan) !important;
-  stroke-width: 2.5 !important;
+  stroke: var(--accent-cyan);
+  stroke-width: 2;
 }
 
 .react-flow__connection-line {
-  stroke: var(--accent-cyan) !important;
-  stroke-width: 2.5 !important;
+  stroke: var(--accent-cyan);
+  stroke-width: 2;
+  stroke-dasharray: 5;
 }
 
 /* Estilos para el nodo cuando se está arrastrando una conexión */
-.react-flow__node:hover .react-flow__handle {
-  opacity: 1;
-}
-
-/* Estilos para el nodo cuando se está arrastrando una conexión sobre él */
 .react-flow__node.react-flow__node-dragging .react-flow__handle {
   opacity: 1;
   transform: scale(1.2);

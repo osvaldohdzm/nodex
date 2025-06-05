@@ -52,22 +52,55 @@ if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
   fi
 fi
 
-# 6. Cambiar a la rama base y actualizarla si tiene remoto
+# --- INICIO DE LA MODIFICACIÓN INTELIGENTE ---
+# 6. Manejar cambios locales antes de cambiar de rama
+echo "🛠️ Verificando cambios locales antes de cambiar de rama..."
+if ! git diff-index --quiet HEAD --; then
+  echo "⚠️ Se detectaron cambios locales sin confirmar. Intentando stash..."
+  if git stash push -m "Automated stash by integration script before switching to $base_branch"; then
+    echo "✅ Cambios locales stasheados exitosamente."
+    # Set a flag to indicate that a stash was performed
+    STASHED_CHANGES=true
+  else
+    echo "❌ No se pudieron stashear los cambios locales. Por favor, revísalos manualmente."
+    exit 1
+  fi
+else
+  echo "✨ No hay cambios locales sin confirmar."
+  STASHED_CHANGES=false
+fi
+# --- FIN DE LA MODIFICACIÓN INTELIGENTE ---
+
+
+# 7. Cambiar a la rama base y actualizarla si tiene remoto
 echo "🔄 Cambiando a rama base '$base_branch' y actualizándola..."
 git checkout "$base_branch"
 if git ls-remote --exit-code "$REMOTE" "$base_branch" &>/dev/null; then
   git pull "$REMOTE" "$base_branch"
 fi
 
-# 7. Fusionar la rama de prueba
+# 8. Fusionar la rama de prueba
 echo "🔀 Haciendo merge de '$selected_test' en '$base_branch'..."
 git merge --no-ff "$selected_test" -m "Merge rama de prueba '$selected_test' en '$base_branch'"
 
-# 8. Eliminar la rama de prueba local
-echo "🗑️ Eliminando rama de prueba local '$selected_test'..."
-git branch -d "$selected_test"
+# --- INICIO DE LA MODIFICACIÓN INTELIGENTE ---
+# 9. Aplicar stash si se realizó uno previamente
+if [ "$STASHED_CHANGES" = true ]; then
+  echo "♻️ Aplicando cambios stasheados previamente..."
+  if git stash pop; then
+    echo "✅ Cambios stasheados aplicados exitosamente."
+  else
+    echo "⚠️ Fallo al aplicar los cambios stasheados. Puede haber conflictos. Por favor, resuélvelos manualmente."
+    echo "Puedes ver tus stashes con 'git stash list' y aplicarlos con 'git stash apply stash@{n}'."
+  fi
+fi
+# --- FIN DE LA MODIFICACIÓN INTELIGENTE ---
 
-# 9. (Opcional) Eliminar rama remota si existe
+# 10. Eliminar la rama de prueba local
+echo "🗑️ Eliminando rama de prueba local '$selected_test'..."
+git branch -d "$selected_test" || git branch -D "$selected_test" # Use -D for force delete if -d fails (unmerged changes)
+
+# 11. (Opcional) Eliminar rama remota si existe
 if git ls-remote --exit-code "$REMOTE" "refs/heads/$selected_test" &>/dev/null; then
   echo "🌐 Eliminando rama de prueba remota '$selected_test'..."
   git push "$REMOTE" --delete "$selected_test"
