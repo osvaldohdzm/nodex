@@ -50,6 +50,12 @@ export const GraphPage: React.FC = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const [height, setHeight] = useState(300); // Default height for the details section
+  const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
+  const [detailPanelHeight, setDetailPanelHeight] = useState(200); // Default height in px
+  const minDetailPanelHeight = 100;
+  const maxDetailPanelHeightPercentage = 0.7; // 70% of window height
+  const uploadPanelRef = useRef<HTMLDivElement>(null);
+  const [uploadPanelActualHeight, setUploadPanelActualHeight] = useState(0);
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
@@ -195,16 +201,45 @@ export const GraphPage: React.FC = () => {
   };
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node<DemoNodeData>) => {
-    console.log('Nodo clickeado:', node);
+    console.log('Nodo clickeado para detalles:', node);
     if (node.data?.rawJsonData) {
-      setSelectedNodeForDetails(node);
-      setIsDetailModalOpen(true);
+      setDetailsNode(node); // Show in bottom panel instead of modal
+      setIsDetailModalOpen(false); // Close modal if open
     } else {
       console.warn("El nodo clickeado no tiene rawJsonData:", node);
-      setSelectedNodeForDetails(null);
-      setIsDetailModalOpen(false);
+      setDetailsNode(null);
     }
   }, []);
+
+  const handleDetailPanelResize = (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
+    mouseDownEvent.preventDefault();
+    const startY = mouseDownEvent.clientY;
+    const startHeight = detailPanelHeight;
+    const maxAllowedHeight = window.innerHeight * maxDetailPanelHeightPercentage;
+
+    const doDrag = (mouseMoveEvent: MouseEvent) => {
+      const newHeight = startHeight - (mouseMoveEvent.clientY - startY);
+      setDetailPanelHeight(Math.max(minDetailPanelHeight, Math.min(newHeight, maxAllowedHeight)));
+    };
+
+    const stopDrag = () => {
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  };
+
+  // Update upload panel height when content changes
+  useEffect(() => {
+    if (uploadPanelRef.current) {
+      setUploadPanelActualHeight(uploadPanelRef.current.offsetHeight);
+    }
+  }, [selectedFileContent]);
+
+  // Calculate available height for graph viewport
+  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - ${detailsNode ? detailPanelHeight : 0}px - 1rem - ${detailsNode ? '1rem' : '0px'})`;
 
   const handleExportPDF = async () => {
     const currentGraphNodes = reactFlowInstance.getNodes();
@@ -379,9 +414,25 @@ export const GraphPage: React.FC = () => {
     setIsRelationshipModalOpen(true);
   }, []);
 
+  const onElementsRemove = useCallback((elementsToRemove: (Node | Edge)[]) => {
+    const nodeIdsToRemove = new Set(elementsToRemove.filter(el => 'position' in el).map(el => el.id));
+    const edgeIdsToRemove = new Set(elementsToRemove.filter(el => 'source' in el).map(el => el.id));
+
+    if (nodeIdsToRemove.size > 0) {
+      setNodes((nds) => nds.filter((node) => !nodeIdsToRemove.has(node.id)));
+      // If a node is removed, also remove its details from the panel
+      if (detailsNode && nodeIdsToRemove.has(detailsNode.id)) {
+        setDetailsNode(null);
+      }
+    }
+    if (edgeIdsToRemove.size > 0) {
+      setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
+    }
+  }, [setNodes, setEdges, detailsNode]);
+
   return (
     <div className="graph-page-container">
-      <div className="upload-panel">
+      <div className="upload-panel" ref={uploadPanelRef}>
         <h2 className="panel-title">Cargar Archivo JSON de Persona</h2>
         <div 
           className="upload-area" 
@@ -439,7 +490,10 @@ export const GraphPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="graph-viewport-container">
+      <div 
+        className="graph-viewport-container"
+        style={{ height: graphViewportHeight, marginTop: '1rem' }}
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -448,6 +502,17 @@ export const GraphPage: React.FC = () => {
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
+          onNodesDelete={(nodesToDelete) => {
+            const nodeIds = new Set(nodesToDelete.map(n => n.id));
+            setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
+            if (detailsNode && nodeIds.has(detailsNode.id)) {
+              setDetailsNode(null);
+            }
+          }}
+          onEdgesDelete={(edgesToDelete) => {
+            const edgeIds = new Set(edgesToDelete.map(e => e.id));
+            setEdges((eds) => eds.filter((edge) => !edgeIds.has(edge.id)));
+          }}
           nodeTypes={memoizedNodeTypes}
           fitView={false}
           minZoom={0.1}
@@ -470,23 +535,31 @@ export const GraphPage: React.FC = () => {
         </ReactFlow>
       </div>
       
-      <div
-        className="details-section overflow-auto"
-        style={{ height: `${height}px` }}
-      >
-        <div className="resize-handle" onMouseDown={handleResizeMouseDown}></div>
-        <pre>{/* JSON data or other details */}</pre>
-      </div>
+      {/* Resizable Details Panel */}
+      {detailsNode && detailsNode.data?.rawJsonData && (
+        <div 
+          className="bg-bg-secondary border-t-2 border-accent-cyan-darker relative"
+          style={{ height: `${detailPanelHeight}px`, marginTop: '1rem' }}
+        >
+          <div 
+            className="absolute -top-[5px] left-0 w-full h-[10px] bg-accent-cyan hover:bg-accent-cyan-darker cursor-ns-resize transition-colors flex items-center justify-center group"
+            onMouseDown={handleDetailPanelResize}
+            title="Arrastrar para redimensionar"
+          >
+            <div className="w-8 h-[3px] bg-bg-primary rounded-full group-hover:bg-bg-secondary transition-colors"></div>
+          </div>
+          <div className="p-4 h-full flex flex-col">
+            <h3 className="text-lg font-semibold text-accent-cyan mb-2 flex-shrink-0">
+              Detalles Completos de: {detailsNode.data.name}
+            </h3>
+            <pre className="flex-grow bg-input-bg text-text-secondary p-3 rounded overflow-auto text-xs scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-input-bg">
+              {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
 
-      <JsonDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setSelectedNodeForDetails(null);
-        }}
-        jsonData={selectedNodeForDetails?.data?.rawJsonData}
-        title={`Detalles Completos de: ${selectedNodeForDetails?.data?.name || 'Nodo Seleccionado'}`}
-      />
+      {/* Relationship Modal */}
       <RelationshipModal
         isOpen={isRelationshipModalOpen}
         onClose={() => {
@@ -495,16 +568,20 @@ export const GraphPage: React.FC = () => {
           setEditingEdge(null);
         }}
         onSubmit={handleCreateOrUpdateRelationship}
-        sourceNodeName={editingEdge 
-          ? nodes.find(n => n.id === editingEdge.source)?.data?.name 
-          : pendingConnection 
-            ? nodes.find(n => n.id === pendingConnection.source)?.data?.name 
-            : 'Nodo Origen'}
-        targetNodeName={editingEdge 
-          ? nodes.find(n => n.id === editingEdge.target)?.data?.name 
-          : pendingConnection 
-            ? nodes.find(n => n.id === pendingConnection.target)?.data?.name 
-            : 'Nodo Destino'}
+        sourceNodeName={
+          editingEdge
+            ? nodes.find(n => n.id === editingEdge.source)?.data?.name ?? 'Nodo Origen'
+            : pendingConnection
+              ? nodes.find(n => n.id === pendingConnection.source)?.data?.name ?? 'Nodo Origen'
+              : 'Nodo Origen'
+        }
+        targetNodeName={
+          editingEdge
+            ? nodes.find(n => n.id === editingEdge.target)?.data?.name ?? 'Nodo Destino'
+            : pendingConnection
+              ? nodes.find(n => n.id === pendingConnection.target)?.data?.name ?? 'Nodo Destino'
+              : 'Nodo Destino'
+        }
         initialLabel={editingEdge?.label as string | undefined}
         initialIsDirected={editingEdge ? editingEdge.markerEnd !== undefined : true}
       />

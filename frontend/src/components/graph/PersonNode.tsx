@@ -4,40 +4,14 @@ import classnames from 'classnames';
 import { User, Upload } from 'lucide-react';
 import { DemoNodeData } from '../../types/graph';
 
-// Estilos para los handles
-const baseHandleStyle = {
-  width: '12px',
-  height: '12px',
-  border: '2px solid var(--bg-secondary)',
-  borderRadius: '4px',
-  zIndex: 20,
-  opacity: 0.8,
-  transition: 'all 0.2s ease',
-};
+// Estilos base para los handles usando Tailwind
+const handleBaseClasses = "!w-3 !h-3 !border-2 !border-bg-secondary !rounded-sm !z-20 !opacity-80 hover:!opacity-100 hover:!scale-125 !transition-all";
 
-const sourceHandleStyle = {
-  ...baseHandleStyle,
-  background: 'var(--accent-pink)',
-  '&:hover': {
-    opacity: 1,
-    transform: 'scale(1.2)',
-  },
-};
-
-const targetHandleStyle = {
-  ...baseHandleStyle,
-  background: 'var(--accent-green)',
-  '&:hover': {
-    opacity: 1,
-    transform: 'scale(1.2)',
-  },
-};
-
-const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id }) => {
+const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nodeId }) => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && data.onImageUpload) {
-      data.onImageUpload(id, file);
+      data.onImageUpload(nodeId, file);
     }
   };
 
@@ -57,68 +31,60 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id }) =
       )}
       style={{ minHeight: '200px' }}
     >
-      {/* Top Handles */}
+      {/* TOP Handles */}
       <Handle 
         type="source" 
         position={Position.Top} 
-        id={`${id}-source-top`}
-        style={{ ...sourceHandleStyle, top: '-6px' }}
-        className="handle-source"
+        id="s-top"
+        className={`${handleBaseClasses} !bg-accent-pink !-mt-1.5`}
       />
       <Handle 
         type="target" 
         position={Position.Top} 
-        id={`${id}-target-top`}
-        style={{ ...targetHandleStyle, top: '3px' }}
-        className="handle-target"
+        id="t-top"
+        className={`${handleBaseClasses} !bg-accent-green !mt-[1px]`}
       />
 
-      {/* Bottom Handles */}
+      {/* BOTTOM Handles */}
       <Handle 
         type="source" 
         position={Position.Bottom} 
-        id={`${id}-source-bottom`}
-        style={{ ...sourceHandleStyle, bottom: '-6px' }}
-        className="handle-source"
+        id="s-bottom"
+        className={`${handleBaseClasses} !bg-accent-pink !-mb-1.5`}
       />
       <Handle 
         type="target" 
         position={Position.Bottom} 
-        id={`${id}-target-bottom`}
-        style={{ ...targetHandleStyle, bottom: '3px' }}
-        className="handle-target"
+        id="t-bottom"
+        className={`${handleBaseClasses} !bg-accent-green !mb-[1px]`}
       />
 
-      {/* Left Handles */}
+      {/* LEFT Handles */}
       <Handle 
         type="source" 
         position={Position.Left} 
-        id={`${id}-source-left`}
-        style={{ ...sourceHandleStyle, left: '-6px' }}
-        className="handle-source"
+        id="s-left"
+        className={`${handleBaseClasses} !bg-accent-pink !-ml-1.5`}
       />
       <Handle 
         type="target" 
         position={Position.Left} 
-        id={`${id}-target-left`}
-        style={{ ...targetHandleStyle, left: '3px' }}
-        className="handle-target"
+        id="t-left"
+        className={`${handleBaseClasses} !bg-accent-green !ml-[1px]`}
       />
 
-      {/* Right Handles */}
+      {/* RIGHT Handles */}
       <Handle 
         type="source" 
         position={Position.Right} 
-        id={`${id}-source-right`}
-        style={{ ...sourceHandleStyle, right: '-6px' }}
-        className="handle-source"
+        id="s-right"
+        className={`${handleBaseClasses} !bg-accent-pink !-mr-1.5`}
       />
       <Handle 
         type="target" 
         position={Position.Right} 
-        id={`${id}-target-right`}
-        style={{ ...targetHandleStyle, right: '3px' }}
-        className="handle-target"
+        id="t-right"
+        className={`${handleBaseClasses} !bg-accent-green !mr-[1px]`}
       />
       
       <div className="relative mb-2">
