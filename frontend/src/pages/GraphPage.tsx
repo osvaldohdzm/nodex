@@ -3,32 +3,28 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactFlow, {
   Controls,
   Background,
-  MiniMap,
   useNodesState,
   useEdgesState,
-  addEdge,
   Node,
   Edge,
-  Connection,
-  BackgroundVariant,
   MarkerType,
   useReactFlow,
   ReactFlowProvider,
-  NodeChange,
-  EdgeChange,
-  applyNodeChanges,
-  applyEdgeChanges,
+  getNodesBounds, // Import for potential future use (full graph export)
+  // getViewport, // Provided by useReactFlow instance
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
-import '../styles/GraphPage.css'; // Import the specific CSS
+import '../styles/GraphPage.css';
 
-import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
-import { UploadCloud, Replace, Layers } from 'lucide-react';
-import { JsonData, NodeData } from '../types/graph';
-import { defaultNodes as demoNodes, defaultEdges as demoEdges } from '../data/defaultGraphData'; // Import default data
+import { UploadCloud, Replace, Layers, Download } from 'lucide-react'; // Added Download icon
+import { JsonData } from '../types/graph';
+import { defaultNodes as demoNodes, defaultEdges as demoEdges } from '../data/defaultGraphData';
+
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const nodeTypes = {
   person: PersonNode,
@@ -36,8 +32,8 @@ const nodeTypes = {
 };
 
 export const GraphPage: React.FC = () => {
-  const { fitView, getNodes, getEdges } = useReactFlow();
-  const demoLoadedRef = useRef(false); // Tracks if demo data has been loaded in the current session/state
+  const reactFlowInstance = useReactFlow(); // Get the ReactFlow instance
+  const demoLoadedRef = useRef(false);
   const animationCleanupRef = useRef<(() => void) | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,44 +41,42 @@ export const GraphPage: React.FC = () => {
   const [fileName, setFileName] = useState<string>('');
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [isDemoDataVisible, setIsDemoDataVisible] = useState(true);
+
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
   const animateGraphLoad = useCallback(
-    (initialNodes: Node<NodeData>[], initialEdges: Edge[], isOverwrite: boolean = false) => {
-      // Clear any existing animation cleanup
+    (initialNodes: Node[], initialEdges: Edge[], isOverwrite: boolean = false) => {
       if (animationCleanupRef.current) {
         animationCleanupRef.current();
         animationCleanupRef.current = null;
       }
 
-      // If overwriting, clear existing nodes/edges first
-      if (isOverwrite) {
-        setNodes([]);
-        setEdges([]);
-      }
-
-      // Start with empty arrays if overwriting, otherwise use current state
-      const startNodes = isOverwrite ? [] : [...nodes];
-      const startEdges = isOverwrite ? [] : [...edges];
-
-      // Add new nodes/edges with animation classes
-      const newNodes = initialNodes.map((node) => ({
+      const nodesToSet = initialNodes.map((node) => ({
         ...node,
         className: `${node.className || ''} node-appear`.trim(),
       }));
-      const newEdges = initialEdges.map((edge) => ({
+      const edgesToSet = initialEdges.map((edge) => ({
         ...edge,
         className: `${edge.className || ''} edge-appear`.trim(),
       }));
+      
+      if (isOverwrite) {
+        setNodes(nodesToSet);
+        setEdges(edgesToSet);
+      } else {
+        const existingNodeIds = new Set(nodes.map(n => n.id));
+        const newNodesToAdd = nodesToSet.filter(n => !existingNodeIds.has(n.id));
+        
+        const existingEdgeIds = new Set(edges.map(e => e.id));
+        const newEdgesToAdd = edgesToSet.filter(e => !existingEdgeIds.has(e.id));
 
-      // Set the new state
-      setNodes([...startNodes, ...newNodes]);
-      setEdges([...startEdges, ...newEdges]);
+        setNodes((nds) => [...nds, ...newNodesToAdd]);
+        setEdges((eds) => [...eds, ...newEdgesToAdd]);
+      }
 
-      // Schedule a cleanup to remove animation classes
       const timeoutId = setTimeout(() => {
         setNodes((nds) =>
           nds.map((n) => ({
@@ -97,40 +91,30 @@ export const GraphPage: React.FC = () => {
           }))
         );
         animationCleanupRef.current = null;
-      }, 1000); // Match this with CSS animation duration
+      }, 1000);
 
       animationCleanupRef.current = () => clearTimeout(timeoutId);
 
-      // Fit view after a short delay to allow nodes to be positioned
       setTimeout(() => {
-        fitView({ padding: 0.2, duration: 800 });
+        reactFlowInstance.fitView({ padding: 0.2, duration: 800 });
       }, 100);
     },
-    [setNodes, setEdges, fitView, nodes, edges]
+    [setNodes, setEdges, reactFlowInstance, nodes, edges]
   );
 
   const processJsonToGraph = useCallback((data: any): { initialNodes: Node[]; initialEdges: Edge[] } => {
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
     let nodeIdCounter = 0;
-
     const levelYNext: Map<number, number> = new Map();
     const X_INCREMENT = 300;
     const Y_INCREMENT = 120;
     const BASE_X = 50;
     const BASE_Y = 50;
 
-    const getNodeId = (path: string) => {
-      return `jsonGraphNode-${nodeIdCounter++}-${path.replace(/[^a-zA-Z0-9_\[\]]/g, '-').substring(0, 50)}`;
-    };
-
-    function parseJsonRecursive(
-      currentData: any,
-      parentId: string | null,
-      keyForParentOrRootName: string,
-      currentPath: string,
-      level: number
-    ) {
+    const getNodeId = (path: string) => `jsonGraphNode-${nodeIdCounter++}-${path.replace(/[^a-zA-Z0-9_[\]]/g, '-').substring(0, 50)}`;
+    
+    function parseJsonRecursive(currentData: any, parentId: string | null, keyForParentOrRootName: string, currentPath: string, level: number) {
       const nodeId = getNodeId(currentPath || 'root');
       const x = BASE_X + level * X_INCREMENT;
       const y = levelYNext.get(level) || BASE_Y;
@@ -138,88 +122,50 @@ export const GraphPage: React.FC = () => {
 
       if (typeof currentData !== 'object' || currentData === null) {
         newNodes.push({
-          id: nodeId,
-          type: 'person',
-          position: { x, y },
-          data: {
-            name: `${keyForParentOrRootName}: ${String(currentData).substring(0, 30)}${String(currentData).length > 30 ? '...' : ''}`,
-            title: `Value @ ${currentPath}`,
-            details: { type: 'primitive', value: String(currentData) }
-          },
+          id: nodeId, type: 'person', position: { x, y },
+          data: { name: `${keyForParentOrRootName}: ${String(currentData).substring(0, 30)}${String(currentData).length > 30 ? '...' : ''}`, title: `Value @ ${currentPath}`, details: { type: 'primitive', value: String(currentData) } },
         });
         if (parentId) {
-          newEdges.push({
-            id: `edge-${parentId}-${nodeId}`,
-            source: parentId,
-            target: nodeId,
-            label: keyForParentOrRootName,
-            type: 'smoothstep',
-            markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-          });
+          newEdges.push({ id: `edge-${parentId}-${nodeId}`, source: parentId, target: nodeId, label: keyForParentOrRootName, type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } });
         }
         return;
       }
 
       const isArray = Array.isArray(currentData);
-      const nodeDisplayName = (parentId === null) ? 
-        (data._id?.$oid ? `Processed: ${data._id.$oid.substring(0,10)}` : 'JSON Root') :
-        keyForParentOrRootName;
+      const nodeDisplayName = (parentId === null) ? (data._id?.$oid ? `Processed: ${data._id.$oid.substring(0,10)}` : 'JSON Root') : keyForParentOrRootName;
       const numChildren = Object.keys(currentData).length;
-      const nodeDisplayData: any = {
-        name: nodeDisplayName,
-        title: `Path: ${currentPath || '/'} (${isArray ? `Array[${numChildren}]` : 'Object'})`,
-        details: {}
-      };
-      newNodes.push({
-        id: nodeId,
-        type: 'company',
-        position: { x, y },
-        data: nodeDisplayData,
-      });
+      const nodeDisplayData: any = { name: nodeDisplayName, title: `Path: ${currentPath || '/'} (${isArray ? `Array[${numChildren}]` : 'Object'})`, details: {} };
+
+      newNodes.push({ id: nodeId, type: 'company', position: { x, y }, data: nodeDisplayData });
       if (parentId) {
-        newEdges.push({
-          id: `edge-${parentId}-${nodeId}`,
-          source: parentId,
-          target: nodeId,
-          label: keyForParentOrRootName,
-          type: 'smoothstep',
-          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-        });
+        newEdges.push({ id: `edge-${parentId}-${nodeId}`, source: parentId, target: nodeId, label: keyForParentOrRootName, type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } });
       }
-      const childKeys = Object.keys(currentData);
-      childKeys.forEach((childKey) => {
+
+      Object.keys(currentData).forEach((childKey) => {
         const value = currentData[childKey];
         let childPathSegment = isArray ? `[${childKey}]` : `.${childKey}`;
         if (currentPath === '' && !isArray) childPathSegment = childKey;
         else if (currentPath === '' && isArray) childPathSegment = `[${childKey}]`;
         const fullChildPath = (currentPath === '' && !isArray && !parentId) ? childKey : currentPath + childPathSegment;
+
         if (typeof value === 'object' && value !== null) {
           parseJsonRecursive(value, nodeId, childKey, fullChildPath, level + 1);
         } else {
           nodeDisplayData.details[childKey] = String(value).substring(0, 100);
         }
       });
-      if (Object.keys(nodeDisplayData.details).length === 0) {
-        delete nodeDisplayData.details;
-      }
+      if (Object.keys(nodeDisplayData.details).length === 0) delete nodeDisplayData.details;
     }
 
     if (data && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
-      console.log("[processJsonToGraph] Processing pre-formatted graph JSON.");
       return { initialNodes: data.nodes, initialEdges: data.edges };
     }
     if (data && typeof data === 'object' && data !== null) {
-      console.log("[processJsonToGraph] Processing generic JSON to graph structure.");
       nodeIdCounter = 0;
       levelYNext.clear();
       parseJsonRecursive(data, null, '', '', 0);
     } else {
-      console.warn("[processJsonToGraph] Data is not a processable object or pre-formatted graph.");
-      newNodes.push({
-        id: 'error-json-node', type: 'company', position: { x: 100, y: 100 },
-        data: { name: 'Invalid Data', title: 'Cannot parse', details: { error: 'Uploaded data is not a valid JSON object or graph structure.'}},
-        className: 'node-alert-style'
-      });
+      newNodes.push({ id: 'error-json-node', type: 'company', position: { x: 100, y: 100 }, data: { name: 'Invalid Data', title: 'Cannot parse', details: { error: 'Uploaded data is not a valid JSON object or graph structure.'}}, className: 'node-alert-style' });
     }
     return { initialNodes: newNodes, initialEdges: newEdges };
   }, []);
@@ -229,70 +175,123 @@ export const GraphPage: React.FC = () => {
       setJsonData(uploadedData);
       setFileName(uploadedFileName);
       setIsDemoDataVisible(false);
-
-      const { initialNodes, initialEdges } = processJsonToGraph(uploadedData);
-      animateGraphLoad(initialNodes, initialEdges, mode === 'overwrite');
+      const { initialNodes: newNodes, initialEdges: newEdges } = processJsonToGraph(uploadedData);
+      animateGraphLoad(newNodes, newEdges, mode === 'overwrite');
     },
     [processJsonToGraph, animateGraphLoad]
   );
 
-  // Load demo data on initial mount if no JSON data is present
   useEffect(() => {
     if (isDemoDataVisible && !demoLoadedRef.current && !jsonData) {
-      console.log("Loading default demo data (useEffect).");
-      animateGraphLoad(
-        demoNodes.map((n: Node<NodeData>) => ({...n, data: {...n.data}})), // Use imported demo data
-        demoEdges.map((e: Edge) => ({...e})), // Use imported demo data
-        true // Overwrite existing graph with demo data
-      );
-      demoLoadedRef.current = true; // Mark demo as loaded
+      const demoNodesWithClass = demoNodes.map(n => ({...n, data: {...n.data}, className: 'node-appear-static' }));
+      const demoEdgesWithClass = demoEdges.map(e => ({...e, className: 'edge-appear-static' }));
+      animateGraphLoad(demoNodesWithClass, demoEdgesWithClass, true);
+      demoLoadedRef.current = true;
     }
   }, [isDemoDataVisible, jsonData, animateGraphLoad]);
 
-  // Cleanup animation timeouts on unmount
   useEffect(() => {
-    return () => {
-      if (animationCleanupRef.current) {
-        animationCleanupRef.current();
-      }
-    };
+    return () => { if (animationCleanupRef.current) animationCleanupRef.current(); };
   }, []);
 
-  const handleUploadAreaClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleUploadAreaClick = () => fileInputRef.current?.click();
 
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setFileName(file.name); // Update file name display immediately
+      setFileName(file.name);
       try {
         const text = await file.text();
-        const jsonDataParsed = JSON.parse(text) as JsonData;
-        setSelectedFileContent(jsonDataParsed);
-        setJsonData(null); // Clear any previous full jsonData to ensure buttons act on new file
+        const parsedJson = JSON.parse(text) as JsonData;
+        setSelectedFileContent(parsedJson);
       } catch (error) {
         console.error("Error parsing JSON:", error);
         alert("Failed to parse JSON file. Please ensure it's valid JSON.");
-        setFileName('');
-        setSelectedFileContent(null);
+        setFileName(''); setSelectedFileContent(null);
       }
-      if (fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
+  const handleExportPDF = async () => {
+    // Use getNodes from the instance to ensure current state
+    const currentGraphNodes = reactFlowInstance.getNodes(); 
+
+    if (currentGraphNodes.length === 0) {
+      alert("No graph content to export.");
+      return;
+    }
+
+    const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!viewportElement) {
+      console.error('ReactFlow viewport element not found.');
+      alert('Error: Viewport element not found for export.');
+      return;
+    }
+
+    try {
+      // Temporarily remove box-shadow from nodes during capture for cleaner PDF
+      document.querySelectorAll('.react-flow__node').forEach(nodeEl => {
+        (nodeEl as HTMLElement).style.boxShadow = 'none';
+      });
+      // Also remove transform from viewport for html2canvas if it causes issues
+      // const originalTransform = viewportElement.style.transform;
+      // viewportElement.style.transform = '';
+
+
+      const canvas = await html2canvas(viewportElement, {
+        logging: false,
+        useCORS: true,
+        backgroundColor: window.getComputedStyle(viewportElement).getPropertyValue('background-color') || 'var(--graph-bg)',
+        scale: 1.5, // Increase scale for better quality in PDF
+        // x: 0, y: 0, scrollX: 0, scrollY: 0, // Ensure capture from top-left
+        // windowWidth: viewportElement.scrollWidth,
+        // windowHeight: viewportElement.scrollHeight,
+      });
+      
+      // Restore box-shadow
+      document.querySelectorAll('.react-flow__node').forEach(nodeEl => {
+        (nodeEl as HTMLElement).style.boxShadow = ''; // Revert to CSS defined shadow
+      });
+      // viewportElement.style.transform = originalTransform;
+
+
+      const imgData = canvas.toDataURL('image/png', 1.0); // High quality PNG
+
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'l' : 'p',
+        unit: 'px',
+        format: [canvas.width, canvas.height],
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+      
+      const pdfFileName = `${fileName.replace(/\.json$/i, '') || 'graph'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(pdfFileName);
+
+    } catch (error: any) {
+      console.error('Error exporting graph to PDF:', error);
+      alert(`Failed to export graph to PDF. See console for details. Error: ${error.message || String(error)}`);
+      // Ensure styles are restored even on error
+      document.querySelectorAll('.react-flow__node').forEach(nodeEl => {
+        (nodeEl as HTMLElement).style.boxShadow = '';
+      });
+      // const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement;
+      // if(viewportEl) viewportEl.style.transform = ''; // Restore if changed
+    }
+  };
+  
   return (
     <div className="graph-page-center">
       <div className="graph-page-container">
         <div className="upload-panel">
           <h2 className="panel-title">Cargar Archivo JSON del Grafo</h2>
-          <div className="upload-area" onClick={handleUploadAreaClick} role="button" tabIndex={0}>
+          <div className="upload-area" onClick={handleUploadAreaClick} role="button" tabIndex={0} 
+               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleUploadAreaClick();}}
+               aria-label="Área para cargar archivos JSON. Arrastra y suelta o haz clic para seleccionar."
+          >
             <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileSelected} />
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-upload-cloud mx-auto mb-4 text-gray-500">
-              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
-              <path d="M12 12v9"></path>
-              <path d="m16 16-4-4-4 4"></path>
-            </svg>
+            <UploadCloud size={48} className="mx-auto mb-4 text-gray-500" />
             <p className="text-text-secondary">Drag & drop your JSON file here, or <span className="text-accent-cyan font-semibold">click to browse</span>.</p>
           </div>
           {fileName && <p className="file-name-display">Archivo cargado: {fileName}</p>}
@@ -310,6 +309,14 @@ export const GraphPage: React.FC = () => {
               disabled={!selectedFileContent}
             >
               <Layers size={16} /> Agregar y actualizar
+            </button>
+            <button
+              className="graph-action-button" // Reuses existing button styling
+              onClick={handleExportPDF}
+              disabled={nodes.length === 0} // Disabled if no nodes from current state
+              title={nodes.length === 0 ? "Carga un grafo para exportar" : "Exportar vista actual como PDF"}
+            >
+              <Download size={16} /> Exportar como PDF
             </button>
           </div>
         </div>
@@ -329,15 +336,15 @@ export const GraphPage: React.FC = () => {
           >
             <Background />
             <Controls />
-            {nodes.length === 0 && (
+            {nodes.length === 0 && !isDemoDataVisible && (
               <div className="placeholder-message">
                 <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
                 <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
                 <p className="mb-2 text-sm">Utiliza el área de carga de arriba. Los datos de demostración se cargan por defecto.</p>
-                {jsonData && nodes.length === 0 && ( // If JSON was loaded but resulted in no nodes
+                {jsonData && (
                   <details className="json-details-viewer">
                     <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
-                    <pre className="json-details-content">{JSON.stringify(jsonData, null, 2)}</pre>
+                    <pre className="json-details-pre">{JSON.stringify(jsonData, null, 2)}</pre>
                   </details>
                 )}
               </div>
