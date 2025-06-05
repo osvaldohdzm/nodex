@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- Inicio del Script test.sh (Versión Mejorada) ---
+# --- Inicio del Script test.sh (Versión Mejorada con contador en commit) ---
 
 # 1. Verificar si hay cambios sin commitear
 if git diff-index --quiet HEAD --; then
@@ -25,18 +25,14 @@ if [[ "$current_branch" == */test ]] || [[ "$current_branch" == *-test ]]; then
   echo "ℹ️ Ya estás en una rama de pruebas ('$current_branch'). Los cambios se commitearán aquí."
   target_test_branch="$current_branch"
 else
-  # Si la rama actual tiene estructura jerárquica (ej: feature/foo)
   if [[ "$current_branch" == *"/"* ]]; then
-    # Para evitar conflictos, crear la rama de pruebas con guion en lugar de slash después de la rama padre
     target_test_branch="${current_branch}-test"
     echo "🆕 Rama de pruebas destino (rama jerárquica ajustada): $target_test_branch"
   else
-    # Rama raíz, se usa formato 'rama-test'
     target_test_branch="${current_branch}-test"
     echo "🆕 Rama de pruebas destino (rama raíz): $target_test_branch"
   fi
 
-  # Verificar si la rama de pruebas destino ya existe
   if git rev-parse --verify "$target_test_branch" >/dev/null 2>&1; then
     echo "⚠️ La rama de pruebas '$target_test_branch' ya existe localmente."
     read -rp "¿Deseas cambiar a '$target_test_branch' y commitear los cambios actuales allí? (s/N): " switch_to_existing
@@ -64,11 +60,18 @@ fi
 echo "➕ Preparando (staging) todos los cambios..."
 git add .
 
-# 5. Commit de los cambios
-default_commit_msg="WIP: Pruebas en $target_test_branch"
+# 5. Buscar el último número de "Prueba N" en los commits de la rama destino
+last_test_number=$(git log --pretty=%s -n 50 "$target_test_branch" | grep -oP '^Prueba \K\d+' | sort -nr | head -n1 || echo "0")
+next_test_number=$((last_test_number + 1))
+
+# 6. Construir mensaje por defecto con incremento
+default_commit_msg="Prueba $next_test_number"
+
+# 7. Pedir mensaje de commit al usuario, con opción de dejar vacío para usar el mensaje automático
 read -rp "Mensaje para el commit (deja vacío para '$default_commit_msg'): " user_commit_msg
 commit_msg="${user_commit_msg:-$default_commit_msg}"
 
+# 8. Realizar commit
 if git commit -m "$commit_msg"; then
   echo "✅ Cambios commiteados en '$target_test_branch' con el mensaje: '$commit_msg'"
 else
@@ -79,7 +82,7 @@ else
   exit 1
 fi
 
-# 6. Ejecutar script start.sh
+# 9. Ejecutar script start.sh
 ./scripts/start.sh
 
 echo "🎉 Proceso completado. Tus cambios están ahora en la rama '$target_test_branch'."
