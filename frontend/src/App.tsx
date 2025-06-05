@@ -25,34 +25,33 @@ const AppContent: React.FC = () => {
     };
   }, [location.key]);
 
+  console.log("AppContent rendering, isAuthenticated:", isAuthenticated);
+
   return (
-    // .App class from globals.css applies: bg-bg-primary text-text-primary font-sans
-    // Ensure .App itself is flex flex-col and takes full screen height
-    <div className="App flex flex-col h-screen">
+    // .App class from globals.css applies: bg-bg-primary text-text-primary font-sans flex flex-col min-h-screen
+    <div className="App"> 
       <header
-        className="flex-shrink-0" // Prevent header from shrinking
+        className="App-header" // This class is defined in App.css, ensure it's flex-shrink-0
         style={{
           backgroundColor: 'var(--bg-secondary)',
           padding: '1rem',
           textAlign: 'center',
           color: 'var(--text-primary)',
-          borderBottom: '1px solid var(--input-border)',
-          zIndex: 20 // Ensure header is above other content
+          flexShrink: 0, 
+          borderBottom: '1px solid var(--input-border)'
         }}
       >
         <h1 className="text-2xl font-semibold text-accent-cyan">Nodex</h1>
       </header>
       {/* main needs to be a flex container that grows and allows its children to grow */}
       <main
-        className="flex-grow flex flex-col" // This makes main a flex container that grows
+        className="flex-grow flex flex-col" // Ensures main itself is a flex container and grows
         style={{
-          minHeight: '0', // CRUCIAL for flex children that also grow and might overflow
-          overflow: 'hidden' // Prevent main from showing scrollbars if children manage their own
+          position: 'relative', // For absolutely positioned children if needed
+          minHeight: '0', // CRUCIAL for flex children that also grow
         }}
       >
-        {/* Routes will render GraphPageWithProvider.
-            GraphPageWithProvider's root div (.graph-page-container) needs to fill this space.
-        */}
+        {/* Routes will render GraphPageWithProvider, which has .graph-page-container (flex-grow) */}
         <Routes>
           <Route 
             path="/login" 
