@@ -53,6 +53,27 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         id={`${nodeId}-target-top`}
         className="handle-target"
       />
+      {/* LEFT */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id={`${nodeId}-target-left`}
+        className="react-flow__handle handle-target"
+      />
+      {/* BOTTOM */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id={`${nodeId}-source-bottom`}
+        className="react-flow__handle handle-source"
+      />
+      {/* RIGHT */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id={`${nodeId}-source-right`}
+        className="react-flow__handle handle-source"
+      />
 
       <div
         className="relative mb-3 group cursor-pointer"

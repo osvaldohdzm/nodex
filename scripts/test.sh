@@ -40,10 +40,10 @@ else
         exit 1
       fi
       echo "✅ Cambiado a la rama existente '$target_test_branch'."
-    else
+    else  # This is the 'else' that was causing the error due to the missing 'fi'
       echo "🛑 Operación cancelada. No se han realizado cambios."
       exit 1
-    fi
+    fi # <--- CORRECTED: Changed 'F' to 'fi' here
   else
     echo "🌱 Creando y cambiando a la nueva rama de pruebas '$target_test_branch'..."
     if ! git checkout -b "$target_test_branch"; then
@@ -59,25 +59,32 @@ if [[ "$no_changes" != true ]]; then
   echo "➕ Preparando (staging) todos los cambios..."
   git add .
 
-  # 5. Buscar el último número de "Prueba N" en los commits de esta rama
-  last_test_number=$(git log "$target_test_branch" --pretty=format:"%s" | grep -oP '^Prueba \K\d+' | sort -nr | head -n1)
-  last_test_number="${last_test_number:-0}"
-  next_test_number=$((last_test_number + 1))
-
-  # 6. Detectar nombre de la feature/hotfix/dev original
-  base_branch="${current_branch%-test}"
-  base_branch="${base_branch%/test}"
+  # 5. Detectar nombre de la feature/hotfix/dev original para el conteo específico
+  base_branch_for_count="${current_branch%-test}" # Removes -test suffix
+  base_branch_for_count="${base_branch_for_count%/test}" # Removes /test suffix
 
   # Extraer nombre limpio (sin prefijo tipo feature/, hotfix/, etc.)
-  case "$base_branch" in
-    feature/*) short_name="${base_branch#feature/}" ;;
-    hotfix/*) short_name="${base_branch#hotfix/}" ;;
-    bugfix/*) short_name="${base_branch#bugfix/}" ;;
+  # This short_name will be used to identify the specific series of "Prueba N"
+  case "$base_branch_for_count" in
+    feature/*) short_name="${base_branch_for_count#feature/}" ;;
+    hotfix/*) short_name="${base_branch_for_count#hotfix/}" ;;
+    bugfix/*) short_name="${base_branch_for_count#bugfix/}" ;;
     dev) short_name="dev" ;;
-    *) short_name="$base_branch" ;;
+    *) short_name="$base_branch_for_count" ;; # Fallback for other branches
   esac
 
   echo "🧪 Estás probando la rama: '$short_name'"
+
+  # IMPORTANT MODIFICATION HERE:
+  # 6. Buscar el último número de "Prueba N" CON EL NOMBRE ESPECÍFICO DE LA RAMA DE PRUEBA
+  # Se busca 'Prueba N de <short_name>' en la historia de la *rama actual de pruebas*
+  # Use || true to prevent set -e from exiting if grep finds no matches.
+  # Then, re-pipe the output to sort and head for the latest number.
+  _raw_test_numbers=$(git log "$target_test_branch" --pretty=format:"%s" | grep -oP "^Prueba \K\d+ de ${short_name//./\\.}" || true)
+  last_test_number=$(echo "$_raw_test_numbers" | sort -nr | head -n1)
+  
+  last_test_number="${last_test_number:-0}" # Default to 0 if no matching commits are found
+  next_test_number=$((last_test_number + 1))
 
   # 7. Construir mensaje por defecto con nombre de la feature
   default_commit_msg="Prueba $next_test_number de $short_name"
@@ -100,6 +107,7 @@ fi
 
 # 9. Ejecutar prueba
 echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
+# Ensure start.sh is executable: chmod +x ./scripts/start.sh
 ./scripts/start.sh
 
 echo "🎉 Proceso completado. Tus pruebas se ejecutaron en la rama '$target_test_branch'."

@@ -29,6 +29,7 @@ import RelationshipModal from '../components/modals/RelationshipModal';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
+import TopMenuBar from '../components/layout/TopMenuBar';
 
 const nodeTypes = {
   person: PersonNode,
@@ -72,12 +73,7 @@ export const GraphPage: React.FC = () => {
 
   const connectionLineStyle = { stroke: 'var(--accent-cyan)', strokeWidth: 2.5 };
 
-  // Medir altura de la barra superior
-  useEffect(() => {
-    if (topBarRef.current) {
-      setTopBarHeight(topBarRef.current.offsetHeight);
-    }
-  }, []);
+
 
   // Actualizar el estado de detailsNode y visibilidad del panel
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node<DemoNodeData>) => {
@@ -97,33 +93,28 @@ export const GraphPage: React.FC = () => {
 
   // Mejorar el manejo de conexiones
   const onConnect = useCallback((params: Connection) => {
-    console.log("--- onConnect START ---");
-    console.log("Params received:", params);
+    if (!params.source || !params.target) return;
+    if (params.source === params.target) return;
 
-    if (!params.source || !params.target || !params.sourceHandle || !params.targetHandle) {
-      console.error("onConnect aborting: Missing critical connection parameters.", params);
-      return;
-    }
-    
+    const newEdge: Edge = {
+      id: `edge-${params.source}-${params.target}-${Date.now()}`,
+      source: params.source,
+      target: params.target,
+      type: 'smoothstep',
+      style: defaultEdgeStyle,
+      markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+    };
+
+    setEdges((eds) => addEdge(newEdge, eds));
+
     const sourceNode = nodes.find(n => n.id === params.source);
     const targetNode = nodes.find(n => n.id === params.target);
 
-    if (sourceNode?.type === 'person' && targetNode?.type === 'person' && params.source !== params.target) {
-      const existingEdge = edges.find(
-        edge => (edge.source === params.source && edge.target === params.target) || 
-                (edge.source === params.target && edge.target === params.source)
-      );
-      
-      if (existingEdge) {
-        setEditingEdge(existingEdge);
-      } else {
-        setPendingConnection(params);
-      }
+    if (sourceNode?.type === 'person' && targetNode?.type === 'person') {
+      setEditingEdge(newEdge);
       setIsRelationshipModalOpen(true);
-    } else {
-      console.warn("Conexión inválida o a sí mismo.");
     }
-  }, [nodes, edges]);
+  }, [nodes, setEdges]);
 
   const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
     console.log("Intentando crear/actualizar relación:", { label, isDirected, editingEdge, pendingConnection });
@@ -485,65 +476,49 @@ export const GraphPage: React.FC = () => {
     return connection.source !== connection.target;
   };
 
-  const sourceNodeNameForModal = detailsNode?.data?.name || '';
-  const targetNodeNameForModal = pendingConnection?.target || '';
+  // Add missing zoom and fitView handlers
+  const handleZoomIn = useCallback(() => {
+    reactFlowInstance.zoomIn({ duration: 300 });
+  }, [reactFlowInstance]);
+
+  const handleZoomOut = useCallback(() => {
+    reactFlowInstance.zoomOut({ duration: 300 });
+  }, [reactFlowInstance]);
+
+  const handleFitView = useCallback(() => {
+    reactFlowInstance.fitView({ padding: 0.2, duration: 500 });
+  }, [reactFlowInstance]);
+
+  const sourceNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.source) : null;
+  const targetNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.target) : null;
+  
+  const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
+  const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
+
+
 
   return (
     <div className="graph-page-container flex flex-col h-full w-full overflow-hidden">
-      {/* Barra Superior */}
-      <div 
-        ref={topBarRef} 
-        className="flex items-center justify-between w-full px-4 py-2 bg-bg-secondary border-b border-input-border shadow-md"
-        style={{ flexShrink: 0 }}
-      >
-        <div className="flex items-center gap-x-2">
-          <button 
-            onClick={handleUploadAreaClick}
-            className="graph-action-button flex items-center gap-2 text-sm p-2 hover:bg-accent-cyan/10"
-            title="Cargar archivo JSON"
-          >
-            <UploadCloud size={18} /> Cargar JSON
-          </button>
-          <input 
-            type="file" 
-            accept=".json" 
-            className="hidden" 
-            ref={fileInputRef} 
-            onChange={handleFileSelected} 
-          />
-
-          {selectedFileContent && (
-            <>
-              <span className="text-xs text-text-secondary">({fileName})</span>
-              <button 
-                className="graph-action-button flex items-center gap-2 text-sm p-2 bg-accent-red/80 hover:bg-accent-red text-white"
-                onClick={() => handleJsonUploaded(selectedFileContent, fileName, 'overwrite')}
-                title="Reemplazar grafo"
-              >
-                <Replace size={16} /> Sobrescribir
-              </button>
-              <button 
-                className="graph-action-button flex items-center gap-2 text-sm p-2 bg-accent-green/80 hover:bg-accent-green text-white"
-                onClick={() => handleJsonUploaded(selectedFileContent, fileName, 'merge')}
-                title="Añadir al grafo"
-              >
-                <Layers size={16} /> Agregar
-              </button>
-            </>
-          )}
-        </div>
-        
-        <h1 className="text-2xl font-bold text-accent-cyan select-none mx-auto">Nodex</h1>
-
-        <button
-          className="graph-action-button flex items-center gap-2 text-sm p-2 hover:bg-accent-cyan/10"
-          onClick={handleExportPDF}
-          disabled={nodes.length === 0}
-          title="Exportar vista actual como PDF"
-        >
-          <Download size={18} /> Exportar PDF
-        </button>
-      </div>
+      <TopMenuBar
+        onUploadClick={handleUploadAreaClick}
+        onOverwrite={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'overwrite')}
+        onMerge={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'merge')}
+        onExportPDF={handleExportPDF}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFitView={handleFitView}
+        isFileLoaded={!!selectedFileContent}
+        isGraphEmpty={nodes.length === 0}
+        fileName={fileName}
+      />
+      
+      <input 
+        type="file" 
+        accept=".json" 
+        className="hidden" 
+        ref={fileInputRef} 
+        onChange={handleFileSelected} 
+      />
 
       {/* Contenedor principal con paneles redimensionables */}
       <PanelGroup direction="horizontal" className="flex-grow min-h-0">
