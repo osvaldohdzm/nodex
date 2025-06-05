@@ -19,7 +19,7 @@ else
   if [[ -z "$commit_message" ]]; then
     commit_message="WIP: Save changes on $current_branch"
   fi
-  git commit -m "$commit_message" # Tu hook pre-commit (si está configurado) se ejecutará aquí
+  git commit -m "$commit_message"
 fi
 
 # Push con configuración upstream si no existe
@@ -32,4 +32,25 @@ else
   git push
 fi
 
-echo "✅ Cambios guardados y enviados a remoto en '$current_branch'."
+echo "🌐 Sincronizando ramas locales con sus remotas..."
+
+# Obtener ramas locales con seguimiento remoto
+while read -r branch; do
+  branch_name=$(echo "$branch" | awk '{print $1}')
+  remote_name=$(git for-each-ref --format='%(upstream:short)' refs/heads/"$branch_name")
+
+  # Saltar si no hay upstream o es la rama actual
+  if [[ -z "$remote_name" || "$branch_name" == "$current_branch" ]]; then
+    continue
+  fi
+
+  echo "🔄 Cambiando a '$branch_name' para sincronizar con '$remote_name'..."
+  git switch "$branch_name" >/dev/null
+  git pull --ff-only
+
+done < <(git branch --format='%(refname:short)')
+
+# Volver a la rama original
+git switch "$current_branch" >/dev/null
+
+echo "✅ Todas las ramas locales con upstream han sido sincronizadas con sus ramas remotas."
