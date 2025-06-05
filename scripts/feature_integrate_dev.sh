@@ -59,15 +59,27 @@ echo "🔄 Cambiando a '$DEVELOP_BRANCH' y actualizándola..."
 git checkout "$DEVELOP_BRANCH"
 git pull origin "$DEVELOP_BRANCH"
 
-# 5. Fusionar la rama feature en develop
-echo "🔗 Fusionando '$current_branch' en '$DEVELOP_BRANCH'..."
-git merge --no-ff "$current_branch" -m "Merge feature: $current_branch"
+# 5. Obtener el último mensaje de commit de la rama feature
+last_commit_msg=$(git log -1 --pretty=format:%s "$current_branch")
 
-# 6. Pushear develop
+# 6. Fusionar la rama feature en develop con mensaje personalizado
+merge_msg="Merge feature: $current_branch
+
+Último commit en $current_branch:
+$last_commit_msg"
+
+echo "🔗 Fusionando '$current_branch' en '$DEVELOP_BRANCH' con mensaje:"
+echo "-----------------------------------"
+echo "$merge_msg"
+echo "-----------------------------------"
+
+git merge --no-ff "$current_branch" -m "$merge_msg"
+
+# 7. Pushear develop
 echo "⏫ Haciendo push de '$DEVELOP_BRANCH'..."
 git push origin "$DEVELOP_BRANCH"
 
-# 7. Eliminar la rama feature local y remotamente
+# 8. Eliminar la rama feature local y remotamente
 read -p "¿Eliminar la rama '$current_branch' local y remotamente? (s/n): " delete_confirm
 if [[ "$delete_confirm" == "s" ]]; then
   echo "🗑️ Eliminando rama '$current_branch' localmente..."

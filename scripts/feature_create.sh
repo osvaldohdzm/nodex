@@ -38,7 +38,7 @@ if ! git diff-index --quiet HEAD --; then
     git add .
     git commit -m "$commit_message"
     git push # Asumimos que queremos pushear los cambios en la rama actual
-  elif [[ "$commit_changes" == "n" ]];
+  elif [[ "$commit_changes" == "n" ]]; then
     read -p "¿Deseas guardar temporalmente con git stash? (s/n): " stash_changes
     if [[ "$stash_changes" == "s" ]]; then
         git stash push -m "WIP: Stash antes de crear $new_branch"
@@ -63,8 +63,3 @@ git checkout -b "$new_branch"
 
 echo "✅ Se ha creado y cambiado a la nueva rama: $new_branch"
 echo "👉 Puedes empezar a trabajar. Recuerda hacer push para publicarla: git push -u origin $new_branch"
-
-# Opcional: volver a la rama original si no era dev
-# if [[ "$current_branch_before_switch" != "$DEVELOP_BRANCH" ]]; then
-#   git checkout "$current_branch_before_switch"
-# fi
