@@ -1,87 +1,74 @@
-import React, { memo, useState } from 'react';
+import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { Building, ImagePlus } from 'lucide-react';
 import classnames from 'classnames';
+import { Building2, Upload } from 'lucide-react';
 
-export interface CompanyNodeData {
+interface CompanyNodeData {
   name: string;
   location?: string;
   logoUrl?: string;
+  status?: 'normal' | 'warning' | 'alert' | 'delayed';
   onImageUpload?: (nodeId: string, file: File) => void;
   isHighlighted?: boolean;
   details?: any;
 }
 
-const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, id, selected }) => {
-  const [logoSrc, setLogoSrc] = useState<string | undefined>(data.logoUrl);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleImageError = () => {
-    setLogoSrc(undefined);
-  };
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    // ... (tu lógica de subida de imagen)
-    if (event.target.files && event.target.files[0] && data.onImageUpload) {
-      const file = event.target.files[0];
-      setIsUploading(true);
-      try {
-        await data.onImageUpload(id, file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setLogoSrc(reader.result as string);
-        };
-        reader.readAsDataURL(file);
-      } catch (error) {
-        console.error("Logo upload failed:", error);
-      } finally {
-        setIsUploading(false);
-      }
+const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, selected, id }) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && data.onImageUpload) {
+      data.onImageUpload(id, file);
     }
   };
-  
+
   const isSelectedOrHighlighted = selected || data.isHighlighted;
 
   return (
     <div
       className={classnames(
-        'company-node w-44 p-3 rounded-lg flex flex-col items-center justify-center text-center relative transition-all duration-200',
-        'bg-node-bg border-2', // Usar variables CSS
-        isSelectedOrHighlighted ? 'border-node-border-selected shadow-node-selected' : 'border-node-border',
+        'company-node w-32 h-32 p-2 rounded-full flex flex-col items-center justify-center text-center relative transition-all duration-200',
+        'bg-node-bg border-2',
+        {
+          'border-node-border-selected shadow-node-selected': isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
+          'border-node-border': !isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
+          'node-alert-style': data.status === 'alert',
+          'node-warning-style': data.status === 'warning',
+        }
       )}
-      style={{
-        // @ts-ignore
-        '--tw-shadow-color': isSelectedOrHighlighted ? 'var(--accent-cyan)' : 'transparent',
-        boxShadow: isSelectedOrHighlighted ? 'var(--node-shadow-selected)' : '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)'
-      }}
     >
-      <Handle type="target" position={Position.Left} className="react-flow__handle" />
+      <Handle type="target" position={Position.Top} className="react-flow__handle" />
       
-      <div className="w-12 h-12 mb-2 rounded-md flex items-center justify-center bg-black/20 border border-white/10 relative group">
-        {logoSrc ? (
-          <img src={logoSrc} alt={data.name} className="w-full h-full object-contain p-1 rounded-md" onError={handleImageError} />
+      <div className="relative mb-1">
+        {data.logoUrl ? (
+          <img
+            src={data.logoUrl}
+            alt={data.name}
+            className="w-16 h-16 rounded-full object-cover border-2 border-node-border" /* Changed to rounded-full and adjusted size */
+          />
         ) : (
-          <Building size={28} className="text-node-company-icon-color" /> // Usar variable CSS para color de icono
+          <div className="w-16 h-16 rounded-full bg-node-bg border-2 border-node-border flex items-center justify-center"> {/* Changed to rounded-full and adjusted size */}
+            <Building2 size={32} className="text-node-icon-color" />
+          </div>
         )}
         {data.onImageUpload && (
-          <label
-            htmlFor={`upload-logo-${id}`}
-            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-md"
-          >
-            <ImagePlus size={20} className="text-white" />
+          <label className="absolute bottom-0 right-0 bg-node-bg rounded-full p-1 cursor-pointer hover:bg-node-bg-hover transition-colors">
+            <Upload size={14} className="text-node-icon-color" />
             <input
-              type="file" id={`upload-logo-${id}`} accept="image/*" className="hidden"
-              onChange={handleFileChange} disabled={isUploading}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
             />
           </label>
         )}
       </div>
 
-      <div className="text-sm font-semibold text-text-primary truncate w-full">{data.name}</div>
-      {data.location && <div className="text-xs text-text-secondary truncate w-full">{data.location}</div>}
+      <div className="node-content mt-1">
+        <h3 className="text-xs font-semibold text-node-text">{data.name}</h3>
+        {/* data.location and data.details removed for circular view */}
+      </div>
 
-      <Handle type="source" position={Position.Right} className="react-flow__handle" />
-      {isUploading && <div className="absolute bottom-1 left-1 text-xs text-accent-cyan">Cargando...</div>}
+      <Handle type="source" position={Position.Bottom} className="react-flow__handle" />
     </div>
   );
 };

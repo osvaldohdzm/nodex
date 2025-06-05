@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# 🧼 Limpia contenedores
 echo "🧹 Limpiando contenedores..."
 ./scripts/clean_containters.sh 
 
@@ -13,24 +12,25 @@ if [[ -z "$current_branch" ]]; then
   exit 1
 fi
 
-# Validar que la rama actual sea feature/* o hotfix/*
-if [[ ! "$current_branch" =~ ^(feature|hotfix)/ ]]; then
-  echo "❌ Solo puedes iniciar pruebas desde ramas 'feature/*' o 'hotfix/*'. Estás en '$current_branch'."
+# Extraer nombre del feature para test
+if [[ "$current_branch" =~ ^(feature|hotfix)/(.+)$ ]]; then
+  feature_id="${BASH_REMATCH[2]}"
+elif [[ "$current_branch" =~ ^test/([^/]+)/test[0-9]{2}$ ]]; then
+  feature_id="${BASH_REMATCH[1]}"
+else
+  echo "❌ Rama no válida. Usa 'feature/*', 'hotfix/*' o ramas 'test/xxx/testNN'."
   exit 1
 fi
 
-# Verificar si ya existe alguna rama test para esta rama base y enumerarla
-base_branch_name="${current_branch//\//-}"
-existing_tests=($(git branch --list "test/${base_branch_name}-*"))
-count=${#existing_tests[@]}
-
-# Crear nuevo índice para la rama test, con 3 dígitos
-new_index=$(printf "%02d" $((count + 1)))
-test_branch="test/${base_branch_name}-${new_index}"
+# Buscar ramas previas de test
+test_prefix="test/${feature_id}/test"
+existing_tests=$(git branch --list "${test_prefix}[0-9][0-9]" | sed 's/.*test\([0-9][0-9]\)$/\1/' | sort -n)
+last_index=$(echo "$existing_tests" | tail -n 1 || echo "00")
+next_index=$(printf "%02d" $((10#$last_index + 1)))
+test_branch="test/${feature_id}/test${next_index}"
 
 echo "💾 Guardando cambios en '$current_branch'..."
 
-# Verificar si hay cambios sin commit
 if git diff-index --quiet HEAD --; then
   echo "ℹ️ No hay cambios para hacer commit."
 else
@@ -40,18 +40,16 @@ else
   git commit -m "$commit_message"
 fi
 
-# Crear rama test nueva
-echo "🧪 Creando rama temporal de prueba '$test_branch'..."
+echo "🧪 Creando rama de prueba '$test_branch'..."
 git checkout -b "$test_branch"
 
-# Ejecutar pruebas
 echo "🚀 Ejecutando pruebas..."
 if ./scripts/start.sh; then
   echo "✅ Pruebas completadas con éxito en '$test_branch'."
 else
-  echo "❌ Pruebas fallidas en '$test_branch'. Revisa el log."
+  echo "❌ Pruebas fallidas en '$test_branch'."
   exit 1
 fi
 
-echo "📌 Estás en la rama de pruebas '$test_branch'. Puedes continuar aquí o regresar a '$current_branch' luego con:"
+echo "📌 Estás en '$test_branch'. Puedes volver con:"
 echo "   git checkout $current_branch"
