@@ -11,12 +11,15 @@ echo ""
 
 read -p "¿Cómo deseas llamar a la nueva feature? (solo el nombre, sin 'feature/'): " feature_name
 
-if [[ -z "$feature_name" ]]; then
+# Sanitizar: reemplazar espacios por guiones medios
+feature_name_sanitized=$(echo "$feature_name" | tr ' ' '-')
+
+if [[ -z "$feature_name_sanitized" ]]; then
   echo "❌ El nombre de la feature no puede estar vacío."
   exit 1
 fi
 
-new_branch="feature/$feature_name"
+new_branch="feature/$feature_name_sanitized"
 
 # Verificar si la rama ya existe local o remotamente
 if git rev-parse --verify "refs/heads/$new_branch" > /dev/null 2>&1; then
@@ -34,7 +37,10 @@ if ! git diff-index --quiet HEAD --; then
   echo "⚠️ Tienes cambios locales sin guardar en la rama actual ($(git branch --show-current))."
   read -p "¿Deseas hacer commit de estos cambios antes de continuar? (s/n): " commit_changes
   if [[ "$commit_changes" == "s" ]]; then
-    read -p "Mensaje del commit: " commit_message
+    read -p "Mensaje del commit (por ejemplo: 'feat: agrega nueva feature $feature_name_sanitized'): " commit_message
+    if [[ -z "$commit_message" ]]; then
+      commit_message="feat: agrega nueva feature $feature_name_sanitized"
+    fi
     git add .
     git commit -m "$commit_message"
     git push # Asumimos que queremos pushear los cambios en la rama actual
