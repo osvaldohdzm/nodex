@@ -9,6 +9,9 @@ export interface DemoNodeData {
   title?: string;
   location?: string;
   rawJsonData?: any; // To store the complete JSON data for the person
+  imageUrl?: string; // For profile image
+  onImageUpload?: (nodeId: string, file: File) => void; // For image upload functionality
+  isHighlighted?: boolean; // For highlighting nodes
 }
 
 export interface JsonData {

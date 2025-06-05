@@ -1,7 +1,33 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./src/**/*.{js,jsx,ts,tsx,css}', './public/index.html'],
+  content: [
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        'node-bg': 'var(--node-bg)',
+        'node-border': 'var(--node-border)',
+        'node-border-selected': 'var(--node-border-selected)',
+        'node-text': 'var(--node-text)',
+        'node-text-secondary': 'var(--node-text-secondary)',
+        'node-icon-color': 'var(--node-icon-color)',
+        'accent-cyan': 'var(--accent-cyan)',
+        'accent-cyan-darker': 'var(--accent-cyan-darker)',
+        'accent-pink': 'var(--accent-pink)',
+        'accent-green': 'var(--accent-green)',
+        'bg-primary': 'var(--bg-primary)',
+        'bg-secondary': 'var(--bg-secondary)',
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'input-bg': 'var(--input-bg)',
+        'input-border': 'var(--input-border)',
+      },
+    },
   },
-  plugins: [],
-};
+  plugins: [
+    require('tailwind-scrollbar'),
+  ],
+}
