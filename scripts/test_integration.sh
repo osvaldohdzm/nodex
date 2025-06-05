@@ -2,14 +2,8 @@
 set -euo pipefail
 
 REMOTE="origin"
-TARGET_BRANCH="dev"
 
-# 1. Actualizar la rama corporativa
-echo "🔄 Cambiando a rama destino '$TARGET_BRANCH' y actualizándola..."
-git checkout "$TARGET_BRANCH"
-git pull "$REMOTE" "$TARGET_BRANCH"
-
-# 2. Listar ramas test/* y ramas con sufijo *-test
+# 1. Detectar ramas de prueba (test/* o *-test)
 mapfile -t test_branches < <(
   {
     git branch --list "test/*"
@@ -27,17 +21,14 @@ for i in "${!test_branches[@]}"; do
   printf "  [%d] %s\n" "$((i+1))" "${test_branches[i]}"
 done
 
-# 3. Selección automática: toma la primera rama test disponible
+# 2. Selección automática: primera rama test
 selected_test="${test_branches[0]}"
 echo "🟢 Seleccionando automáticamente la primera rama de prueba: '$selected_test'"
 
-# 4. Detectar rama base dependiendo del tipo de rama de prueba
-
+# 3. Determinar la rama base
 if [[ "$selected_test" == test/* ]]; then
-  # Caso test/xxx -> rama base es el sufijo después de "test/"
   base_branch="${selected_test#test/}"
 elif [[ "$selected_test" == *-test ]]; then
-  # Caso xxx-test -> rama base es la parte antes de "-test"
   base_branch="${selected_test%-test}"
 else
   echo "❌ El formato de la rama '$selected_test' no es reconocido para derivar rama base."
@@ -46,50 +37,25 @@ fi
 
 echo "🔍 Rama base detectada: '$base_branch'"
 
-# Validar que la rama base exista local o remotamente
+# 4. Seguridad: evitar merges directos en main/master
+if [[ "$base_branch" == "main" || "$base_branch" == "master" ]]; then
+  echo "⚠️ Integración directa en '$base_branch' desde una rama de prueba no está permitida. Abortando."
+  exit 1
+fi
+
+# 5. Asegurar que la rama base existe (local o remota)
 if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
   echo "⚠️ La rama base '$base_branch' no existe localmente. Intentando obtenerla desde remoto..."
-  if ! git fetch "$REMOTE" "$base_branch":"$base_branch"; then
+  if ! git fetch "$REMOTE" "$base_branch:$base_branch"; then
     echo "❌ No se pudo obtener la rama base '$base_branch'. Abortando."
     exit 1
   fi
 fi
 
-# 5. Cambiar a la rama test seleccionada
-git checkout "$selected_test"
+# 6. Actualizar rama base
+echo "🔄 Cambiando a rama base '$base_branch' y actualizándola..."
+git checkout "$base_branch"
+git pull "$REMOTE" "$base_branch"
 
-# 6. Actualizar rama test con base_branch (merge)
-echo "🔄 Integrando rama base '$base_branch' en '$selected_test'..."
-if ! git merge --no-ff "$base_branch" -m "Merge rama base $base_branch en $selected_test"; then
-  echo "❌ Conflictos al actualizar '$selected_test' con '$base_branch'. Resuélvelos manualmente."
-  git merge --abort
-  exit 1
-fi
-
-# Push rama test actualizada
-git push "$REMOTE" "$selected_test"
-
-# 7. Cambiar a rama destino
-git checkout "$TARGET_BRANCH"
-
-# 8. Integrar rama test en rama destino
-echo "🔀 Integrando '$selected_test' en '$TARGET_BRANCH'..."
-if ! git merge --no-ff "$selected_test" -m "Merge rama de prueba $selected_test en $TARGET_BRANCH"; then
-  echo "❌ Conflictos al integrar '$selected_test' en '$TARGET_BRANCH'. Resuélvelos manualmente."
-  git merge --abort
-  exit 1
-fi
-
-# 9. Push final
-git push "$REMOTE" "$TARGET_BRANCH"
-
-# 10. Eliminar automáticamente la rama test local y remotamente
-echo "🗑️ Eliminando rama de prueba '$selected_test' local y remotamente..."
-git branch -d "$selected_test" || git branch -D "$selected_test"
-git push "$REMOTE" --delete "$selected_test"
-echo "✅ Rama '$selected_test' eliminada."
-
-# 11. Asegurar que estamos en la rama target al final
-git checkout "$TARGET_BRANCH"
-
-echo "🎉 Integración completada exitosamente en '$TARGET_BRANCH'."
+# 7. Cambiar a la rama test
+git checkout "$sel
