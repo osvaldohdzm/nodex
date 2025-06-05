@@ -1,7 +1,7 @@
-import React, { memo } from 'react';
+import React, { memo, useRef } from 'react';
 import { Handle, Position, NodeProps, useStore } from 'reactflow';
 import classnames from 'classnames';
-import { User, Upload } from 'lucide-react';
+import { User, UploadCloud } from 'lucide-react';
 import { DemoNodeData } from '../../types/graph';
 
 // Hook para saber si se está conectando y desde qué nodo/handle
@@ -19,11 +19,20 @@ const targetHandleClasses = `${handleBaseClasses} !bg-accent-green hover:!scale-
 const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nodeId }) => {
   const { isConnecting, connectionStartHandleNodeId } = useIsConnecting();
   const isTargetCandidate = isConnecting && connectionStartHandleNodeId !== nodeId;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIconClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && data.onImageUpload) {
       data.onImageUpload(nodeId, file);
+    }
+    // Reset input value to allow uploading the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -117,19 +126,40 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         style={{ zIndex: 100 }}
       />
       
-      <div className="relative mb-2">
+      {/* Profile image container with hover effect */}
+      <div className="relative mb-2 group">
         {data.imageUrl ? (
-          <img src={data.imageUrl} alt={data.name} className="w-16 h-16 rounded-full object-cover border-2 border-node-border" />
+          <img
+            src={data.imageUrl}
+            alt={data.name}
+            className="w-16 h-16 rounded-full object-cover border-2 border-node-border transition-all duration-200 group-hover:border-accent-cyan"
+          />
         ) : (
-          <div className="w-16 h-16 rounded-full bg-input-bg border-2 border-node-border flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-input-bg border-2 border-node-border flex items-center justify-center transition-all duration-200 group-hover:border-accent-cyan">
             <User size={32} className="text-node-icon-color" />
           </div>
         )}
+        {/* Upload overlay that appears on hover */}
         {data.onImageUpload && (
-          <label className="absolute -bottom-1 -right-1 bg-node-bg rounded-full p-1 cursor-pointer hover:bg-node-bg-hover transition-colors shadow-md">
-            <Upload size={14} className="text-node-icon-color" />
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-          </label>
+          <>
+            <div 
+              onClick={handleIconClick}
+              className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full transition-all duration-200 cursor-pointer"
+              title="Subir imagen de perfil"
+            >
+              <UploadCloud 
+                size={24} 
+                className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              />
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/png, image/jpeg"
+              className="hidden"
+            />
+          </>
         )}
       </div>
 

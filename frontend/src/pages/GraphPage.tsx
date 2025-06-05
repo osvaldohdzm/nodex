@@ -57,6 +57,8 @@ export const GraphPage: React.FC = () => {
   const uploadPanelRef = useRef<HTMLDivElement>(null);
   const [uploadPanelActualHeight, setUploadPanelActualHeight] = useState(0);
 
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
+
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
   // Estilos para las aristas
@@ -130,10 +132,67 @@ export const GraphPage: React.FC = () => {
     [setNodes, setEdges, reactFlowInstance, nodes, edges]
   );
 
+  // Function to handle image uploads for nodes
+  const handleImageUploadForNode = useCallback((nodeId: string, file: File) => {
+    console.log(`Uploading image for node ${nodeId}:`, file.name);
+    
+    // Revoke previous URL if it exists for this node
+    if (uploadedImageUrls[nodeId]) {
+      URL.revokeObjectURL(uploadedImageUrls[nodeId]);
+    }
+
+    const newImageUrl = URL.createObjectURL(file);
+    setUploadedImageUrls(prev => ({ ...prev, [nodeId]: newImageUrl }));
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              imageUrl: newImageUrl,
+            },
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes, uploadedImageUrls]);
+
+  // Cleanup object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      Object.values(uploadedImageUrls).forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [uploadedImageUrls]);
+
+  // Cleanup object URLs when nodes are removed
+  useEffect(() => {
+    const currentNodeImageUrls = new Set(
+      nodes.map(node => node.data.imageUrl).filter(Boolean) as string[]
+    );
+    const urlsToRevoke = Object.entries(uploadedImageUrls)
+      .filter(([nodeId, url]) => !currentNodeImageUrls.has(url))
+      .map(([nodeId, url]) => url);
+
+    if (urlsToRevoke.length > 0) {
+      urlsToRevoke.forEach(url => URL.revokeObjectURL(url));
+      setUploadedImageUrls(prev => {
+        const newState = { ...prev };
+        Object.entries(newState).forEach(([nodeId, url]) => {
+          if (urlsToRevoke.includes(url)) {
+            delete newState[nodeId];
+          }
+        });
+        return newState;
+      });
+    }
+  }, [nodes, uploadedImageUrls]);
+
   const handleJsonUploaded = useCallback(
     (uploadedData: JsonData, uploadedFileName: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
       setFileName(uploadedFileName);
-
       const { node: newSingleNode } = processJsonToSinglePersonNode(uploadedData, nodes);
 
       if (!newSingleNode) {
@@ -141,16 +200,39 @@ export const GraphPage: React.FC = () => {
         return;
       }
       
+      // Add the image upload callback to the node data
+      const nodeWithUploadCallback = {
+        ...newSingleNode,
+        data: {
+          ...newSingleNode.data,
+          onImageUpload: handleImageUploadForNode,
+        },
+      };
+
       if (mode === 'overwrite') {
-        animateGraphLoad([newSingleNode], [], true); 
+        // When overwriting, ensure all nodes have the upload callback
+        const nodesToSet = [nodeWithUploadCallback].map(n => ({
+          ...n,
+          data: {
+            ...n.data,
+            onImageUpload: handleImageUploadForNode,
+          }
+        }));
+        animateGraphLoad(nodesToSet, [], true);
       } else {
         const nodeWithAnimation = { 
-          ...newSingleNode, 
-          className: `${newSingleNode.className || ''} node-appear`.trim() 
+          ...nodeWithUploadCallback, 
+          className: `${nodeWithUploadCallback.className || ''} node-appear`.trim() 
         };
         
-        setNodes((nds) => [...nds, nodeWithAnimation]);
-
+        setNodes((nds) => {
+          // When adding nodes, ensure all person nodes have the upload callback
+          const updatedNodes = [...nds, nodeWithAnimation];
+          return updatedNodes.map(n => 
+            n.type === 'person' ? { ...n, data: { ...n.data, onImageUpload: handleImageUploadForNode } } : n
+          );
+        });
+        
         const animationDuration = 1000; 
         const addedNodeId = nodeWithAnimation.id;
 
@@ -169,7 +251,7 @@ export const GraphPage: React.FC = () => {
         }, 150);
       }
     },
-    [nodes, animateGraphLoad, reactFlowInstance, setNodes]
+    [nodes, animateGraphLoad, reactFlowInstance, setNodes, handleImageUploadForNode]
   );
 
   useEffect(() => {
@@ -497,7 +579,13 @@ export const GraphPage: React.FC = () => {
           <div className="w-full h-full relative p-1 bg-bg-secondary rounded-md">
             <div className="graph-viewport-container" style={{ height: graphViewportHeight, marginTop: '1rem' }}>
               <ReactFlow
-                nodes={nodes}
+                nodes={nodes.map(node => ({
+                  ...node,
+                  data: {
+                    ...node.data,
+                    onImageUpload: node.type === 'person' ? handleImageUploadForNode : undefined,
+                  }
+                }))}
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
