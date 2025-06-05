@@ -21,17 +21,12 @@ echo "➡️ Rama actual: $current_branch"
 # 3. Determinar la rama de pruebas destino
 target_test_branch=""
 
-if [[ "$current_branch" == */test ]]; then
-  echo "ℹ️ Ya estás en una rama de pruebas ('$current_branch'). Los cambios se commitearán aquí."
-  target_test_branch="$current_branch"
-elif [[ "$current_branch" == *-test ]] && (git rev-parse --verify "${current_branch%-test}" >/dev/null 2>&1 || git rev-parse --verify "origin/${current_branch%-test}" >/dev/null 2>&1); then
+if [[ "$current_branch" == */test ]] || [[ "$current_branch" == *-test ]]; then
   echo "ℹ️ Ya estás en una rama de pruebas ('$current_branch'). Los cambios se commitearán aquí."
   target_test_branch="$current_branch"
 else
   # Si la rama actual tiene estructura jerárquica (ej: feature/foo)
   if [[ "$current_branch" == *"/"* ]]; then
-    # Verificar si la rama padre existe (para evitar error de refs anidadas)
-    parent_branch="${current_branch%/*}"
     # Para evitar conflictos, crear la rama de pruebas con guion en lugar de slash después de la rama padre
     target_test_branch="${current_branch}-test"
     echo "🆕 Rama de pruebas destino (rama jerárquica ajustada): $target_test_branch"
