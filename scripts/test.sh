@@ -94,7 +94,7 @@ else
 fi
 
 
-./script/start.sh
+./scripts/start.sh
 
 echo "🎉 Proceso completado. Tus cambios están ahora en la rama '$target_test_branch'."
 
