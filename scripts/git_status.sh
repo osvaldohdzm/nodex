@@ -89,13 +89,6 @@ if [[ -n "$CONTEXT_MESSAGE" ]]; then
     printf "  %s \033[0;33m%s\033[0m\n" "$ICON_CONTEXT" "$CONTEXT_MESSAGE"
 fi
 
-# --- Last Commit ---
-echo "-----------------------------------"
-IFS='|' read -r hash author message date <<< "$last_commit_raw"
-printf "${ICON_COMMIT} Last Commit:    %-10s\n" "$hash"
-printf "    ${ICON_AUTHOR} Author:       %-20s\n" "$author"
-printf "    ${ICON_MESSAGE} Message:      %-40s\n" "$message"
-printf "    ${ICON_DATE} Date:         %s\n" "$date"
 echo "-----------------------------------"
 
 # --- Branches ---
@@ -114,6 +107,18 @@ done <<< "$all_branches"
 if ! $found_current && [[ "$current_branch" =~ '\(HEAD detached at .* \)' ]]; then
   printf "  ${ICON_CURRENT_BRANCH} \033[1;33m%s\033[0m\n" "$current_branch" # Bold Yellow for detached
 fi
+echo "-----------------------------------"
+
+git log -5 --oneline
+
+
+# --- Last Commit ---
+echo "-----------------------------------"
+IFS='|' read -r hash author message date <<< "$last_commit_raw"
+printf "${ICON_COMMIT} Last Commit:    %-10s\n" "$hash"
+printf "    ${ICON_AUTHOR} Author:       %-20s\n" "$author"
+printf "    ${ICON_MESSAGE} Message:      %-40s\n" "$message"
+printf "    ${ICON_DATE} Date:         %s\n" "$date"
 echo "-----------------------------------"
 
 # --- Working Tree Status ---
@@ -152,3 +157,4 @@ else
 fi
 echo "==================================="
 echo ""
+
