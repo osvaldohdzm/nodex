@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- Inicio del Script test.sh (Versión Mejorada) ---
+# --- Inicio del Script test.sh (Versión Mejorada con Identificación de Feature/Hotfix/Dev) ---
 
 echo "🚀 Iniciando script de pruebas..."
 
@@ -24,18 +24,12 @@ echo "➡️ Rama actual: $current_branch"
 
 # 3. Determinar la rama de pruebas destino
 target_test_branch=""
-
 if [[ "$current_branch" == */test ]] || [[ "$current_branch" == *-test ]]; then
   echo "ℹ️ Ya estás en una rama de pruebas ('$current_branch'). Los cambios (si los hay) se usarán aquí."
   target_test_branch="$current_branch"
 else
-  if [[ "$current_branch" == *"/"* ]]; then
-    target_test_branch="${current_branch}-test"
-    echo "🆕 Rama de pruebas destino (rama jerárquica ajustada): $target_test_branch"
-  else
-    target_test_branch="${current_branch}-test"
-    echo "🆕 Rama de pruebas destino (rama raíz): $target_test_branch"
-  fi
+  target_test_branch="${current_branch}-test"
+  echo "🆕 Rama de pruebas destino: $target_test_branch"
 
   if git rev-parse --verify "$target_test_branch" >/dev/null 2>&1; then
     echo "⚠️ La rama de pruebas '$target_test_branch' ya existe localmente."
@@ -70,10 +64,23 @@ if [[ "$no_changes" != true ]]; then
   last_test_number="${last_test_number:-0}"
   next_test_number=$((last_test_number + 1))
 
-  # 6. Construir mensaje por defecto con incremento
-  default_commit_msg="Prueba $next_test_number"
+  # 6. Detectar nombre de la feature/hotfix/dev original
+  base_branch="${current_branch%-test}"
+  base_branch="${base_branch%/test}"
 
-  # 7. Pedir mensaje de commit al usuario
+  # Extraer nombre limpio (sin prefijo tipo feature/, hotfix/, etc.)
+  case "$base_branch" in
+    feature/*) short_name="${base_branch#feature/}" ;;
+    hotfix/*) short_name="${base_branch#hotfix/}" ;;
+    bugfix/*) short_name="${base_branch#bugfix/}" ;;
+    dev) short_name="dev" ;;
+    *) short_name="$base_branch" ;;
+  esac
+
+  echo "🧪 Estás probando la rama: '$short_name'"
+
+  # 7. Construir mensaje por defecto con nombre de la feature
+  default_commit_msg="Prueba $next_test_number de $short_name"
   read -rp "Mensaje para el commit (deja vacío para '$default_commit_msg'): " user_commit_msg
   commit_msg="${user_commit_msg:-$default_commit_msg}"
 

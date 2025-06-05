@@ -163,16 +163,43 @@ body, #root, .App {
   stroke: var(--edge-selected-color); /* Corregido */
 }
 
+/* React Flow handle styles */
 .react-flow__handle {
-  width: 8px !important;
-  height: 8px !important;
-  background-color: var(--accent-cyan-darker) !important;
-  border: 1px solid var(--bg-secondary) !important;
-}
-.react-flow__handle-connecting {
-  background-color: var(--accent-cyan) !important;
+  width: 12px !important; /* Increased from 8px */
+  height: 12px !important; /* Increased from 8px */
+  border: 2px solid var(--bg-secondary) !important;
+  border-radius: 3px !important;
+  z-index: 100 !important; /* Ensure handles are above other elements */
+  transition: all 0.2s ease !important;
 }
 
+.react-flow__handle:hover {
+  transform: scale(1.2) !important;
+  box-shadow: 0 0 8px var(--accent-cyan) !important;
+}
+
+.react-flow__handle-connecting {
+  background-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 8px var(--accent-cyan) !important;
+}
+
+/* Ensure handles are clickable even when node is not hovered */
+.react-flow__node .react-flow__handle {
+  opacity: 0.8 !important;
+}
+
+.react-flow__node:hover .react-flow__handle,
+.react-flow__node.react-flow__node-dragging .react-flow__handle {
+  opacity: 1 !important;
+}
+
+/* Ensure connection line is visible */
+.react-flow__connection-path,
+.react-flow__connection-line {
+  stroke: var(--accent-cyan) !important;
+  stroke-width: 2.5 !important;
+  z-index: 90 !important;
+}
 
 @keyframes nodeEnterAnimation {
   0% {
