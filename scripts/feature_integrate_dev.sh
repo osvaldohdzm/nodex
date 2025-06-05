@@ -4,16 +4,14 @@ set -euo pipefail
 DEVELOP_BRANCH="dev"
 
 select_feature_branch() {
-  echo "🔍 No estás en una rama 'feature/*'. Listando ramas 'feature/*' disponibles (locales y remotas)..."
+  # Mensajes al stderr para no mezclar con la salida que se capturará
+  >&2 echo "🔍 No estás en una rama 'feature/*'. Listando ramas 'feature/*' disponibles (locales y remotas)..."
 
-  # Obtener ramas locales feature/*
   mapfile -t local_features < <(git branch --list 'feature/*' --sort=-committerdate | sed 's/^[* ]*//')
-
-  # Obtener ramas remotas feature/* (quitando prefijo origin/)
   mapfile -t remote_features < <(git branch -r --list 'origin/feature/*' --sort=-committerdate | sed 's|origin/||' | sed 's/^[ *]*//')
 
-  # Combinar locales y remotas sin duplicados
   feature_branches=("${local_features[@]}")
+
   for remote_branch in "${remote_features[@]}"; do
     if [[ ! " ${feature_branches[*]} " =~ " ${remote_branch} " ]]; then
       feature_branches+=("$remote_branch")
@@ -21,26 +19,26 @@ select_feature_branch() {
   done
 
   if [[ ${#feature_branches[@]} -eq 0 ]]; then
-    echo "❌ No hay ramas 'feature/*' disponibles para seleccionar."
+    >&2 echo "❌ No hay ramas 'feature/*' disponibles para seleccionar."
     exit 1
   elif [[ ${#feature_branches[@]} -eq 1 ]]; then
-    echo "✅ Sólo hay una rama feature disponible: ${feature_branches[0]}"
+    >&2 echo "✅ Sólo hay una rama feature disponible: ${feature_branches[0]}"
     echo "${feature_branches[0]}"
   else
-    echo "Selecciona la rama feature por número:"
+    >&2 echo "Selecciona la rama feature por número:"
     for i in "${!feature_branches[@]}"; do
-      echo "  $((i+1))) ${feature_branches[i]}"
+      >&2 echo "  $((i+1))) ${feature_branches[i]}"
     done
 
     while true; do
       read -rp "Número de la rama feature a usar: " selection
       if [[ "$selection" =~ ^[0-9]+$ ]] && (( selection >= 1 && selection <= ${#feature_branches[@]} )); then
         selected_branch="${feature_branches[selection-1]}"
-        echo "✅ Has seleccionado: $selected_branch"
+        >&2 echo "✅ Has seleccionado: $selected_branch"
         echo "$selected_branch"
         break
       else
-        echo "❌ Selección inválida. Por favor, ingresa un número válido."
+        >&2 echo "❌ Selección inválida. Por favor, ingresa un número válido."
       fi
     done
   fi
