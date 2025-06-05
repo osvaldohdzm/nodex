@@ -26,8 +26,8 @@ const PersonNode: React.FC<NodeProps<PersonNodeData>> = ({ data, selected, id })
   return (
     <div
       className={classnames(
-        'person-node w-32 h-32 p-2 rounded-full flex flex-col items-center justify-center text-center relative transition-all duration-200',
-        'bg-node-bg border-2',
+        'person-node w-40 p-3 rounded-lg flex flex-col items-center justify-center text-center relative transition-all duration-200',
+        'bg-node-bg border-2', // Usar variables CSS
         {
           'border-node-border-selected shadow-node-selected': isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
           'border-node-border': !isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
@@ -38,7 +38,7 @@ const PersonNode: React.FC<NodeProps<PersonNodeData>> = ({ data, selected, id })
     >
       <Handle type="target" position={Position.Top} className="react-flow__handle" />
       
-      <div className="relative mb-1">
+      <div className="relative mb-2">
         {data.imageUrl ? (
           <img
             src={data.imageUrl}
@@ -63,9 +63,23 @@ const PersonNode: React.FC<NodeProps<PersonNodeData>> = ({ data, selected, id })
         )}
       </div>
 
-      <div className="node-content mt-1">
-        <h3 className="text-xs font-semibold text-node-text">{data.name}</h3>
-        {/* data.title and data.details removed for circular view */}
+      <div className="node-content">
+        <h3 className="text-sm font-semibold text-node-text mb-1">{data.name}</h3>
+        {data.title && (
+          <p className="text-xs text-node-text-secondary mb-1">{data.title}</p>
+        )}
+        {data.details && (
+          <div className="text-xs text-node-text-secondary mt-1">
+            {Object.entries(data.details).map(([key, value]) => (
+              <div key={key} className="detail-item">
+                <span className="detail-label">{key}:</span>{' '}
+                <span className="detail-value">
+                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Handle type="source" position={Position.Bottom} className="react-flow__handle" />

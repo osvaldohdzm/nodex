@@ -1,14 +1,5 @@
 // frontend/src/pages/GraphPage.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  forceSimulation,
-  forceLink,
-  forceManyBody,
-  forceCenter,
-  forceCollide,
-  SimulationNodeDatum,
-  SimulationLinkDatum,
-} from 'd3-force';
 import ReactFlow, {
   Controls,
   Background,
@@ -44,19 +35,7 @@ const nodeTypes = {
   company: CompanyNode,
 };
 
-// Define D3 types
-interface D3Node extends SimulationNodeDatum {
-  id: string;
-  // Store original React Flow node data if needed, or just use id to map back
-}
-
-interface D3Link extends SimulationLinkDatum<D3Node> {
-  source: D3Node; // Changed from string to D3Node
-  target: D3Node; // Changed from string to D3Node
-}
-
 export const GraphPage: React.FC = () => {
-  const reactFlowWrapperRef = useRef<HTMLDivElement>(null);
   const { fitView, getNodes, getEdges } = useReactFlow();
   const demoLoadedRef = useRef(false); // Tracks if demo data has been loaded in the current session/state
   const animationCleanupRef = useRef<(() => void) | null>(null);
@@ -71,83 +50,37 @@ export const GraphPage: React.FC = () => {
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
-  const layoutGraph = useCallback((
-    nodesToLayout: Node[],
-    edgesToLayout: Edge[],
-    viewportWidth: number,
-    viewportHeight: number
-  ): Promise<Node[]> => {
-    return new Promise((resolve) => {
-      const d3Nodes: D3Node[] = nodesToLayout.map(n => ({
-        id: n.id,
-        x: n.position.x,
-        y: n.position.y,
-        fx: n.selected || n.dragging ? n.position.x : null,
-        fy: n.selected || n.dragging ? n.position.y : null,
-      }));
-
-      const d3NodesById = new Map(d3Nodes.map(node => [node.id, node]));
-
-      const d3Links: D3Link[] = edgesToLayout.map(e => ({
-        source: d3NodesById.get(e.source)!,
-        target: d3NodesById.get(e.target)!,
-      })).filter(l => l.source && l.target);
-
-      const simulation = forceSimulation(d3Nodes)
-        .force('link', forceLink(d3Links).id((d: any) => d.id).distance(180).strength(0.1))
-        .force('charge', forceManyBody().strength(-350))
-        .force('center', forceCenter(viewportWidth / 2, viewportHeight / 2))
-        .force('collision', forceCollide().radius(80).strength(0.7)); // Approx radius for w-32 (128px) nodes
-
-      const iterations = 150; // Number of simulation ticks
-      for (let i = 0; i < iterations; ++i) {
-        simulation.tick();
-      }
-      simulation.stop();
-
-      const layoutedNodes = nodesToLayout.map(originalNode => {
-        const d3Node = d3Nodes.find(dn => dn.id === originalNode.id);
-        return d3Node ? { ...originalNode, position: { x: d3Node.x!, y: d3Node.y! } } : originalNode;
-      });
-      resolve(layoutedNodes);
-    });
-  }, []);
-
-  const animateGraphLoad = useCallback(async (nodesToLoad: Node[], edgesToLoad: Edge[], isOverwrite: boolean = false) => {
+  const animateGraphLoad = useCallback(
+    (initialNodes: Node[], initialEdges: Edge[], isOverwrite: boolean = false) => {
       // Clear any existing animation cleanup
       if (animationCleanupRef.current) {
         animationCleanupRef.current();
         animationCleanupRef.current = null;
       }
 
-      let finalNodesForDisplay = nodesToLoad;
-      if (reactFlowWrapperRef.current && nodesToLoad.length > 0) {
-        const { clientWidth, clientHeight } = reactFlowWrapperRef.current;
-        if (clientWidth > 0 && clientHeight > 0) {
-          finalNodesForDisplay = await layoutGraph(nodesToLoad, edgesToLoad, clientWidth, clientHeight);
-        } else {
-          console.warn('React Flow wrapper has no dimensions for layouting.');
-        }
-      } else if (nodesToLoad.length > 0) {
-        console.warn('React Flow wrapper ref not available for layouting.');
+      // If overwriting, clear existing nodes/edges first
+      if (isOverwrite) {
+        setNodes([]);
+        setEdges([]);
       }
 
-      const animatedNodes = finalNodesForDisplay.map(node => ({
+      // Start with empty arrays if overwriting, otherwise use current state
+      const startNodes = isOverwrite ? [] : [...nodes];
+      const startEdges = isOverwrite ? [] : [...edges];
+
+      // Add new nodes/edges with animation classes
+      const newNodes = initialNodes.map((node) => ({
         ...node,
         className: `${node.className || ''} node-appear`.trim(),
       }));
-      const animatedEdges = edgesToLoad.map(edge => ({
+      const newEdges = initialEdges.map((edge) => ({
         ...edge,
         className: `${edge.className || ''} edge-appear`.trim(),
       }));
 
-      if (isOverwrite) {
-        setNodes(animatedNodes);
-        setEdges(animatedEdges);
-      } else {
-        setNodes(prev => [...prev, ...animatedNodes]);
-        setEdges(prev => [...prev, ...animatedEdges]);
-      }
+      // Set the new state
+      setNodes([...startNodes, ...newNodes]);
+      setEdges([...startEdges, ...newEdges]);
 
       // Schedule a cleanup to remove animation classes
       const timeoutId = setTimeout(() => {
@@ -173,7 +106,7 @@ export const GraphPage: React.FC = () => {
         fitView({ padding: 0.2, duration: 800 });
       }, 100);
     },
-    [setNodes, setEdges, fitView, layoutGraph]
+    [setNodes, setEdges, fitView, nodes, edges]
   );
 
   const processJsonToGraph = useCallback((data: any): { initialNodes: Node[]; initialEdges: Edge[] } => {
@@ -309,7 +242,7 @@ export const GraphPage: React.FC = () => {
           <h2 className="panel-title">Cargar Archivo JSON del Grafo</h2>
           <div className="upload-area" onClick={handleUploadAreaClick} role="button" tabIndex={0}>
             <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileSelected} />
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-upload-cloud mx-auto mb-4 text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-upload-cloud mx-auto mb-4 text-gray-500">
               <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
               <path d="M12 12v9"></path>
               <path d="m16 16-4-4-4 4"></path>
@@ -346,7 +279,7 @@ export const GraphPage: React.FC = () => {
             maxZoom={2}
             defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
             proOptions={{ hideAttribution: true }}
-            className="graph-viewport" ref={reactFlowWrapperRef}
+            className="graph-viewport"
           >
             <Background />
             <Controls />

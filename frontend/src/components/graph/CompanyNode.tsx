@@ -26,8 +26,8 @@ const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, selected, id 
   return (
     <div
       className={classnames(
-        'company-node w-32 h-32 p-2 rounded-full flex flex-col items-center justify-center text-center relative transition-all duration-200',
-        'bg-node-bg border-2',
+        'company-node w-48 p-3 rounded-lg flex flex-col items-center justify-center text-center relative transition-all duration-200',
+        'bg-node-bg border-2', // Usar variables CSS
         {
           'border-node-border-selected shadow-node-selected': isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
           'border-node-border': !isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
@@ -36,18 +36,18 @@ const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, selected, id 
         }
       )}
     >
-      <Handle type="target" position={Position.Top} className="react-flow__handle" />
+      <Handle type="target" position={Position.Left} className="react-flow__handle" />
       
-      <div className="relative mb-1">
+      <div className="relative mb-2">
         {data.logoUrl ? (
           <img
             src={data.logoUrl}
             alt={data.name}
-            className="w-16 h-16 rounded-full object-cover border-2 border-node-border" /* Changed to rounded-full and adjusted size */
+            className="w-20 h-20 rounded-lg object-cover border-2 border-node-border"
           />
         ) : (
-          <div className="w-16 h-16 rounded-full bg-node-bg border-2 border-node-border flex items-center justify-center"> {/* Changed to rounded-full and adjusted size */}
-            <Building2 size={32} className="text-node-icon-color" />
+          <div className="w-20 h-20 rounded-lg bg-node-bg border-2 border-node-border flex items-center justify-center">
+            <Building2 size={40} className="text-node-icon-color" />
           </div>
         )}
         {data.onImageUpload && (
@@ -63,12 +63,26 @@ const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, selected, id 
         )}
       </div>
 
-      <div className="node-content mt-1">
-        <h3 className="text-xs font-semibold text-node-text">{data.name}</h3>
-        {/* data.location and data.details removed for circular view */}
+      <div className="node-content">
+        <h3 className="text-sm font-semibold text-node-text mb-1">{data.name}</h3>
+        {data.location && (
+          <p className="text-xs text-node-text-secondary mb-1">{data.location}</p>
+        )}
+        {data.details && (
+          <div className="text-xs text-node-text-secondary mt-1">
+            {Object.entries(data.details).map(([key, value]) => (
+              <div key={key} className="detail-item">
+                <span className="detail-label">{key}:</span>{' '}
+                <span className="detail-value">
+                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="react-flow__handle" />
+      <Handle type="source" position={Position.Right} className="react-flow__handle" />
     </div>
   );
 };
