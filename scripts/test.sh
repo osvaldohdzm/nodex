@@ -20,7 +20,7 @@ else
   git add .
   read -p "Mensaje del commit (deja vacío para mensaje por defecto 'WIP: Save changes before test'): " commit_message
   if [[ -z "$commit_message" ]]; then
-    commit_message="WIP: Save changes on $current_branch"
+    commit_message="WIP: Save changes before test on $current_branch"
   fi
   git commit -m "$commit_message"
 fi

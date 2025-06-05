@@ -33,7 +33,6 @@ const nodeTypes = {
   company: CompanyNode,
 };
 
-// --- (JsonData and OnlineProfile interfaces remain the same) ---
 interface JsonData {
   _id?: { $oid: string };
   curp_online?: { data?: { registros?: Array<any> } };
@@ -48,13 +47,7 @@ interface JsonData {
   [key: string]: any;
 }
 
-interface OnlineProfile {
-  link: string;
-  title: string;
-  snippet?: string;
-  source: string;
-}
-// --- (defaultNodes and defaultEdges remain the same) ---
+// ... (OnlineProfile interface y defaultNodes/defaultEdges permanecen igual)
 const defaultNodes: Node[] = [
   { id: 'center-hub', type: 'company', position: { x: 400, y: 200 }, data: { name: 'Nodex Central Hub', location: 'Cyber Espacio', details: { info: 'Punto de partida de la demostración.'} }, className: 'node-appear' },
   { id: 'analyst-1', type: 'person', position: { x: 150, y: 50 }, data: { name: 'Analista Alpha', title: 'IA de Datos', details: { skill: 'Análisis Predictivo'} }, className: 'node-appear' },
@@ -70,11 +63,12 @@ const defaultEdges: Edge[] = [
   { id: 'e-hub-analyst2', source: 'center-hub', target: 'analyst-2', label: 'Coordina con', type: 'smoothstep', animated: true, className: 'edge-appear', style: { stroke: 'var(--accent-green)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-green)' } },
   { id: 'e-hub-datastreamB', source: 'center-hub', target: 'data-stream-B', label: 'Supervisa', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-purple)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-purple)' } },
   { id: 'e-analyst2-datastreamB', source: 'analyst-2', target: 'data-stream-B', label: 'Protege', type: 'smoothstep', className: 'edge-appear' },
-  { id: 'e-analyst1-analyst2', source: 'analyst-1', target: 'analyst-2', label: 'Colabora', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-orange)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-orange)' } },
+  { id: 'e-analyst1-analyst2', source: 'analyst-1', target: 'analyst-2', label: 'Colabora', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-orange)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-orange)' } },
 ];
 
+
 export const GraphPage: React.FC = () => {
-  const firstLoadFitViewDone = useRef(false);
+  // const firstLoadFitViewDone = useRef(false); // Ya no es necesario con fitView={false}
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
@@ -105,7 +99,7 @@ export const GraphPage: React.FC = () => {
           id: `user-e-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
           type: 'smoothstep', animated: false, style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-          className: 'edge-appear-static'
+          className: 'edge-appear-static' // Usar static para que no se anime cada vez que se conecta manualmente
         }, eds));
       }
     },
@@ -152,8 +146,14 @@ export const GraphPage: React.FC = () => {
     if (data && Object.keys(data).length > 0) {
         const baseId = data._id?.$oid || 'parsedData'; 
         addNodeSafely({ 
-            id: `${baseId}-main`, type: 'person', position: { x: 100, y: 100 }, 
-            data: { name: `Processed: ${baseId.substring(0,10)}`, title: 'Main Entity', details: { fullJson: data } } 
+            id: `${baseId}-main`, 
+            type: 'person', 
+            position: { x: 100, y: 100 }, 
+            data: { 
+                name: `Processed: ${baseId.substring(0,10)}`, 
+                title: 'Main Entity',
+                details: { fullJson: data }
+            } 
         });
 
         if (newNodes.length > 0 && data.buro1?.data?.[0]?.comercios?.[0]) {
@@ -161,8 +161,14 @@ export const GraphPage: React.FC = () => {
             const comercioName = (comercio.institucion || 'ComercioBuro1').replace(/\W/g, '');
             const comercioId = `${baseId}-buro-${comercioName}`;
             addNodeSafely({ 
-                id: comercioId, type: 'company', position: { x: 350, y: 100 }, 
-                data: { name: comercio.institucion || 'Buro Co.', location: 'Buró', details: { ...comercio, source: 'buro1' } } 
+                id: comercioId, 
+                type: 'company', 
+                position: { x: 350, y: 100 }, 
+                data: { 
+                    name: comercio.institucion || 'Buro Co.', 
+                    location: 'Buró',
+                    details: { ...comercio, source: 'buro1' }
+                } 
             });
             addEdgeInternal(`${baseId}-main`, comercioId, 'Rel. Buró');
         }
@@ -218,18 +224,21 @@ export const GraphPage: React.FC = () => {
       nextBatch();
     };
 
+    // Ligero retraso antes de empezar a añadir nodos para asegurar que el estado de "vacío" se renderice si es overwrite
     setTimeout(() => { 
         batchAdd(finalNodes, setNodes, Math.max(1, Math.floor(finalNodes.length / 15)), 15, () => {
             batchAdd(finalEdges, setEdges, Math.max(1, Math.floor(finalEdges.length / 15)), 15, () => {
                 setIsLoadingGraph(false);
                 console.log(`Animated graph load complete (${isOverwrite ? 'overwrite' : 'merge'}).`);
+                // Asegurarse de que fitView se llama después de que los nodos y aristas estén en el estado
+                // y potencialmente después de que las animaciones de entrada hayan comenzado/terminado.
+                // Un retraso un poco mayor aquí podría ser beneficioso.
                 setTimeout(() => {
-                    fitView({ duration: 600, padding: 0.15 });
-                    firstLoadFitViewDone.current = true; 
-                }, 100);
+                    fitView({ duration: 800, padding: 0.2 }); // Aumentado padding y duration un poco
+                }, 150); // Aumentado el retraso para fitView
             });
         });
-    }, 50);
+    }, isOverwrite ? 50 : 0); // Si es overwrite, un pequeño delay para que el clear se note
 
     animationCleanupRef.current = () => {
       if (nodeTimeoutId) clearTimeout(nodeTimeoutId);
@@ -242,8 +251,8 @@ export const GraphPage: React.FC = () => {
   const handleJsonUploaded = useCallback((uploadedData: JsonData, name?: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
     setJsonData(uploadedData);
     if (name) setFileName(name);
-    setIsDemoDataVisible(false);
-    firstLoadFitViewDone.current = false;
+    setIsDemoDataVisible(false); // Ocultar datos demo si se carga un JSON
+    demoLoadedRef.current = false; // Permitir que los datos demo se recarguen si es necesario después
     
     const { initialNodes, initialEdges } = processJsonToGraph(uploadedData);
 
@@ -256,21 +265,24 @@ export const GraphPage: React.FC = () => {
       }
       setIsLoadingGraph(false);
       console.warn("Uploaded JSON resulted in no nodes or edges.");
+      // Si no hay nodos, igual llamar a fitView para centrar el canvas vacío o el placeholder
+      setTimeout(() => fitView({ duration: 500, padding: 0.2 }), 100);
     }
-  }, [processJsonToGraph, animateGraphLoad, setNodes, setEdges]);
+  }, [processJsonToGraph, animateGraphLoad, setNodes, setEdges, fitView]);
 
   useEffect(() => {
-    if (isDemoDataVisible && !demoLoadedRef.current) {
+    // Cargar datos demo solo si es visible y no se ha cargado ya,
+    // Y si no hay datos JSON cargados por el usuario.
+    if (isDemoDataVisible && !demoLoadedRef.current && !jsonData) {
       console.log("Loading default demo data (useEffect).");
-      firstLoadFitViewDone.current = false;
       animateGraphLoad(
-        defaultNodes.map(n => ({...n, data: {...n.data}})),
-        defaultEdges.map(e => ({...e})),
-        true
+        defaultNodes.map(n => ({...n, data: {...n.data}})), // Asegurar copias nuevas
+        defaultEdges.map(e => ({...e})), // Asegurar copias nuevas
+        true // Sobrescribir
       );
       demoLoadedRef.current = true;
     }
-  }, [isDemoDataVisible, animateGraphLoad]);
+  }, [isDemoDataVisible, jsonData, animateGraphLoad]); // Añadir jsonData a las dependencias
 
   useEffect(() => {
     return () => {
@@ -291,12 +303,19 @@ export const GraphPage: React.FC = () => {
             className="graph-action-button overwrite-button"
             onClick={() => {
               if (jsonData) handleJsonUploaded(jsonData, fileName, 'overwrite');
-              else alert("Primero carga un archivo JSON para sobrescribir.");
+              else {
+                // Si no hay jsonData pero queremos mostrar demo:
+                setJsonData(null); // Limpiar cualquier jsonData previo
+                setFileName('');
+                setIsDemoDataVisible(true); // Activar flag de demo
+                demoLoadedRef.current = false; // Forzar recarga de demo
+                // El useEffect [isDemoDataVisible, jsonData, animateGraphLoad] se encargará
+              }
             }}
-            disabled={!jsonData || isLoadingGraph}
+            disabled={isLoadingGraph} // Habilitar siempre si no está cargando
           >
             <Replace size={18} className="button-icon" />
-            Sobrescribir Resultados
+            {jsonData ? "Sobrescribir con JSON" : "Cargar Demo"}
           </button>
           <button 
             className="graph-action-button merge-button"
@@ -314,7 +333,7 @@ export const GraphPage: React.FC = () => {
       </div>
 
       <div className="graph-viewport-container">
-        <div className="reactflow-wrapper"> 
+        <div className="reactflow-wrapper">
           {(nodes.length > 0 || isLoadingGraph) ? (
             <ReactFlow
               nodes={nodes}
@@ -323,13 +342,20 @@ export const GraphPage: React.FC = () => {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               nodeTypes={memoizedNodeTypes}
-              fitView={!firstLoadFitViewDone.current}
-              fitViewOptions={{ duration: 800, padding: 0.2 }}
+              fitView={false} // IMPORTANTE: Deshabilitar fitView automático por prop
+              fitViewOptions={{ duration: 800, padding: 0.2 }} // Opciones para fitView imperativo o el interno en resize
               minZoom={0.05}
               maxZoom={2.5}
               className="themed-flow"
               onlyRenderVisibleElements={true}
-              style={{ width: '100%', height: '100%' }}
+              // Probar si onPaneReady o onLayout es mejor para el primer fitView
+              // onLayout={() => {
+              //   console.log("ReactFlow onLayout triggered");
+              //   if (!demoLoadedRef.current && nodes.length > 0) { // Evitar múltiples llamadas
+              //     fitView({ duration: 600, padding: 0.2 });
+              //     demoLoadedRef.current = true; // Marcar que el ajuste inicial se hizo
+              //   }
+              // }}
             >
               <Controls position="bottom-right" />
               <MiniMap 
@@ -355,11 +381,9 @@ export const GraphPage: React.FC = () => {
             <div className="placeholder-message">
               <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
               <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
-              <p className="mb-2 text-sm">Utiliza el área de carga de arriba.</p>
-              {isDemoDataVisible && !demoLoadedRef.current && (
-                <p className="text-sm text-accent-green mt-2">Cargando datos de demostración...</p>
-              )}
-              {jsonData && nodes.length === 0 && (
+              <p className="mb-2 text-sm">Utiliza el área de carga de arriba o el botón "Cargar Demo".</p>
+              {/* Mensaje de carga de demo ya no es necesario aquí si el botón lo maneja */}
+              {jsonData && nodes.length === 0 && ( // Si se cargó JSON pero no generó nodos
                 <details className="json-details-viewer">
                   <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
                   <pre className="json-details-pre">
@@ -368,7 +392,7 @@ export const GraphPage: React.FC = () => {
                 </details>
               )}
             </div>
-          ) : null }
+          ) : null}
         </div>
       </div>
     </div>
