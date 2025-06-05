@@ -1,17 +1,5 @@
 import { Node, Edge, MarkerType } from 'reactflow';
-
-// Define interfaces for node data to ensure consistency
-interface DemoNodeData {
-  name: string;
-  typeDetails: string; // e.g., "CEO", "Main Server", "Project Alpha"
-  status: 'normal' | 'warning' | 'alert' | 'delayed';
-  icon?: string; // Placeholder for icon name or path, used by custom node
-  details?: Record<string, any>; // For additional metadata
-  // For PersonNode
-  title?: string;
-  // For CompanyNode
-  location?: string;
-}
+import { DemoNodeData } from '../types/graph';
 
 export const defaultNodes: Node<DemoNodeData>[] = [
   // People (mapped to PersonNode)
