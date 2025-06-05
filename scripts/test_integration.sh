@@ -16,7 +16,7 @@ if [ ${#test_branches[@]} -eq 0 ]; then
   exit 0
 fi
 
-echo "Ramas de prueba disponibles:"
+echo "🌿 Ramas de prueba disponibles:"
 for i in "${!test_branches[@]}"; do
   printf "  [%d] %s\n" "$((i+1))" "${test_branches[i]}"
 done
@@ -43,7 +43,7 @@ if [[ "$base_branch" == "main" || "$base_branch" == "master" ]]; then
   exit 1
 fi
 
-# 5. Asegurar que la rama base existe (local o remota)
+# 5. Asegurar que la rama base existe localmente o traerla del remoto
 if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
   echo "⚠️ La rama base '$base_branch' no existe localmente. Intentando obtenerla desde remoto..."
   if ! git fetch "$REMOTE" "$base_branch:$base_branch"; then
@@ -52,10 +52,25 @@ if ! git show-ref --verify --quiet "refs/heads/$base_branch"; then
   fi
 fi
 
-# 6. Actualizar rama base
+# 6. Cambiar a la rama base y actualizarla si tiene remoto
 echo "🔄 Cambiando a rama base '$base_branch' y actualizándola..."
 git checkout "$base_branch"
-git pull "$REMOTE" "$base_branch"
+if git ls-remote --exit-code "$REMOTE" "$base_branch" &>/dev/null; then
+  git pull "$REMOTE" "$base_branch"
+fi
 
-# 7. Cambiar a la rama test
-git checkout "$sel
+# 7. Fusionar la rama de prueba
+echo "🔀 Haciendo merge de '$selected_test' en '$base_branch'..."
+git merge --no-ff "$selected_test" -m "Merge rama de prueba '$selected_test' en '$base_branch'"
+
+# 8. Eliminar la rama de prueba local
+echo "🗑️ Eliminando rama de prueba local '$selected_test'..."
+git branch -d "$selected_test"
+
+# 9. (Opcional) Eliminar rama remota si existe
+if git ls-remote --exit-code "$REMOTE" "refs/heads/$selected_test" &>/dev/null; then
+  echo "🌐 Eliminando rama de prueba remota '$selected_test'..."
+  git push "$REMOTE" --delete "$selected_test"
+fi
+
+echo "✅ Integración completada exitosamente en '$base_branch'."

@@ -7,8 +7,11 @@ import ReactFlow, {
   useEdgesState,
   Node,
   Edge,
+  Connection,
   useReactFlow,
   ReactFlowProvider,
+  MarkerType,
+  addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
@@ -20,6 +23,7 @@ import { UploadCloud, Replace, Layers, Download } from 'lucide-react';
 import { JsonData, DemoNodeData } from '../types/graph';
 import { processJsonToSinglePersonNode } from '../utils/jsonProcessor';
 import JsonDetailModal from '../components/modals/JsonDetailModal';
+import RelationshipModal from '../components/modals/RelationshipModal';
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -38,11 +42,36 @@ export const GraphPage: React.FC = () => {
   const [selectedFileContent, setSelectedFileContent] = useState<JsonData | null>(null);
   const [selectedNodeForDetails, setSelectedNodeForDetails] = useState<Node<DemoNodeData> | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
+  const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
+  const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
   
   const [nodes, setNodes, onNodesChange] = useNodesState<DemoNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  const [height, setHeight] = useState(300); // Default height for the details section
+  const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
+  const [detailPanelHeight, setDetailPanelHeight] = useState(200); // Default height in px
+  const minDetailPanelHeight = 100;
+  const maxDetailPanelHeightPercentage = 0.7; // 70% of window height
+  const uploadPanelRef = useRef<HTMLDivElement>(null);
+  const [uploadPanelActualHeight, setUploadPanelActualHeight] = useState(0);
+
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+
+  // Estilos para las aristas
+  const defaultEdgeStyle = {
+    stroke: 'var(--edge-default-color)',
+    strokeWidth: 2,
+    transition: 'all 0.2s ease',
+  };
+
+  const selectedEdgeStyle = {
+    ...defaultEdgeStyle,
+    stroke: 'var(--accent-cyan)',
+    strokeWidth: 3,
+    filter: 'drop-shadow(0 0 2px var(--accent-cyan))',
+  };
 
   const animateGraphLoad = useCallback(
     (initialNodes: Node<DemoNodeData>[], initialEdges: Edge[], isOverwrite: boolean = false) => {
@@ -172,16 +201,45 @@ export const GraphPage: React.FC = () => {
   };
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node<DemoNodeData>) => {
-    console.log('Nodo clickeado:', node);
+    console.log('Nodo clickeado para detalles:', node);
     if (node.data?.rawJsonData) {
-      setSelectedNodeForDetails(node);
-      setIsDetailModalOpen(true);
+      setDetailsNode(node); // Show in bottom panel instead of modal
+      setIsDetailModalOpen(false); // Close modal if open
     } else {
       console.warn("El nodo clickeado no tiene rawJsonData:", node);
-      setSelectedNodeForDetails(null);
-      setIsDetailModalOpen(false);
+      setDetailsNode(null);
     }
   }, []);
+
+  const handleDetailPanelResize = (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
+    mouseDownEvent.preventDefault();
+    const startY = mouseDownEvent.clientY;
+    const startHeight = detailPanelHeight;
+    const maxAllowedHeight = window.innerHeight * maxDetailPanelHeightPercentage;
+
+    const doDrag = (mouseMoveEvent: MouseEvent) => {
+      const newHeight = startHeight - (mouseMoveEvent.clientY - startY);
+      setDetailPanelHeight(Math.max(minDetailPanelHeight, Math.min(newHeight, maxAllowedHeight)));
+    };
+
+    const stopDrag = () => {
+      document.removeEventListener('mousemove', doDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    };
+
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+  };
+
+  // Update upload panel height when content changes
+  useEffect(() => {
+    if (uploadPanelRef.current) {
+      setUploadPanelActualHeight(uploadPanelRef.current.offsetHeight);
+    }
+  }, [selectedFileContent]);
+
+  // Calculate available height for graph viewport
+  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - ${detailsNode ? detailPanelHeight : 0}px - 1rem - ${detailsNode ? '1rem' : '0px'})`;
 
   const handleExportPDF = async () => {
     const currentGraphNodes = reactFlowInstance.getNodes();
@@ -232,9 +290,149 @@ export const GraphPage: React.FC = () => {
     }
   };
 
+  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const startY = e.clientY;
+    const startHeight = height;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const newHeight = startHeight + (moveEvent.clientY - startY);
+      setHeight(Math.max(newHeight, 150)); // Minimum height of 150px
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const onConnect = useCallback((params: Connection) => {
+    console.log("--- onConnect START ---");
+    console.log("Params received:", params);
+
+    if (!params.source || !params.target) {
+      console.error("onConnect Error: Source or target ID is missing.", params);
+      return;
+    }
+
+    if (!params.sourceHandle || !params.targetHandle) {
+      console.error("onConnect Error: Source or target HANDLE is missing.", params);
+      return;
+    }
+
+    const sourceNode = nodes.find(n => n.id === params.source);
+    const targetNode = nodes.find(n => n.id === params.target);
+
+    console.log("Source Node:", sourceNode);
+    console.log("Target Node:", targetNode);
+
+    if (sourceNode?.type === 'person' && targetNode?.type === 'person') {
+      if (params.source === params.target) {
+        console.warn("No se permiten conexiones al mismo nodo.");
+        return;
+      }
+
+      // Verificar si ya existe una conexión entre estos nodos
+      const existingEdge = edges.find(
+        edge => 
+          (edge.source === params.source && edge.target === params.target) ||
+          (edge.source === params.target && edge.target === params.source)
+      );
+
+      if (existingEdge) {
+        console.log("Ya existe una conexión entre estos nodos, editando...");
+        setEditingEdge(existingEdge);
+        setPendingConnection(null);
+      } else {
+        console.log("Creando nueva conexión...");
+        setPendingConnection(params);
+        setEditingEdge(null);
+      }
+
+      setIsRelationshipModalOpen(true);
+    } else {
+      console.warn("Solo se permiten conexiones entre nodos de tipo 'person'");
+    }
+  }, [nodes, edges]);
+
+  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
+    if (editingEdge) {
+      // Actualizar arista existente
+      setEdges((eds) =>
+        eds.map((edge) =>
+          edge.id === editingEdge.id
+            ? {
+                ...edge,
+                label,
+                markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
+                style: defaultEdgeStyle,
+                className: 'edge-appear',
+              }
+            : edge
+        )
+      );
+      setEditingEdge(null);
+    } else if (pendingConnection) {
+      // Crear nueva arista
+      const newEdge: Edge = {
+        id: `edge-${pendingConnection.source}-${pendingConnection.target}-${Date.now()}`,
+        source: pendingConnection.source!,
+        target: pendingConnection.target!,
+        sourceHandle: pendingConnection.sourceHandle,
+        targetHandle: pendingConnection.targetHandle,
+        label,
+        type: 'smoothstep',
+        style: defaultEdgeStyle,
+        markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
+        className: 'edge-appear',
+      };
+
+      setEdges((eds) => addEdge(newEdge, eds));
+
+      // Animar la nueva arista
+      setTimeout(() => {
+        setEdges((eds) =>
+          eds.map((e) =>
+            e.id === newEdge.id
+              ? { ...e, className: 'edge-appear-static' }
+              : e
+          )
+        );
+      }, 1000);
+    }
+
+    setPendingConnection(null);
+    setIsRelationshipModalOpen(false);
+  }, [editingEdge, pendingConnection, setEdges]);
+
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    event.stopPropagation();
+    setEditingEdge(edge);
+    setPendingConnection(null);
+    setIsRelationshipModalOpen(true);
+  }, []);
+
+  const onElementsRemove = useCallback((elementsToRemove: (Node | Edge)[]) => {
+    const nodeIdsToRemove = new Set(elementsToRemove.filter(el => 'position' in el).map(el => el.id));
+    const edgeIdsToRemove = new Set(elementsToRemove.filter(el => 'source' in el).map(el => el.id));
+
+    if (nodeIdsToRemove.size > 0) {
+      setNodes((nds) => nds.filter((node) => !nodeIdsToRemove.has(node.id)));
+      // If a node is removed, also remove its details from the panel
+      if (detailsNode && nodeIdsToRemove.has(detailsNode.id)) {
+        setDetailsNode(null);
+      }
+    }
+    if (edgeIdsToRemove.size > 0) {
+      setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
+    }
+  }, [setNodes, setEdges, detailsNode]);
+
   return (
     <div className="graph-page-container">
-      <div className="upload-panel">
+      <div className="upload-panel" ref={uploadPanelRef}>
         <h2 className="panel-title">Cargar Archivo JSON de Persona</h2>
         <div 
           className="upload-area" 
@@ -292,20 +490,38 @@ export const GraphPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="graph-viewport-container">
+      <div 
+        className="graph-viewport-container"
+        style={{ height: graphViewportHeight, marginTop: '1rem' }}
+      >
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          nodeTypes={memoizedNodeTypes}
+          onConnect={onConnect}
           onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onNodesDelete={(nodesToDelete) => {
+            const nodeIds = new Set(nodesToDelete.map(n => n.id));
+            setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
+            if (detailsNode && nodeIds.has(detailsNode.id)) {
+              setDetailsNode(null);
+            }
+          }}
+          onEdgesDelete={(edgesToDelete) => {
+            const edgeIds = new Set(edgesToDelete.map(e => e.id));
+            setEdges((eds) => eds.filter((edge) => !edgeIds.has(edge.id)));
+          }}
+          nodeTypes={memoizedNodeTypes}
           fitView={false}
           minZoom={0.1}
           maxZoom={2.5}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           proOptions={{ hideAttribution: true }}
           className="graph-viewport"
+          connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
+          deleteKeyCode={['Backspace', 'Delete']}
         >
           <Background />
           <Controls />
@@ -319,14 +535,55 @@ export const GraphPage: React.FC = () => {
         </ReactFlow>
       </div>
       
-      <JsonDetailModal
-        isOpen={isDetailModalOpen}
+      {/* Resizable Details Panel */}
+      {detailsNode && detailsNode.data?.rawJsonData && (
+        <div 
+          className="bg-bg-secondary border-t-2 border-accent-cyan-darker relative"
+          style={{ height: `${detailPanelHeight}px`, marginTop: '1rem' }}
+        >
+          <div 
+            className="absolute -top-[5px] left-0 w-full h-[10px] bg-accent-cyan hover:bg-accent-cyan-darker cursor-ns-resize transition-colors flex items-center justify-center group"
+            onMouseDown={handleDetailPanelResize}
+            title="Arrastrar para redimensionar"
+          >
+            <div className="w-8 h-[3px] bg-bg-primary rounded-full group-hover:bg-bg-secondary transition-colors"></div>
+          </div>
+          <div className="p-4 h-full flex flex-col">
+            <h3 className="text-lg font-semibold text-accent-cyan mb-2 flex-shrink-0">
+              Detalles Completos de: {detailsNode.data.name}
+            </h3>
+            <pre className="flex-grow bg-input-bg text-text-secondary p-3 rounded overflow-auto text-xs scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-input-bg">
+              {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Relationship Modal */}
+      <RelationshipModal
+        isOpen={isRelationshipModalOpen}
         onClose={() => {
-          setIsDetailModalOpen(false);
-          setSelectedNodeForDetails(null);
+          setIsRelationshipModalOpen(false);
+          setPendingConnection(null);
+          setEditingEdge(null);
         }}
-        jsonData={selectedNodeForDetails?.data?.rawJsonData}
-        title={`Detalles Completos de: ${selectedNodeForDetails?.data?.name || 'Nodo Seleccionado'}`}
+        onSubmit={handleCreateOrUpdateRelationship}
+        sourceNodeName={
+          editingEdge
+            ? nodes.find(n => n.id === editingEdge.source)?.data?.name ?? 'Nodo Origen'
+            : pendingConnection
+              ? nodes.find(n => n.id === pendingConnection.source)?.data?.name ?? 'Nodo Origen'
+              : 'Nodo Origen'
+        }
+        targetNodeName={
+          editingEdge
+            ? nodes.find(n => n.id === editingEdge.target)?.data?.name ?? 'Nodo Destino'
+            : pendingConnection
+              ? nodes.find(n => n.id === pendingConnection.target)?.data?.name ?? 'Nodo Destino'
+              : 'Nodo Destino'
+        }
+        initialLabel={editingEdge?.label as string | undefined}
+        initialIsDirected={editingEdge ? editingEdge.markerEnd !== undefined : true}
       />
     </div>
   );
