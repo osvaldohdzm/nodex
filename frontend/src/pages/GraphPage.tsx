@@ -300,101 +300,81 @@ export const GraphPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="graph-page-container">
-      <div className="upload-panel">
-        <h2 className="panel-title">Cargar Archivo JSON del Grafo</h2>
-        <JsonUploadButton onJsonUploaded={(data, name) => handleJsonUploaded(data, name, 'overwrite')} />
-        {fileName && <p className="file-name-display">Archivo cargado: {fileName}</p>}
-        <div className="action-buttons-container">
-          <button 
-            className="graph-action-button overwrite-button"
-            onClick={() => {
-              if (jsonData) {
-                // If user JSON is loaded, "Sobrescribir con JSON"
-                handleJsonUploaded(jsonData, fileName, 'overwrite');
-              } else {
-                // If no user JSON, "Cargar Demo"
-                setJsonData(null); // Clear any potential stale jsonData
-                setFileName('');
-                setIsDemoDataVisible(true); // Set flag to show demo
-                demoLoadedRef.current = false; // Allow demo to reload via useEffect
-              }
-            }}
-            disabled={isLoadingGraph}
-          >
-            <Replace size={18} className="button-icon" />
-            {jsonData ? "Sobrescribir con JSON" : "Cargar Demo"}
-          </button>
-          <button 
-            className="graph-action-button merge-button"
-            onClick={() => {
-              if (jsonData) handleJsonUploaded(jsonData, fileName, 'merge');
-              else alert("Primero carga un archivo JSON para agregar/actualizar.");
-            }}
-            disabled={!jsonData || isLoadingGraph}
-          >
-            <Layers size={18} className="button-icon" />
-            Agregar y Actualizar
-          </button>
+    <div className="graph-page-center">
+      <div className="graph-page-container">
+        <div className="upload-panel">
+          <h2 className="panel-title">Cargar Archivo JSON del Grafo</h2>
+          <div className="upload-area">
+            <input type="file" accept=".json" className="hidden" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-upload-cloud mx-auto mb-4 text-gray-500">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+              <path d="M12 12v9"></path>
+              <path d="m16 16-4-4-4 4"></path>
+            </svg>
+            <p className="text-text-secondary">Drag & drop your JSON file here, or <span className="text-accent-cyan font-semibold">click to browse</span>.</p>
+          </div>
+          <p className="file-name-display">Archivo cargado: JSON_BRUJES.json</p>
+          <div className="action-buttons-container">
+            <button className="graph-action-button overwrite-button">Sobrescribir con JSON</button>
+            <button className="graph-action-button merge-button">Agregar y Actualizar</button>
+          </div>
         </div>
-        {isLoadingGraph && <p className="loading-text">Cargando grafo...</p>}
-      </div>
-
-      <div className="graph-viewport-container">
-        <div className="reactflow-wrapper">
-          {(nodes.length > 0 || isLoadingGraph) ? (
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              nodeTypes={memoizedNodeTypes}
-              fitView={false} // CRITICAL: Disable automatic fitView via prop
-              fitViewOptions={{ duration: 800, padding: 0.2 }} // Options for imperative fitView
-              minZoom={0.05}
-              maxZoom={2.5}
-              className="themed-flow"
-              onlyRenderVisibleElements={true}
-            >
-              <Controls position="bottom-right" />
-              <MiniMap 
-                nodeStrokeWidth={3}
-                nodeColor={(n) => {
-                  if (n.type === 'person') return 'var(--node-person-icon-color)';
-                  if (n.type === 'company') return 'var(--node-company-icon-color)';
-                  return 'var(--text-secondary)';
-                }}
-                nodeBorderRadius={2}
-                pannable 
-                zoomable
-                position="top-right"
-              />
-              <Background 
-                variant={BackgroundVariant.Lines} 
-                gap={30} 
-                size={0.5} 
-                color="var(--graph-lines-color)" 
-              />
-            </ReactFlow>
-          ) : !isLoadingGraph ? (
-            <div className="placeholder-message">
-              <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
-              <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
-              <p className="mb-2 text-sm">Utiliza el área de carga de arriba o el botón "Cargar Demo".</p>
-              {/* {isDemoDataVisible && !demoLoadedRef.current && ( // This message might be redundant if button handles demo loading
-                <p className="text-sm text-accent-green mt-2">Cargando datos de demostración...</p>
-              )} */}
-              {jsonData && nodes.length === 0 && ( // If JSON was loaded but resulted in no nodes
-                <details className="json-details-viewer">
-                  <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
-                  <pre className="json-details-pre">
-                    {JSON.stringify(jsonData, null, 2)}
-                  </pre>
-                </details>
-              )}
-            </div>
-          ) : null}
+        <div className="graph-viewport-container">
+          <div className="reactflow-wrapper">
+            {(nodes.length > 0 || isLoadingGraph) ? (
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={memoizedNodeTypes}
+                fitView={false} // CRITICAL: Disable automatic fitView via prop
+                fitViewOptions={{ duration: 800, padding: 0.2 }} // Options for imperative fitView
+                minZoom={0.05}
+                maxZoom={2.5}
+                className="themed-flow"
+                onlyRenderVisibleElements={true}
+              >
+                <Controls position="bottom-right" />
+                <MiniMap 
+                  nodeStrokeWidth={3}
+                  nodeColor={(n) => {
+                    if (n.type === 'person') return 'var(--node-person-icon-color)';
+                    if (n.type === 'company') return 'var(--node-company-icon-color)';
+                    return 'var(--text-secondary)';
+                  }}
+                  nodeBorderRadius={2}
+                  pannable 
+                  zoomable
+                  position="top-right"
+                />
+                <Background 
+                  variant={BackgroundVariant.Lines} 
+                  gap={30} 
+                  size={0.5} 
+                  color="var(--graph-lines-color)" 
+                />
+              </ReactFlow>
+            ) : !isLoadingGraph ? (
+              <div className="placeholder-message">
+                <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
+                <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
+                <p className="mb-2 text-sm">Utiliza el área de carga de arriba o el botón "Cargar Demo".</p>
+                {/* {isDemoDataVisible && !demoLoadedRef.current && ( // This message might be redundant if button handles demo loading
+                  <p className="text-sm text-accent-green mt-2">Cargando datos de demostración...</p>
+                )} */}
+                {jsonData && nodes.length === 0 && ( // If JSON was loaded but resulted in no nodes
+                  <details className="json-details-viewer">
+                    <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
+                    <pre className="json-details-pre">
+                      {JSON.stringify(jsonData, null, 2)}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

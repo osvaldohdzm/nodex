@@ -1,105 +1,88 @@
 /* frontend/src/styles/GraphPage.css */
 
 .graph-page-container {
-  @apply flex flex-col h-full w-full bg-bg-primary text-text-primary;
-  min-height: 0; /* Crucial for flex children that also grow */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 0;
 }
 
 .upload-panel {
-  @apply p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0;
-  background-color: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  margin: 1rem;
-  position: relative; /* Ensure it's part of the stacking context */
-  z-index: 10; /* Higher z-index for the upload panel */
+  padding: 1rem;
+  background-color: var(--bg-secondary);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  flex-shrink: 0;
 }
 
 .panel-title {
-  @apply text-xl font-semibold mb-4 text-accent-cyan text-center;
-  text-shadow: 0 0 8px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.5);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--accent-cyan);
+  text-align: center;
 }
 
 .file-name-display {
-  @apply text-xs text-text-secondary mt-3 text-center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+  text-align: center;
 }
 
 .action-buttons-container {
-  @apply flex flex-col sm:flex-row justify-center items-center gap-3 mt-4;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
 .graph-action-button {
-  @apply px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ease-in-out
-         flex items-center justify-center gap-2 focus:outline-none;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   background-color: var(--input-bg);
   color: var(--accent-cyan);
   border: 1px solid var(--accent-cyan-darker);
-  box-shadow: 0 0 10px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2),
-              inset 0 0 5px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.1);
-  text-shadow: 0 0 3px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.4);
+  box-shadow: 0 0 10px 0px rgba(0, 0, 0, 0.2);
 }
 
 .graph-action-button:hover:not(:disabled) {
   background-color: var(--accent-cyan-darker);
   color: var(--bg-primary);
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 15px 2px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.4),
-              inset 0 0 8px 1px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2);
+  box-shadow: 0 0 15px 2px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
 
-.graph-action-button:active:not(:disabled) {
-  transform: translateY(0px);
-  box-shadow: 0 0 5px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.3),
-              inset 0 0 3px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.15);
-}
-
 .graph-action-button:disabled {
-  @apply opacity-50 cursor-not-allowed;
+  opacity: 0.5;
+  cursor: not-allowed;
   background-color: var(--input-bg);
   color: var(--text-secondary);
   border-color: var(--input-border);
   box-shadow: none;
-  text-shadow: none;
-}
-
-.button-icon {
-  @apply mr-1.5;
-}
-
-/* Specific button colors if needed, but base is good for futuristic */
-.overwrite-button {
-  /* You can add specific overrides here if needed, e.g., a different accent color */
-  /* color: var(--accent-orange); */
-  /* border-color: var(--accent-orange); */
-}
-.overwrite-button:hover:not(:disabled) {
-  /* background-color: var(--accent-orange); */
-}
-
-.merge-button {
-  /* color: var(--accent-green); */
-  /* border-color: var(--accent-green); */
-}
-.merge-button:hover:not(:disabled) {
-  /* background-color: var(--accent-green); */
-}
-
-.loading-text {
-  @apply text-sm text-accent-cyan mt-3 animate-pulse text-center;
 }
 
 .graph-viewport-container {
-  @apply flex-grow relative rounded-lg shadow-lg;
+  flex-grow: 1;
+  margin-top: 1rem;
   background-color: var(--graph-bg);
-  min-height: 0; /* Essential for flex-grow to work correctly in nested flex scenarios */
-  margin: 0 1rem 1rem 1rem;
-  overflow: hidden; /* Crucial for ReactFlow's scrollable container */
-  z-index: 1; /* Lower z-index than the upload panel */
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* This div directly wraps ReactFlow and MUST have 100% height and width */
 .reactflow-wrapper {
   width: 100%;
   height: 100%;
@@ -111,18 +94,51 @@
 }
 
 .placeholder-message {
-  @apply absolute inset-0 flex flex-col items-center justify-center text-text-secondary text-lg p-6 text-center;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  padding: 1.5rem;
+  text-align: center;
   background-color: var(--bg-primary);
 }
 
 .json-details-viewer {
-  @apply w-full max-w-2xl mt-4 text-left;
+  width: 100%;
+  max-width: 40rem;
+  margin-top: 1rem;
+  text-align: left;
 }
 
 .json-details-summary {
-  @apply cursor-pointer text-accent-cyan hover:underline font-semibold;
+  cursor: pointer;
+  color: var(--accent-cyan);
+  text-decoration: underline;
+  font-weight: 600;
 }
 
 .json-details-pre {
-  @apply text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-80 mt-2 p-3 bg-input-bg rounded-md border border-input-border;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+  overflow: auto;
+  max-height: 20rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--input-bg);
+  border-radius: 0.5rem;
+  border: 1px solid var(--input-border);
+}
+
+.graph-page-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
 }
