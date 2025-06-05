@@ -1,15 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import DropdownMenu, { MenuItem } from './DropdownMenu';
 import { 
   FileText, Edit3, Eye, HelpCircle, Upload, Replace, Layers, Download, 
-  ZoomIn, ZoomOut, Maximize2, Info, Plus, FolderOpen, Save, Printer, Share2, 
-  Mail, History, Clock, Settings, Trash2, Copy, Scissors, File, 
-  FileSpreadsheet, FileImage, FileVideo, FileAudio, FileJson, FileSearch, 
-  User, Link2, Check, Undo2, Redo2, Clipboard, Moon, Play, Users as UsersIcon,
-  AlertTriangle, X, ChevronDown
+  ZoomIn, ZoomOut, Maximize2, User, Plus, FolderOpen, Save, Printer, 
+  Settings, Copy, Scissors, FileSearch, Check, Undo2, Redo2, Moon, Info
 } from 'lucide-react';
-
-const wrapIcon = (Icon: React.ComponentType<{ size?: string | number; className?: string }>) => (props: { size?: string | number; className?: string }) => <Icon {...props} />;
 
 interface TopMenuBarProps {
   onUploadClick: () => void;
@@ -25,208 +20,64 @@ interface TopMenuBarProps {
 }
 
 const TopMenuBar: React.FC<TopMenuBarProps> = ({
-  onUploadClick,
-  onOverwrite,
-  onMerge,
-  onExportPDF,
-  onZoomIn = () => {},
-  onZoomOut = () => {},
-  onFitView = () => {},
-  isFileLoaded,
-  isGraphEmpty,
-  fileName
+  onUploadClick, onOverwrite, onMerge, onExportPDF, onZoomIn, onZoomOut, onFitView, isFileLoaded, isGraphEmpty, fileName
 }) => {
-  // Define menu item type with proper submenu support
-  type MenuItemWithSubmenu = MenuItem & {
-    shortcut?: string;
-    submenu?: (Omit<MenuItem, 'submenu'> & { shortcut?: string; disabled?: boolean })[];
-  };
-
-  const fileMenuItems: (MenuItemWithSubmenu | { isSeparator: true })[] = [
-    { 
-      label: 'Nuevo', 
-      icon: wrapIcon(Plus),
-      disabled: false,
-      shortcut: 'Ctrl+N',
-      submenu: [
-        { label: 'Documento', icon: wrapIcon(File), disabled: true },
-        { label: 'Carpeta', icon: wrapIcon(FolderOpen), disabled: true },
-        { isSeparator: true },
-        { label: 'Documento', icon: wrapIcon(FileText), disabled: true },
-        { label: 'Hoja de cálculo', icon: wrapIcon(FileSpreadsheet), disabled: true },
-      ]
-    },
-    { 
-      label: 'Abrir', 
-      icon: wrapIcon(FolderOpen),
-      action: onUploadClick,
-      shortcut: 'Ctrl+O'
-    },
-    { 
-      label: 'Guardar', 
-      icon: wrapIcon(Save),
-      disabled: true,
-      shortcut: 'Ctrl+S'
-    },
-    { 
-      label: 'Imprimir', 
-      icon: wrapIcon(Printer),
-      disabled: true,
-      shortcut: 'Ctrl+P'
-    },
+  const fileMenuItems: MenuItem[] = [
+    { label: 'Nuevo...', icon: Plus, disabled: true, shortcut: 'Ctrl+N' },
+    { label: 'Abrir Archivo...', icon: FolderOpen, action: onUploadClick, shortcut: 'Ctrl+O' },
+    { label: 'Guardar', icon: Save, disabled: true, shortcut: 'Ctrl+S' },
     { isSeparator: true },
-    { 
-      label: 'Cargar JSON...', 
-      action: onUploadClick, 
-      icon: wrapIcon(Upload),
-      disabled: false
-    },
-    { 
-      label: `Sobrescribir con ${fileName || 'archivo'}`, 
-      action: () => {
-        if (window.confirm(`¿Seguro que deseas SOBRESCRIBIR con ${fileName || 'el archivo'}?`)) {
-          onOverwrite();
-        }
-      },
-      icon: wrapIcon(Replace), 
-      disabled: !isFileLoaded 
-    },
-    { 
-      label: `Agregar desde ${fileName || 'archivo'}`, 
-      action: () => {
-        if (window.confirm(`¿Seguro que deseas AGREGAR desde ${fileName || 'el archivo'}?`)) {
-          onMerge();
-        }
-      },
-      icon: wrapIcon(Layers), 
-      disabled: !isFileLoaded 
-    },
+    { label: 'Exportar como PDF...', action: onExportPDF, icon: Download, disabled: isGraphEmpty, shortcut: 'Ctrl+E' },
     { isSeparator: true },
-    { 
-      label: 'Exportar como PDF...', 
-      action: onExportPDF, 
-      icon: wrapIcon(Download), 
-      disabled: isGraphEmpty,
-      shortcut: 'Ctrl+E'
-    },
-    { isSeparator: true },
-    { 
-      label: 'Configuración', 
-      icon: wrapIcon(Settings),
-      disabled: true
-    }
+    { label: 'Configuración', icon: Settings, disabled: true },
   ];
 
-  const editMenuItems: (MenuItemWithSubmenu | { isSeparator: true })[] = [
-    { 
-      label: 'Deshacer', 
-      disabled: true,
-      icon: wrapIcon(Undo2),
-      shortcut: 'Ctrl+Z'
-    },
-    { 
-      label: 'Rehacer', 
-      disabled: true,
-      icon: wrapIcon(Redo2),
-      shortcut: 'Ctrl+Shift+Z'
-    },
-    { isSeparator: true },
-    { 
-      label: 'Cortar', 
-      disabled: isGraphEmpty,
-      icon: wrapIcon(Scissors),
-      shortcut: 'Ctrl+X'
-    },
-    { 
-      label: 'Copiar', 
-      disabled: isGraphEmpty,
-      icon: wrapIcon(Copy),
-      shortcut: 'Ctrl+C'
-    },
-    { 
-      label: 'Pegar', 
-      disabled: true,
-      icon: wrapIcon(Copy),
-      shortcut: 'Ctrl+V'
-    },
-    { 
-      label: 'Seleccionar todo', 
-      disabled: isGraphEmpty,
-      icon: wrapIcon(Check),
-      shortcut: 'Ctrl+A'
-    },
-    { isSeparator: true },
-    { 
-      label: 'Buscar', 
-      disabled: false,
-      icon: wrapIcon(FileSearch),
-      shortcut: 'Ctrl+F'
-    }
+  const dataMenuItems: MenuItem[] = [
+    { label: 'Cargar JSON...', action: onUploadClick, icon: Upload },
+    { label: `Sobrescribir con ${fileName || 'archivo'}`, action: onOverwrite, icon: Replace, disabled: !isFileLoaded },
+    { label: `Agregar desde ${fileName || 'archivo'}`, action: onMerge, icon: Layers, disabled: !isFileLoaded },
   ];
 
-  const viewMenuItems: (MenuItemWithSubmenu | { isSeparator: true })[] = [
-    { 
-      label: 'Ajustar Vista', 
-      action: onFitView,
-      icon: wrapIcon(Maximize2),
-      disabled: isGraphEmpty,
-      shortcut: 'Ctrl+0'
-    },
-    { 
-      label: 'Acercar', 
-      action: onZoomIn,
-      icon: wrapIcon(ZoomIn),
-      disabled: isGraphEmpty,
-      shortcut: 'Ctrl+Plus'
-    },
-    { 
-      label: 'Alejar', 
-      action: onZoomOut,
-      icon: wrapIcon(ZoomOut),
-      disabled: isGraphEmpty,
-      shortcut: 'Ctrl+-'
-    },
+  const editMenuItems: MenuItem[] = [
+    { label: 'Deshacer', icon: Undo2, disabled: true, shortcut: 'Ctrl+Z' },
+    { label: 'Rehacer', icon: Redo2, disabled: true, shortcut: 'Ctrl+Shift+Z' },
     { isSeparator: true },
-    { 
-      label: 'Modo oscuro', 
-      icon: wrapIcon(Moon),
-      disabled: true,
-      shortcut: 'Ctrl+Shift+D'
-    }
+    { label: 'Cortar', icon: Scissors, disabled: true, shortcut: 'Ctrl+X' },
+    { label: 'Copiar', icon: Copy, disabled: true, shortcut: 'Ctrl+C' },
+    { label: 'Seleccionar todo', icon: Check, action: () => {}, disabled: isGraphEmpty, shortcut: 'Ctrl+A' },
+    { isSeparator: true },
+    { label: 'Buscar', icon: FileSearch, disabled: true, shortcut: 'Ctrl+F' },
   ];
 
-  const helpMenuItems: (MenuItemWithSubmenu | { isSeparator: true })[] = [
-    { 
-      label: 'Documentación', 
-      icon: wrapIcon(HelpCircle),
-      disabled: true,
-      shortcut: 'F1'
-    },
+  const viewMenuItems: MenuItem[] = [
+    { label: 'Ajustar Vista', action: onFitView, icon: Maximize2, disabled: isGraphEmpty, shortcut: 'Ctrl+0' },
+    { label: 'Acercar', action: onZoomIn, icon: ZoomIn, disabled: isGraphEmpty, shortcut: 'Ctrl+Plus' },
+    { label: 'Alejar', action: onZoomOut, icon: ZoomOut, disabled: isGraphEmpty, shortcut: 'Ctrl+-' },
     { isSeparator: true },
-    { 
-      label: 'Acerca de Nodex', 
-      icon: wrapIcon(Info),
-      disabled: false
-    }
+    { label: 'Modo oscuro', icon: Moon, disabled: true },
+  ];
+
+  const helpMenuItems: MenuItem[] = [
+    { label: 'Documentación', icon: HelpCircle, disabled: true },
+    { label: 'Acerca de Nodex', icon: Info, action: () => alert('Nodex v1.0') },
   ];
 
   return (
-    <div className="top-menu-bar flex items-center w-full px-4 bg-slate-50 border-b border-slate-200 h-12 shadow-sm flex-shrink-0">
-      {/* Left Menu Container */}
-      <div className="flex items-center h-full">
-        <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} />
-        <DropdownMenu triggerLabel="Editar" items={editMenuItems} />
-        <DropdownMenu triggerLabel="Vista" items={viewMenuItems} />
+    <div className="flex items-center w-full px-2 bg-menu-bg border-b border-menu-border h-10 shadow-sm flex-shrink-0">
+      <div className="flex items-center mr-4">
+        <p className="text-lg font-bold text-blue-600">Nodex</p>
       </div>
-
-      {/* Spacer */}
+      <div className="flex items-center h-full">
+        <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} triggerIcon={FileText} />
+        <DropdownMenu triggerLabel="Editar" items={editMenuItems} triggerIcon={Edit3} />
+        <DropdownMenu triggerLabel="Datos" items={dataMenuItems} triggerIcon={Layers} />
+        <DropdownMenu triggerLabel="Vista" items={viewMenuItems} triggerIcon={Eye} />
+      </div>
       <div className="flex-grow" />
-
-      {/* Right Menu Container */}
-      <div className="flex items-center h-full space-x-4">
-        <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} align="right" />
-        <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-300 transition-colors">
-          <User size={18} />
+      <div className="flex items-center h-full">
+        <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} triggerIcon={HelpCircle} align="right" />
+        <div className="ml-2 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-300 transition-colors">
+          <User size={16} />
         </div>
       </div>
     </div>
