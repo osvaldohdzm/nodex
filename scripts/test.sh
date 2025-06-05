@@ -24,7 +24,7 @@ if [[ "$current_branch" == "$DEVELOP_BRANCH" ]]; then
   read -rp "¿Ejecutar pruebas en '$current_branch'? (s/n): " run_tests_confirm
   if [[ "$run_tests_confirm" == "s" ]]; then
     echo "🧪 Ejecutando pruebas..."
-    if ! ./scripts/run-tests.sh; then
+    if ! ./scripts/start.sh; then
       echo "❌ Pruebas fallaron. Abortando."
       exit 1
     fi
