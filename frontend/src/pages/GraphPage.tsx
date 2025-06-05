@@ -300,8 +300,8 @@ export const GraphPage: React.FC = () => {
     }
   }, [selectedFileContent]);
 
-  // Calculate available height for graph viewport
-  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - ${detailsNode ? height : 0}px - 1rem - ${detailsNode ? '1rem' : '0px'})`;
+  // Calculate available height for graph viewport (subtract upload panel height and margins)
+  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - 1rem)`; // Removed details panel height calculation as it's now on the side
 
   const handleExportPDF = async () => {
     const currentGraphNodes = reactFlowInstance.getNodes();
@@ -352,23 +352,7 @@ export const GraphPage: React.FC = () => {
     }
   };
 
-  const handleResizeMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const startY = e.clientY;
-    const startHeight = height;
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const newHeight = startHeight + (moveEvent.clientY - startY);
-      setHeight(Math.max(newHeight, 150)); // Minimum height of 150px
-    };
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
+  // Remove vertical resize handler as we're using horizontal resize now
 
   const onConnect = useCallback((params: Connection) => {
     console.log("--- onConnect START ---");
@@ -628,21 +612,33 @@ export const GraphPage: React.FC = () => {
             </div>
           </div>
         </Panel>
-        {/* Only show details panel if a node is selected */}
+        {/* Details Panel - Only show if a node is selected */}
         {detailsNode && (
           <>
-            <PanelResizeHandle className="w-2 flex items-center justify-center bg-accent-cyan data-[resizing]:bg-accent-cyan-darker outline-none">
-              <div className="w-[3px] h-8 bg-bg-primary rounded-full"></div>
+            <PanelResizeHandle className="w-2 flex items-center justify-center group">
+              <div className="w-1 h-16 bg-accent-cyan/30 rounded-full group-hover:bg-accent-cyan transition-colors duration-200"></div>
             </PanelResizeHandle>
-            <Panel defaultSize={30} minSize={20} style={{ width: detailPanelWidth, flexShrink: 0 }}>
-              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden p-4 rounded-md">
-                <h3 className="text-lg font-semibold text-accent-cyan mb-2 flex-shrink-0">
-                  Detalles de: {detailsNode.data.name}
-                  <button onClick={() => setDetailsNode(null)} className="float-right text-lg text-text-secondary hover:text-white">&times;</button>
-                </h3>
-                <pre className="flex-grow bg-input-bg text-text-secondary p-3 rounded overflow-auto text-xs scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-input-bg">
-                  {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
-                </pre>
+            <Panel defaultSize={30} minSize={20} maxSize={50} className="h-full">
+              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden rounded-md border border-border">
+                <div className="p-4 border-b border-border">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-accent-cyan">
+                      {detailsNode.data.name}
+                    </h3>
+                    <button 
+                      onClick={() => setDetailsNode(null)} 
+                      className="text-text-secondary hover:text-white transition-colors"
+                      aria-label="Cerrar panel de detalles"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                  <pre className="text-xs bg-input-bg p-3 rounded-md h-full overflow-auto">
+                    {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
+                  </pre>
+                </div>
               </div>
             </Panel>
           </>
