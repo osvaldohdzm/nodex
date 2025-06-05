@@ -475,7 +475,6 @@ export const GraphPage: React.FC = () => {
         style={{ height: `${height}px` }}
       >
         <div className="resize-handle" onMouseDown={handleResizeMouseDown}></div>
-        {/* Content of the details section */}
         <pre>{/* JSON data or other details */}</pre>
       </div>
 
