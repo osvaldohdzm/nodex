@@ -86,17 +86,13 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         onClick={handleProfileAreaClick}
         title={data.onImageUpload ? "Cambiar imagen de perfil" : data.name}
       >
-        {data.imageUrl ? (
+        <div className="w-24 h-24 relative">
           <img
             src={data.imageUrl}
             alt={data.name}
             className="w-full h-full rounded-full object-cover border-2 border-node-border group-hover:border-accent-cyan transition-all"
           />
-        ) : (
-          <div className="w-full h-full rounded-full bg-input-bg border-2 border-node-border flex items-center justify-center group-hover:border-accent-cyan transition-all">
-            <User size={48} className="text-node-icon-color" />
-          </div>
-        )}
+        </div>
         {data.onImageUpload && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-60 rounded-full transition-all duration-200">
             <UploadCloud
