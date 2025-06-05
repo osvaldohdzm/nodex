@@ -187,3 +187,23 @@
   min-height: 100vh;
   overflow: hidden; /* Prevent scrolling */
 }
+
+/* Adding styles for scroll functionality and scrollbar customization */
+.graph-page-container .overflow-auto {
+  overflow: auto;
+  max-height: 80vh; /* Limit height for scrolling */
+}
+
+/* Custom scrollbar styles */
+.graph-page-container .overflow-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.graph-page-container .overflow-auto::-webkit-scrollbar-thumb {
+  background-color: var(--accent-cyan-darker);
+  border-radius: 4px;
+}
+
+.graph-page-container .overflow-auto::-webkit-scrollbar-track {
+  background-color: var(--bg-secondary);
+}
