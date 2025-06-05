@@ -12,13 +12,16 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^22.15.29",
     "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.21",
     "classnames": "^2.3.1",
     "lucide-react": "^0.303.0",
+    "postcss": "^8.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.1",
     "react-scripts": "^5.0.1",
     "reactflow": "^11.10.1",
+    "tailwindcss": "^4.1.8",
     "vis-network": "^9.0.0"
   },
   "browserslist": {

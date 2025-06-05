@@ -33,6 +33,7 @@ const nodeTypes = {
   company: CompanyNode,
 };
 
+// --- (JsonData and OnlineProfile interfaces remain the same) ---
 interface JsonData {
   _id?: { $oid: string };
   curp_online?: { data?: { registros?: Array<any> } };
@@ -47,7 +48,7 @@ interface JsonData {
   [key: string]: any;
 }
 
-// ... (OnlineProfile interface y defaultNodes/defaultEdges permanecen igual)
+// --- (defaultNodes and defaultEdges remain the same) ---
 const defaultNodes: Node[] = [
   { id: 'center-hub', type: 'company', position: { x: 400, y: 200 }, data: { name: 'Nodex Central Hub', location: 'Cyber Espacio', details: { info: 'Punto de partida de la demostración.'} }, className: 'node-appear' },
   { id: 'analyst-1', type: 'person', position: { x: 150, y: 50 }, data: { name: 'Analista Alpha', title: 'IA de Datos', details: { skill: 'Análisis Predictivo'} }, className: 'node-appear' },
@@ -66,18 +67,17 @@ const defaultEdges: Edge[] = [
   { id: 'e-analyst1-analyst2', source: 'analyst-1', target: 'analyst-2', label: 'Colabora', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-orange)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-orange)' } },
 ];
 
-
 export const GraphPage: React.FC = () => {
-  // const firstLoadFitViewDone = useRef(false); // Ya no es necesario con fitView={false}
+  // const firstLoadFitViewDone = useRef(false); // No longer needed with fitView={false}
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
   const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
-  const [isDemoDataVisible, setIsDemoDataVisible] = useState(true);
+  const [isDemoDataVisible, setIsDemoDataVisible] = useState(true); // Start with demo visible
   
   const { fitView, getNodes, getEdges } = useReactFlow();
-  const demoLoadedRef = useRef(false);
+  const demoLoadedRef = useRef(false); // Tracks if demo data has been loaded in the current session/state
   const animationCleanupRef = useRef<(() => void) | null>(null);
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
@@ -99,7 +99,7 @@ export const GraphPage: React.FC = () => {
           id: `user-e-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
           type: 'smoothstep', animated: false, style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-          className: 'edge-appear-static' // Usar static para que no se anime cada vez que se conecta manualmente
+          className: 'edge-appear-static' // Static class for manually added edges
         }, eds));
       }
     },
@@ -224,21 +224,17 @@ export const GraphPage: React.FC = () => {
       nextBatch();
     };
 
-    // Ligero retraso antes de empezar a añadir nodos para asegurar que el estado de "vacío" se renderice si es overwrite
     setTimeout(() => { 
         batchAdd(finalNodes, setNodes, Math.max(1, Math.floor(finalNodes.length / 15)), 15, () => {
             batchAdd(finalEdges, setEdges, Math.max(1, Math.floor(finalEdges.length / 15)), 15, () => {
                 setIsLoadingGraph(false);
                 console.log(`Animated graph load complete (${isOverwrite ? 'overwrite' : 'merge'}).`);
-                // Asegurarse de que fitView se llama después de que los nodos y aristas estén en el estado
-                // y potencialmente después de que las animaciones de entrada hayan comenzado/terminado.
-                // Un retraso un poco mayor aquí podría ser beneficioso.
                 setTimeout(() => {
-                    fitView({ duration: 800, padding: 0.2 }); // Aumentado padding y duration un poco
-                }, 150); // Aumentado el retraso para fitView
+                    fitView({ duration: 800, padding: 0.2 }); // Increased padding and duration
+                }, 150); // Increased delay for fitView
             });
         });
-    }, isOverwrite ? 50 : 0); // Si es overwrite, un pequeño delay para que el clear se note
+    }, isOverwrite ? 50 : 0);
 
     animationCleanupRef.current = () => {
       if (nodeTimeoutId) clearTimeout(nodeTimeoutId);
@@ -251,8 +247,8 @@ export const GraphPage: React.FC = () => {
   const handleJsonUploaded = useCallback((uploadedData: JsonData, name?: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
     setJsonData(uploadedData);
     if (name) setFileName(name);
-    setIsDemoDataVisible(false); // Ocultar datos demo si se carga un JSON
-    demoLoadedRef.current = false; // Permitir que los datos demo se recarguen si es necesario después
+    setIsDemoDataVisible(false); // User uploaded data, so demo is no longer primary
+    demoLoadedRef.current = true; // Mark that an interaction (JSON load) has occurred, demo won't auto-load again unless explicitly triggered
     
     const { initialNodes, initialEdges } = processJsonToGraph(uploadedData);
 
@@ -265,24 +261,35 @@ export const GraphPage: React.FC = () => {
       }
       setIsLoadingGraph(false);
       console.warn("Uploaded JSON resulted in no nodes or edges.");
-      // Si no hay nodos, igual llamar a fitView para centrar el canvas vacío o el placeholder
-      setTimeout(() => fitView({ duration: 500, padding: 0.2 }), 100);
+      setTimeout(() => fitView({ duration: 500, padding: 0.2 }), 150); // Fit view for empty state
     }
   }, [processJsonToGraph, animateGraphLoad, setNodes, setEdges, fitView]);
 
+  // Effect for loading demo data
   useEffect(() => {
-    // Cargar datos demo solo si es visible y no se ha cargado ya,
-    // Y si no hay datos JSON cargados por el usuario.
     if (isDemoDataVisible && !demoLoadedRef.current && !jsonData) {
       console.log("Loading default demo data (useEffect).");
       animateGraphLoad(
-        defaultNodes.map(n => ({...n, data: {...n.data}})), // Asegurar copias nuevas
-        defaultEdges.map(e => ({...e})), // Asegurar copias nuevas
-        true // Sobrescribir
+        defaultNodes.map(n => ({...n, data: {...n.data}})), // Create new copies for re-animation
+        defaultEdges.map(e => ({...e})), // Create new copies
+        true // Overwrite existing graph with demo data
       );
-      demoLoadedRef.current = true;
+      demoLoadedRef.current = true; // Mark demo as loaded
     }
-  }, [isDemoDataVisible, jsonData, animateGraphLoad]); // Añadir jsonData a las dependencias
+  }, [isDemoDataVisible, jsonData, animateGraphLoad]); // demoLoadedRef is a ref, not needed in deps
+
+  // Effect for initial fitView if graph is empty and not loading
+   useEffect(() => {
+    if (nodes.length === 0 && !isLoadingGraph && !isDemoDataVisible) {
+      // This handles the case where a JSON was loaded but resulted in no nodes,
+      // or if the graph was cleared.
+      setTimeout(() => {
+        console.log("Fitting view for empty graph state.");
+        fitView({ duration: 500, padding: 0.2 });
+      }, 200); // Slightly longer delay to ensure placeholder is rendered
+    }
+  }, [nodes.length, isLoadingGraph, isDemoDataVisible, fitView]);
+
 
   useEffect(() => {
     return () => {
@@ -302,17 +309,18 @@ export const GraphPage: React.FC = () => {
           <button 
             className="graph-action-button overwrite-button"
             onClick={() => {
-              if (jsonData) handleJsonUploaded(jsonData, fileName, 'overwrite');
-              else {
-                // Si no hay jsonData pero queremos mostrar demo:
-                setJsonData(null); // Limpiar cualquier jsonData previo
+              if (jsonData) {
+                // If user JSON is loaded, "Sobrescribir con JSON"
+                handleJsonUploaded(jsonData, fileName, 'overwrite');
+              } else {
+                // If no user JSON, "Cargar Demo"
+                setJsonData(null); // Clear any potential stale jsonData
                 setFileName('');
-                setIsDemoDataVisible(true); // Activar flag de demo
-                demoLoadedRef.current = false; // Forzar recarga de demo
-                // El useEffect [isDemoDataVisible, jsonData, animateGraphLoad] se encargará
+                setIsDemoDataVisible(true); // Set flag to show demo
+                demoLoadedRef.current = false; // Allow demo to reload via useEffect
               }
             }}
-            disabled={isLoadingGraph} // Habilitar siempre si no está cargando
+            disabled={isLoadingGraph}
           >
             <Replace size={18} className="button-icon" />
             {jsonData ? "Sobrescribir con JSON" : "Cargar Demo"}
@@ -342,20 +350,12 @@ export const GraphPage: React.FC = () => {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               nodeTypes={memoizedNodeTypes}
-              fitView={false} // IMPORTANTE: Deshabilitar fitView automático por prop
-              fitViewOptions={{ duration: 800, padding: 0.2 }} // Opciones para fitView imperativo o el interno en resize
+              fitView={false} // CRITICAL: Disable automatic fitView via prop
+              fitViewOptions={{ duration: 800, padding: 0.2 }} // Options for imperative fitView
               minZoom={0.05}
               maxZoom={2.5}
               className="themed-flow"
               onlyRenderVisibleElements={true}
-              // Probar si onPaneReady o onLayout es mejor para el primer fitView
-              // onLayout={() => {
-              //   console.log("ReactFlow onLayout triggered");
-              //   if (!demoLoadedRef.current && nodes.length > 0) { // Evitar múltiples llamadas
-              //     fitView({ duration: 600, padding: 0.2 });
-              //     demoLoadedRef.current = true; // Marcar que el ajuste inicial se hizo
-              //   }
-              // }}
             >
               <Controls position="bottom-right" />
               <MiniMap 
@@ -382,8 +382,10 @@ export const GraphPage: React.FC = () => {
               <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
               <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
               <p className="mb-2 text-sm">Utiliza el área de carga de arriba o el botón "Cargar Demo".</p>
-              {/* Mensaje de carga de demo ya no es necesario aquí si el botón lo maneja */}
-              {jsonData && nodes.length === 0 && ( // Si se cargó JSON pero no generó nodos
+              {/* {isDemoDataVisible && !demoLoadedRef.current && ( // This message might be redundant if button handles demo loading
+                <p className="text-sm text-accent-green mt-2">Cargando datos de demostración...</p>
+              )} */}
+              {jsonData && nodes.length === 0 && ( // If JSON was loaded but resulted in no nodes
                 <details className="json-details-viewer">
                   <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
                   <pre className="json-details-pre">
