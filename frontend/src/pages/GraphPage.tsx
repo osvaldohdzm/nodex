@@ -109,74 +109,118 @@ export const GraphPage: React.FC = () => {
     [setNodes, setEdges, fitView, nodes, edges]
   );
 
-  const processJsonToGraph = useCallback((data: any): { initialNodes: Node<NodeData>[]; initialEdges: Edge[] } => {
-    const newNodes: Node<NodeData>[] = [];
+  const processJsonToGraph = useCallback((data: any): { initialNodes: Node[]; initialEdges: Edge[] } => {
+    const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
-    const nodeIds = new Set<string>();
-    let edgeIdCounter = Date.now(); 
+    let nodeIdCounter = 0;
 
-    // Handle pre-formatted graph data {nodes: [], edges: []}
+    const levelYNext: Map<number, number> = new Map();
+    const X_INCREMENT = 300;
+    const Y_INCREMENT = 120;
+    const BASE_X = 50;
+    const BASE_Y = 50;
+
+    const getNodeId = (path: string) => {
+      return `jsonGraphNode-${nodeIdCounter++}-${path.replace(/[^a-zA-Z0-9_\[\]]/g, '-').substring(0, 50)}`;
+    };
+
+    function parseJsonRecursive(
+      currentData: any,
+      parentId: string | null,
+      keyForParentOrRootName: string,
+      currentPath: string,
+      level: number
+    ) {
+      const nodeId = getNodeId(currentPath || 'root');
+      const x = BASE_X + level * X_INCREMENT;
+      const y = levelYNext.get(level) || BASE_Y;
+      levelYNext.set(level, y + Y_INCREMENT * (Array.isArray(currentData) ? 0.7 : 1));
+
+      if (typeof currentData !== 'object' || currentData === null) {
+        newNodes.push({
+          id: nodeId,
+          type: 'person',
+          position: { x, y },
+          data: {
+            name: `${keyForParentOrRootName}: ${String(currentData).substring(0, 30)}${String(currentData).length > 30 ? '...' : ''}`,
+            title: `Value @ ${currentPath}`,
+            details: { type: 'primitive', value: String(currentData) }
+          },
+        });
+        if (parentId) {
+          newEdges.push({
+            id: `edge-${parentId}-${nodeId}`,
+            source: parentId,
+            target: nodeId,
+            label: keyForParentOrRootName,
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+          });
+        }
+        return;
+      }
+
+      const isArray = Array.isArray(currentData);
+      const nodeDisplayName = (parentId === null) ? 
+        (data._id?.$oid ? `Processed: ${data._id.$oid.substring(0,10)}` : 'JSON Root') :
+        keyForParentOrRootName;
+      const numChildren = Object.keys(currentData).length;
+      const nodeDisplayData: any = {
+        name: nodeDisplayName,
+        title: `Path: ${currentPath || '/'} (${isArray ? `Array[${numChildren}]` : 'Object'})`,
+        details: {}
+      };
+      newNodes.push({
+        id: nodeId,
+        type: 'company',
+        position: { x, y },
+        data: nodeDisplayData,
+      });
+      if (parentId) {
+        newEdges.push({
+          id: `edge-${parentId}-${nodeId}`,
+          source: parentId,
+          target: nodeId,
+          label: keyForParentOrRootName,
+          type: 'smoothstep',
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+        });
+      }
+      const childKeys = Object.keys(currentData);
+      childKeys.forEach((childKey) => {
+        const value = currentData[childKey];
+        let childPathSegment = isArray ? `[${childKey}]` : `.${childKey}`;
+        if (currentPath === '' && !isArray) childPathSegment = childKey;
+        else if (currentPath === '' && isArray) childPathSegment = `[${childKey}]`;
+        const fullChildPath = (currentPath === '' && !isArray && !parentId) ? childKey : currentPath + childPathSegment;
+        if (typeof value === 'object' && value !== null) {
+          parseJsonRecursive(value, nodeId, childKey, fullChildPath, level + 1);
+        } else {
+          nodeDisplayData.details[childKey] = String(value).substring(0, 100);
+        }
+      });
+      if (Object.keys(nodeDisplayData.details).length === 0) {
+        delete nodeDisplayData.details;
+      }
+    }
+
     if (data && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
       console.log("[processJsonToGraph] Processing pre-formatted graph JSON.");
-      const processedNodes = data.nodes.map((n: any, index: number) => ({
-        ...n,
-        id: String(n.id || `node-${index}-${Date.now()}`),
-        position: n.position || { x: Math.random() * 800 + 50, y: Math.random() * 500 + 50 },
-        className: `${n.className || ''} node-appear`.trim(),
-      }));
-      const processedEdges = data.edges.map((e: any, index: number) => ({
-        ...e,
-        id: String(e.id || `edge-${index}-${Date.now()}`),
-        type: e.type || 'smoothstep',
-        markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-        className: `${e.className || ''} edge-appear`.trim(),
-      }));
-      return { initialNodes: processedNodes, initialEdges: processedEdges };
+      return { initialNodes: data.nodes, initialEdges: data.edges };
     }
-
-    const addNodeSafely = (node: Node<NodeData>) => {
-      const uniqueNodeId = `user-node-${node.id}`; 
-      if (!nodeIds.has(uniqueNodeId)) {
-        nodeIds.add(uniqueNodeId);
-        newNodes.push({ ...node, id: uniqueNodeId, className: 'node-appear' });
-      }
-      return uniqueNodeId;
-    };
-
-    const addEdgeInternal = (source: string, target: string, label?: string) => {
-      const edgeId = `user-edge-${edgeIdCounter++}`;
-      newEdges.push({
-        id: edgeId,
-        source,
-        target,
-        label,
-        type: 'smoothstep',
-        animated: false,
-        className: 'edge-appear',
-        markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+    if (data && typeof data === 'object' && data !== null) {
+      console.log("[processJsonToGraph] Processing generic JSON to graph structure.");
+      nodeIdCounter = 0;
+      levelYNext.clear();
+      parseJsonRecursive(data, null, '', '', 0);
+    } else {
+      console.warn("[processJsonToGraph] Data is not a processable object or pre-formatted graph.");
+      newNodes.push({
+        id: 'error-json-node', type: 'company', position: { x: 100, y: 100 },
+        data: { name: 'Invalid Data', title: 'Cannot parse', details: { error: 'Uploaded data is not a valid JSON object or graph structure.'}},
+        className: 'node-alert-style'
       });
-    };
-    
-    if (data && Object.keys(data).length > 0) {
-      console.log("[processJsonToGraph] Processing complex/custom JSON structure.");
-      const baseId = data._id?.$oid || 'parsedData'; 
-      addNodeSafely({ 
-        id: `${baseId}-main`, 
-        type: 'company',
-        position: { x: 400, y: 200 },
-        data: { 
-          name: `Processed: ${baseId.substring(0,10)}`, 
-          title: 'Main Entity',
-          typeDetails: 'Processed JSON Data',
-          status: 'normal',
-          details: { fullJson: data }
-        },
-        className: 'node-appear'
-      });
-
-      // ... rest of the complex JSON parsing logic ...
     }
-
     return { initialNodes: newNodes, initialEdges: newEdges };
   }, []);
 
