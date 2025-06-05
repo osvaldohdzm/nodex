@@ -14,7 +14,6 @@ select_feature_branch() {
 
   # Combinar locales y remotas sin duplicados
   feature_branches=("${local_features[@]}")
-
   for remote_branch in "${remote_features[@]}"; do
     if [[ ! " ${feature_branches[*]} " =~ " ${remote_branch} " ]]; then
       feature_branches+=("$remote_branch")
@@ -47,7 +46,6 @@ select_feature_branch() {
   fi
 }
 
-
 current_branch=$(git branch --show-current)
 
 if [[ "$current_branch" == feature/* ]]; then
@@ -68,34 +66,33 @@ if ! git diff-index --quiet HEAD --; then
   git add .
   git commit -m "$msg"
 fi
-git push origin "$feature_branch" # Asegurar que el remoto está actualizado
+git push origin "$feature_branch" # Actualizar remoto
 
-# 2. Opcional: Ejecutar pruebas antes de fusionar (si no se hizo en pre-commit)
+# 2. Ejecutar pruebas opcionalmente
 read -rp "¿Ejecutar pruebas para '$feature_branch' antes de continuar? (s/n): " run_tests_confirm
 if [[ "$run_tests_confirm" == "s" ]]; then
   echo "🧪 Ejecutando pruebas..."
   # ./scripts/run-tests.sh || { echo "❌ Pruebas fallidas. Abortando."; exit 1; }
-  echo "✅ (Placeholder) Pruebas pasaron." # Reemplaza con tu script de pruebas real
+  echo "✅ (Placeholder) Pruebas pasaron."
 fi
 
-# 3. Actualizar la rama feature con los últimos cambios de develop (rebase es preferido)
-echo "🔄 Actualizando '$feature_branch' con los últimos cambios de '$DEVELOP_BRANCH'..."
+# 3. Actualizar la rama feature con develop (rebase preferido)
+echo "🔄 Actualizando '$feature_branch' con '$DEVELOP_BRANCH'..."
 git fetch origin "$DEVELOP_BRANCH"
-read -rp "¿Usar 'rebase' (r) o 'merge' (m) para actualizar '$feature_branch' desde '$DEVELOP_BRANCH'? (r/m, recomendado r): " update_method
+read -rp "¿Usar 'rebase' (r) o 'merge' (m) para actualizar '$feature_branch'? (r/m, recomendado r): " update_method
 if [[ "$update_method" == "r" ]]; then
   if ! git rebase "origin/$DEVELOP_BRANCH"; then
-    echo "❌ Falló el rebase. Por favor, resuelve los conflictos y luego ejecuta:"
+    echo "❌ Falló el rebase. Resuelve conflictos y luego ejecuta:"
     echo "   git rebase --continue"
     echo "   O para abortar:"
     echo "   git rebase --abort"
     exit 1
   fi
-  echo "⏫ Forzando push de la rama rebaseada (necesario después de rebase)..."
+  echo "⏫ Forzando push de la rama rebaseada..."
   git push origin "$feature_branch" --force-with-lease
 elif [[ "$update_method" == "m" ]]; then
   if ! git merge "origin/$DEVELOP_BRANCH" -m "Merge $DEVELOP_BRANCH into $feature_branch"; then
-    echo "❌ Conflictos detectados durante el merge."
-    echo "Por favor resuelve los conflictos y haz commit antes de continuar."
+    echo "❌ Conflictos detectados durante merge. Resuélvelos y haz commit."
     exit 1
   fi
   git push origin "$feature_branch"
@@ -103,50 +100,44 @@ else
   echo "Opción inválida. Abortando."
   exit 1
 fi
-echo "✅ Rama '$feature_branch' actualizada y pusheada."
+echo "✅ Rama '$feature_branch' actualizada."
 
-# 4. Cambiar a la rama de desarrollo y actualizarla
+# 4. Cambiar a develop y actualizarla
 echo "🔄 Cambiando a '$DEVELOP_BRANCH' y actualizándola..."
 git checkout "$DEVELOP_BRANCH"
 git pull origin "$DEVELOP_BRANCH"
 
-# 5. Obtener el último mensaje de commit de la rama feature
+# 5. Obtener último mensaje de commit en la feature
 last_commit_msg=$(git log -1 --pretty=format:%s "$feature_branch")
 
-# 6. Probar merge para detectar conflictos sin afectar el estado actual
+# 6. Merge de prueba para detectar conflictos
 echo "🔎 Probando merge para detectar conflictos..."
 if ! git merge --no-commit --no-ff "$feature_branch"; then
-  echo "❌ Conflictos detectados durante el merge de prueba. Abortando merge automático."
+  echo "❌ Conflictos detectados durante merge de prueba. Abortando."
   git merge --abort
-  echo "Por favor resuelve los conflictos en '$DEVELOP_BRANCH' manualmente."
-  echo "Luego haz 'git add <archivos_resueltos>' y 'git commit',"
-  echo "y vuelve a ejecutar este script o realiza el push manualmente."
+  echo "Por favor resuelve los conflictos en '$DEVELOP_BRANCH' manualmente y vuelve a ejecutar este script."
   exit 1
 else
-  git reset --hard HEAD  # Deshacer merge de prueba para mantener el estado limpio
+  git reset --hard HEAD # Deshacer merge de prueba
 fi
 
-# 7. Fusionar la rama feature en develop con mensaje personalizado
+# 7. Merge final con mensaje personalizado
 merge_msg="Merge feature: $feature_branch
 
 Último commit en $feature_branch:
 $last_commit_msg"
 
-echo "🔗 Fusionando '$feature_branch' en '$DEVELOP_BRANCH' con mensaje:"
-echo "-----------------------------------"
-echo "$merge_msg"
-echo "-----------------------------------"
-
+echo "🔗 Fusionando '$feature_branch' en '$DEVELOP_BRANCH'..."
 if ! git merge --no-ff "$feature_branch" -m "$merge_msg"; then
   echo "❌ Error inesperado durante merge."
   exit 1
 fi
 
-# 8. Pushear develop
+# 8. Push de develop
 echo "⏫ Haciendo push de '$DEVELOP_BRANCH'..."
 git push origin "$DEVELOP_BRANCH"
 
-# 9. Eliminar la rama feature local y remotamente
+# 9. Eliminar rama feature local y remota
 read -rp "¿Eliminar la rama '$feature_branch' local y remotamente? (s/n): " delete_confirm
 if [[ "$delete_confirm" == "s" ]]; then
   echo "🗑️ Eliminando rama '$feature_branch' localmente..."
