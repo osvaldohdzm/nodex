@@ -8,6 +8,7 @@ export interface DemoNodeData {
   details?: Record<string, any>;
   title?: string;
   location?: string;
+  rawJsonData?: any; // To store the complete JSON data for the person
 }
 
 export interface JsonData {
