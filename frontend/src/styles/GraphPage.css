@@ -25,6 +25,12 @@
   z-index: 10;
 }
 
+.top-menu-bar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
 /* Botones de acción */
 .graph-action-button {
   display: flex;
@@ -301,16 +307,14 @@
 }
 
 .react-flow__edge-text {
-  font-size: 0.75rem;
+  font-size: 12px;
+  font-weight: 500;
   fill: var(--edge-label-color);
-  transition: all 0.2s ease;
-  pointer-events: none;
-  user-select: none;
-  text-anchor: middle;
-  dominant-baseline: middle;
   paint-order: stroke;
-  stroke: var(--bg-secondary);
-  stroke-width: 3px;
+  stroke: var(--graph-bg);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .react-flow__edge-text:hover {

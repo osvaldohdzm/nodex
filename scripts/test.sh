@@ -111,11 +111,11 @@ else
   echo "ℹ️ No hay cambios para commitear, pero se continuará con la ejecución de la prueba."
 fi
 
+echo "🎉 Proceso completado los cambios de la prueba han sido guardados. Tus pruebas se ejecutarán en la rama '$target_test_branch'."
+
+
 # 9. Ejecutar prueba
 echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
 # Asegúrate que start.sh sea ejecutable (chmod +x ./scripts/start.sh)
 ./scripts/start.sh
-
-echo "🎉 Proceso completado. Tus pruebas se ejecutaron en la rama '$target_test_branch'."
-
 # --- Fin del Script test.sh ---

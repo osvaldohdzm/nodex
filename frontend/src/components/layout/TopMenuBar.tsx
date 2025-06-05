@@ -211,12 +211,7 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
   ];
 
   return (
-    <div className="flex items-center w-full px-4 bg-slate-50 border-b border-slate-200 h-12 shadow-sm flex-shrink-0">
-      {/* Logo */}
-      <div className="flex items-center mr-6">
-        <div className="text-slate-800 font-bold text-xl">Nodex</div>
-      </div>
-
+    <div className="top-menu-bar flex items-center w-full px-4 bg-slate-50 border-b border-slate-200 h-12 shadow-sm flex-shrink-0">
       {/* Left Menu Container */}
       <div className="flex items-center h-full">
         <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} />
@@ -228,9 +223,9 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
       <div className="flex-grow" />
 
       {/* Right Menu Container */}
-      <div className="flex items-center h-full">
+      <div className="flex items-center h-full space-x-4">
         <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} align="right" />
-        <div className="ml-4 w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-300 transition-colors">
+        <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-300 transition-colors">
           <User size={18} />
         </div>
       </div>
