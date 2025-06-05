@@ -382,3 +382,8 @@
   opacity: 1;
   transform: scale(1.2);
 }
+
+.node-highlighted > div {
+  border-color: var(--accent-yellow) !important;
+  box-shadow: 0 0 15px var(--accent-yellow) !important;
+}

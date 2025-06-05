@@ -30,6 +30,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 import TopMenuBar from '../components/layout/TopMenuBar';
+import { deepSearchInObject, flattenObject } from '@utils/dataUtils';
 
 const nodeTypes = {
   person: PersonNode,
@@ -54,6 +55,8 @@ export const GraphPage: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState<DemoNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
@@ -225,6 +228,21 @@ export const GraphPage: React.FC = () => {
       });
     }
   }, [nodes, uploadedImageUrls]);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setHighlightedNodes(new Set());
+      return;
+    }
+
+    const matchingNodeIds = new Set<string>();
+    nodes.forEach(node => {
+      if (node.data.rawJsonData && deepSearchInObject(node.data.rawJsonData, searchTerm)) {
+        matchingNodeIds.add(node.id);
+      }
+    });
+    setHighlightedNodes(matchingNodeIds);
+  }, [searchTerm, nodes]);
 
   const animateGraphLoad = useCallback(
     (initialNodes: Node<DemoNodeData>[], initialEdges: Edge[], isOverwrite: boolean = false) => {
@@ -539,6 +557,7 @@ export const GraphPage: React.FC = () => {
                 ...node,
                 data: {
                   ...node.data,
+                  isHighlighted: highlightedNodes.has(node.id),
                   onImageUpload: node.type === 'person' ? handleImageUploadForNode : undefined,
                 }
               }))}
@@ -600,10 +619,13 @@ export const GraphPage: React.FC = () => {
                     <X size={18} />
                   </button>
                 </div>
-                <div className="flex-grow overflow-auto p-3">
-                  <pre className="text-xs text-text-primary whitespace-pre-wrap break-words scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-bg-input-bg bg-input-bg p-2 rounded-sm">
-                    {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
-                  </pre>
+                <div className="flex-grow overflow-auto p-3 space-y-2">
+                  {Object.entries(flattenObject(detailsNode.data.rawJsonData)).map(([key, value]) => (
+                    <div key={key} className="detail-item text-xs p-2 bg-input-bg rounded-sm break-words">
+                      <span className="font-semibold text-accent-cyan-darker">{key}: </span>
+                      <span className="text-text-primary">{String(value)}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </Panel>

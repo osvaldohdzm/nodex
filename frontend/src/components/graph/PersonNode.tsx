@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps, useReactFlow, NodeResizer } from 'reactflo
 import classnames from 'classnames';
 import { User, UploadCloud, XCircle } from 'lucide-react';
 import { DemoNodeData } from '../../types/graph';
+import { resizeAndCropImage } from '../../utils/imageUtils';
 
 const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nodeId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -14,10 +15,17 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && data.onImageUpload) {
-      data.onImageUpload(nodeId, file);
+      try {
+        const resizedBlob = await resizeAndCropImage(file, { maxWidth: 256, maxHeight: 256 });
+        const resizedFile = new File([resizedBlob], file.name, { type: file.type });
+        data.onImageUpload(nodeId, resizedFile);
+      } catch (error) {
+        console.error("Error al redimensionar la imagen:", error);
+        data.onImageUpload(nodeId, file);
+      }
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
