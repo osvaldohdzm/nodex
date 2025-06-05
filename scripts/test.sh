@@ -114,13 +114,12 @@ git push origin "$feature_branch"
 read -rp "¿Ejecutar pruebas para '$feature_branch' antes de continuar? (s/N): " run_tests_confirm
 if [[ "$(echo "$run_tests_confirm" | tr '[:upper:]' '[:lower:]')" == "s" ]]; then
   echo "🧪 Ejecutando pruebas..."
-  # Aquí iría tu script de pruebas, por ejemplo:
-  # if ./scripts/run-tests.sh; then
-  #   echo "✅ Pruebas pasaron."
-  # else
-  #   echo "❌ Pruebas fallidas. Abortando." >&2; exit 1;
-  # fi
-  echo "✅ (Placeholder) Pruebas simuladas pasaron." # Placeholder
+   if ./scripts/start.sh; then
+     echo "✅ Pruebas pasaron."
+   else
+     echo "❌ Pruebas fallidas. Abortando." >&2; exit 1;
+   fi
+  echo "✅ Pruebas simuladas pasaron." # Placeholder
 else
   echo "ℹ️ Pruebas omitidas."
 fi
