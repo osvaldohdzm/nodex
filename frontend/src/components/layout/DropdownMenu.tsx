@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LucideIcon, ChevronRight } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronRight } from 'lucide-react';
 
 export interface MenuItem {
   label?: string;  // Opcional para separadores
   action?: () => void;
-  icon?: LucideIcon | React.ComponentType<{ size?: number; className?: string }>;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
   disabled?: boolean;
   isSeparator?: boolean;
   shortcut?: string;
@@ -13,7 +13,7 @@ export interface MenuItem {
 
 interface DropdownMenuProps {
   triggerLabel: string;
-  triggerIcon?: LucideIcon | React.ComponentType<{ size?: number; className?: string }>;
+  triggerIcon?: React.ComponentType<{ size?: number; className?: string }>;
   items: MenuItem[];
   className?: string;
   align?: 'left' | 'right';

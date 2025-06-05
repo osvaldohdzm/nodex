@@ -9,6 +9,8 @@ import {
   AlertTriangle, X, ChevronDown
 } from 'lucide-react';
 
+const wrapIcon = (Icon: React.ComponentType<{ size?: string | number; className?: string }>) => (props: { size?: string | number; className?: string }) => <Icon {...props} />;
+
 interface TopMenuBarProps {
   onUploadClick: () => void;
   onOverwrite: () => void;
@@ -43,32 +45,32 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
   const fileMenuItems: (MenuItemWithSubmenu | { isSeparator: true })[] = [
     { 
       label: 'Nuevo', 
-      icon: Plus,
+      icon: wrapIcon(Plus),
       disabled: false,
       shortcut: 'Ctrl+N',
       submenu: [
-        { label: 'Documento', icon: File, disabled: true },
-        { label: 'Carpeta', icon: FolderOpen, disabled: true },
+        { label: 'Documento', icon: wrapIcon(File), disabled: true },
+        { label: 'Carpeta', icon: wrapIcon(FolderOpen), disabled: true },
         { isSeparator: true },
-        { label: 'Documento', icon: FileText, disabled: true },
-        { label: 'Hoja de cálculo', icon: FileSpreadsheet, disabled: true },
+        { label: 'Documento', icon: wrapIcon(FileText), disabled: true },
+        { label: 'Hoja de cálculo', icon: wrapIcon(FileSpreadsheet), disabled: true },
       ]
     },
     { 
       label: 'Abrir', 
-      icon: FolderOpen,
+      icon: wrapIcon(FolderOpen),
       action: onUploadClick,
       shortcut: 'Ctrl+O'
     },
     { 
       label: 'Guardar', 
-      icon: Save,
+      icon: wrapIcon(Save),
       disabled: true,
       shortcut: 'Ctrl+S'
     },
     { 
       label: 'Imprimir', 
-      icon: Printer,
+      icon: wrapIcon(Printer),
       disabled: true,
       shortcut: 'Ctrl+P'
     },
@@ -76,7 +78,7 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
     { 
       label: 'Cargar JSON...', 
       action: onUploadClick, 
-      icon: Upload,
+      icon: wrapIcon(Upload),
       disabled: false
     },
     { 
@@ -86,7 +88,7 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
           onOverwrite();
         }
       },
-      icon: Replace, 
+      icon: wrapIcon(Replace), 
       disabled: !isFileLoaded 
     },
     { 
@@ -96,21 +98,21 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
           onMerge();
         }
       },
-      icon: Layers, 
+      icon: wrapIcon(Layers), 
       disabled: !isFileLoaded 
     },
     { isSeparator: true },
     { 
       label: 'Exportar como PDF...', 
       action: onExportPDF, 
-      icon: Download, 
+      icon: wrapIcon(Download), 
       disabled: isGraphEmpty,
       shortcut: 'Ctrl+E'
     },
     { isSeparator: true },
     { 
       label: 'Configuración', 
-      icon: Settings,
+      icon: wrapIcon(Settings),
       disabled: true
     }
   ];
@@ -119,45 +121,45 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
     { 
       label: 'Deshacer', 
       disabled: true,
-      icon: Undo2,
+      icon: wrapIcon(Undo2),
       shortcut: 'Ctrl+Z'
     },
     { 
       label: 'Rehacer', 
       disabled: true,
-      icon: Redo2,
+      icon: wrapIcon(Redo2),
       shortcut: 'Ctrl+Shift+Z'
     },
     { isSeparator: true },
     { 
       label: 'Cortar', 
       disabled: isGraphEmpty,
-      icon: Scissors,
+      icon: wrapIcon(Scissors),
       shortcut: 'Ctrl+X'
     },
     { 
       label: 'Copiar', 
       disabled: isGraphEmpty,
-      icon: Copy,
+      icon: wrapIcon(Copy),
       shortcut: 'Ctrl+C'
     },
     { 
       label: 'Pegar', 
       disabled: true,
-      icon: Copy,
+      icon: wrapIcon(Copy),
       shortcut: 'Ctrl+V'
     },
     { 
       label: 'Seleccionar todo', 
       disabled: isGraphEmpty,
-      icon: Check,
+      icon: wrapIcon(Check),
       shortcut: 'Ctrl+A'
     },
     { isSeparator: true },
     { 
       label: 'Buscar', 
       disabled: false,
-      icon: FileSearch,
+      icon: wrapIcon(FileSearch),
       shortcut: 'Ctrl+F'
     }
   ];
@@ -166,28 +168,28 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
     { 
       label: 'Ajustar Vista', 
       action: onFitView,
-      icon: Maximize2,
+      icon: wrapIcon(Maximize2),
       disabled: isGraphEmpty,
       shortcut: 'Ctrl+0'
     },
     { 
       label: 'Acercar', 
       action: onZoomIn,
-      icon: ZoomIn,
+      icon: wrapIcon(ZoomIn),
       disabled: isGraphEmpty,
       shortcut: 'Ctrl+Plus'
     },
     { 
       label: 'Alejar', 
       action: onZoomOut,
-      icon: ZoomOut,
+      icon: wrapIcon(ZoomOut),
       disabled: isGraphEmpty,
       shortcut: 'Ctrl+-'
     },
     { isSeparator: true },
     { 
       label: 'Modo oscuro', 
-      icon: Moon,
+      icon: wrapIcon(Moon),
       disabled: true,
       shortcut: 'Ctrl+Shift+D'
     }
@@ -196,34 +198,25 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
   const helpMenuItems: (MenuItemWithSubmenu | { isSeparator: true })[] = [
     { 
       label: 'Documentación', 
-      icon: HelpCircle,
+      icon: wrapIcon(HelpCircle),
       disabled: true,
       shortcut: 'F1'
     },
     { isSeparator: true },
     { 
       label: 'Acerca de Nodex', 
-      icon: Info,
+      icon: wrapIcon(Info),
       disabled: false
     }
   ];
 
   return (
-    <div className="flex items-center w-full px-4 bg-slate-50 border-b border-slate-200 h-12 shadow-sm flex-shrink-0">
-      <div className="flex items-center mr-6">
-        <div className="text-slate-800 font-bold text-xl">Nodex</div>
-      </div>
-      <div className="flex items-center h-full">
+    <div className="flex items-center w-full px-4 bg-slate-50 border-b border-slate-200 h-12 shadow-sm">
+      <div className="flex items-center">
         <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} />
         <DropdownMenu triggerLabel="Editar" items={editMenuItems} />
         <DropdownMenu triggerLabel="Vista" items={viewMenuItems} />
-      </div>
-      <div className="flex-grow" />
-      <div className="flex items-center h-full">
-        <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} align="right" />
-        <div className="ml-4 w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-300 transition-colors">
-          <User size={18} />
-        </div>
+        <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} />
       </div>
     </div>
   );
