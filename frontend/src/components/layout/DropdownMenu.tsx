@@ -200,36 +200,25 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
   };
 
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={menuRef}>
+    <div className={`relative inline-block text-left h-full`} ref={menuRef}>
       <button
         ref={triggerRef}
-        className={`flex items-center gap-1 px-3 h-9 text-sm font-medium rounded-md transition-colors
-          hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
-          ${isOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-700'}`}
+        className={`flex items-center gap-2 px-3 h-full text-sm font-medium transition-colors 
+          hover:bg-slate-200/60 
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 
+          ${isOpen ? 'bg-slate-200/60 text-blue-600' : 'text-slate-700'}`}
         onClick={handleTriggerClick}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-controls="dropdown-menu"
       >
-        {TriggerIcon && (
-          <span className="text-gray-600">
-            <TriggerIcon size={16} className={isOpen ? 'text-blue-600' : ''} />
-          </span>
-        )}
-        <span className={isOpen ? 'text-blue-600' : ''}>{triggerLabel}</span>
+        <span>{triggerLabel}</span>
       </button>
 
       {isOpen && (
         <div 
-          className="fixed bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 min-w-[240px]"
-          style={{
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-          }}
+          className="fixed bg-white rounded-lg shadow-xl border border-slate-200/80 py-1.5 z-50 min-w-[240px]"
+          style={{ top: `${position.top}px`, left: `${position.left}px` }}
           role="menu"
-          aria-orientation="vertical"
-          aria-labelledby="menu-button"
-          tabIndex={-1}
         >
           {items.map((item, index) => renderMenuItem(item, index))}
         </div>
