@@ -5,7 +5,7 @@ set -euo pipefail
 echo "🧹 Limpiando contenedores..."
 ./scripts/clean_containters.sh 
 
-# 💾 Guarda cambios en la rama actual
+# Obtener rama actual
 current_branch=$(git branch --show-current)
 
 if [[ -z "$current_branch" ]]; then
@@ -13,14 +13,24 @@ if [[ -z "$current_branch" ]]; then
   exit 1
 fi
 
-if [[ "$current_branch" == test/* ]]; then
-  echo "⚠️ Ya estás en una rama de prueba ($current_branch). Operación no necesaria."
+# Validar que la rama actual sea feature/* o hotfix/*
+if [[ ! "$current_branch" =~ ^(feature|hotfix)/ ]]; then
+  echo "❌ Solo puedes iniciar pruebas desde ramas 'feature/*' o 'hotfix/*'. Estás en '$current_branch'."
   exit 1
 fi
 
+# Verificar si ya existe alguna rama test para esta rama base y enumerarla
+base_branch_name="${current_branch//\//-}"
+existing_tests=($(git branch --list "test/${base_branch_name}-*"))
+count=${#existing_tests[@]}
+
+# Crear nuevo índice para la rama test, con 3 dígitos
+new_index=$(printf "%02d" $((count + 1)))
+test_branch="test/${base_branch_name}-${new_index}"
+
 echo "💾 Guardando cambios en '$current_branch'..."
 
-# Verificar si hay cambios
+# Verificar si hay cambios sin commit
 if git diff-index --quiet HEAD --; then
   echo "ℹ️ No hay cambios para hacer commit."
 else
@@ -30,9 +40,7 @@ else
   git commit -m "$commit_message"
 fi
 
-# 🧪 Crear rama de prueba
-test_branch="test/${current_branch//\//-}-$(date +%s)"  # ej. test/feature-grafo-1717512259
-
+# Crear rama test nueva
 echo "🧪 Creando rama temporal de prueba '$test_branch'..."
 git checkout -b "$test_branch"
 

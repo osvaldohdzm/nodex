@@ -26,6 +26,40 @@
   text-align: center;
 }
 
+.upload-panel-content {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch; /* Make children same height */
+  justify-content: space-between; /* Distribute space between children */
+  gap: 1.5rem; /* Space between left (upload) and right (info) sections */
+  margin-top: 1rem; /* Space below the panel-title */
+}
+
+.upload-area {
+  flex: 1; /* Share space equally */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border: 1px dashed var(--input-border-hover); /* Use a distinct border */
+  border-radius: 0.5rem;
+  text-align: center;
+  min-height: 150px; /* Ensure it has some height */
+}
+
+.loaded-file-info {
+  flex: 1; /* Share space equally */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center children horizontally */
+  justify-content: center; /* Also center vertically */
+  padding: 1rem; /* Add some internal spacing */
+  border: 1px dashed var(--input-border-hover); /* Match upload-area border */
+  border-radius: 0.5rem;
+  min-height: 150px; /* Ensure it has some height */
+}
+
 .file-name-display {
   font-size: 0.75rem;
   color: var(--text-secondary);
