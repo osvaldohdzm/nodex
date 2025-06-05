@@ -94,19 +94,7 @@ else
 fi
 
 
-# 6. Opcionalmente, hacer push de la rama
-read -rp "¿Deseas hacer push de la rama '$target_test_branch' al remoto 'origin'? (s/N): " push_confirm
-if [[ "$(echo "$push_confirm" | tr '[:upper:]' '[:lower:]')" == "s" ]]; then
-  echo "⏫ Haciendo push de '$target_test_branch' a 'origin'..."
-  # Usamos -u para configurar el tracking la primera vez que se sube una nueva rama
-  if git push -u origin "$target_test_branch"; then
-    echo "✅ Rama '$target_test_branch' subida y configurada para traquear 'origin/$target_test_branch'."
-  else
-    echo "❌ Falló el push de '$target_test_branch'. Puede que necesites hacer pull/rebase si la rama remota tiene cambios, o resolver otros problemas de Git." >&2
-  fi
-else
-  echo "ℹ️ Rama '$target_test_branch' no subida al remoto. Puedes hacerlo manualmente con: git push origin $target_test_branch"
-fi
+./scripts/start.sh
 
 echo "🎉 Proceso completado. Tus cambios están ahora en la rama '$target_test_branch'."
 
