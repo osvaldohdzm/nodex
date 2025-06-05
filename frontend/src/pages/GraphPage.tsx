@@ -269,6 +269,30 @@ export const GraphPage: React.FC = () => {
 
   const handleUploadAreaClick = () => fileInputRef.current?.click();
 
+  const handleFileDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const file = event.dataTransfer.files?.[0];
+    if (file && file.type === 'application/json') {
+      setFileName(file.name);
+      file.text().then(text => {
+        try {
+          const parsedJson = JSON.parse(text) as JsonData;
+          setSelectedFileContent(parsedJson);
+        } catch (error) {
+          alert('El archivo no es un JSON válido.');
+        }
+      });
+    } else {
+      alert('Por favor, carga un archivo JSON válido.');
+    }
+  }, []);
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -278,9 +302,7 @@ export const GraphPage: React.FC = () => {
         const parsedJson = JSON.parse(text) as JsonData;
         setSelectedFileContent(parsedJson);
       } catch (error) {
-        console.error("Error parsing JSON:", error);
-        alert("Fallo al parsear el archivo JSON. Asegúrate que sea un JSON válido.");
-        setFileName(''); 
+        alert('El archivo no es un JSON válido.');
         setSelectedFileContent(null);
       }
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -556,26 +578,56 @@ export const GraphPage: React.FC = () => {
 
   return (
     <div className="graph-page-container flex flex-col h-full w-full overflow-hidden">
+      <div className="top-bar flex items-center w-full px-6 py-3 bg-bg-primary border-b border-input-border" style={{ minHeight: '60px' }}>
+        <div className="action-buttons-container flex gap-2">
+          <button
+            className="graph-action-button overwrite-button"
+            onClick={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'overwrite')}
+            disabled={!selectedFileContent}
+            title="Reemplaza el grafo actual con la persona del archivo JSON."
+          >
+            <Replace size={16} />
+          </button>
+          <button
+            className="graph-action-button merge-button"
+            onClick={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'merge')}
+            disabled={!selectedFileContent}
+            title="Añade la persona del archivo JSON como un nuevo nodo al grafo."
+          >
+            <Layers size={16} />
+          </button>
+          <button
+            className="graph-action-button"
+            onClick={handleExportPDF}
+            disabled={nodes.length === 0}
+            title={nodes.length === 0 ? "Carga un grafo para exportar" : "Exportar vista actual como PDF"}
+          >
+            <Download size={16} />
+          </button>
+        </div>
+        <div className="flex-1 flex justify-center">
+          <h1 className="text-3xl font-bold text-accent-cyan select-none">Nodex</h1>
+        </div>
+      </div>
+
       <div className="upload-panel" ref={uploadPanelRef} style={{ flexShrink: 0 }}>
         <h2 className="panel-title">Cargar Archivo JSON de Persona</h2>
         <div 
           className="upload-area" 
-          onClick={handleUploadAreaClick} 
-          role="button" 
+          onClick={handleUploadAreaClick}
+          onDrop={handleFileDrop}
+          onDragOver={handleDragOver}
+          role="button"
           tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              handleUploadAreaClick();
-            }
-          }}
           aria-label="Área para cargar archivos JSON. Arrastra y suelta o haz clic para seleccionar."
+          style={{ cursor: 'pointer' }}
         >
-          <input 
-            type="file" 
-            accept=".json" 
-            className="hidden" 
-            ref={fileInputRef} 
-            onChange={handleFileSelected} 
+          <input
+            type="file"
+            accept=".json"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleFileSelected}
           />
           <UploadCloud size={48} className="mx-auto mb-2 text-gray-500" />
           <p className="text-text-secondary text-sm">
@@ -585,33 +637,6 @@ export const GraphPage: React.FC = () => {
         {selectedFileContent && fileName && (
           <p className="file-name-display">Archivo listo: {fileName}</p>
         )}
-        
-        <div className="action-buttons-container mt-3">
-          <button 
-            className="graph-action-button overwrite-button"
-            onClick={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'overwrite')}
-            disabled={!selectedFileContent}
-            title="Reemplaza el grafo actual con la persona del archivo JSON."
-          >
-            <Replace size={16} /> Sobrescribir
-          </button>
-          <button 
-            className="graph-action-button merge-button"
-            onClick={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'merge')}
-            disabled={!selectedFileContent}
-            title="Añade la persona del archivo JSON como un nuevo nodo al grafo."
-          >
-            <Layers size={16} /> Agregar y actualizar
-          </button>
-          <button
-            className="graph-action-button"
-            onClick={handleExportPDF}
-            disabled={nodes.length === 0}
-            title={nodes.length === 0 ? "Carga un grafo para exportar" : "Exportar vista actual como PDF"}
-          >
-            <Download size={16} /> Exportar PDF
-          </button>
-        </div>
       </div>
 
       <PanelGroup direction="horizontal" className="flex-grow min-h-0 mt-4">
