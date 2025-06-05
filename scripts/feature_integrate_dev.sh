@@ -2,7 +2,6 @@
 set -euo pipefail
 
 DEVELOP_BRANCH="dev"
-MAIN_BRANCH="main" # O "master", según tu configuración
 
 current_branch=$(git branch --show-current)
 
@@ -30,7 +29,7 @@ git push origin "$current_branch" # Asegurar que el remoto está actualizado
 read -p "¿Ejecutar pruebas para '$current_branch' antes de continuar? (s/n): " run_tests_confirm
 if [[ "$run_tests_confirm" == "s" ]]; then
   echo "🧪 Ejecutando pruebas..."
-  # ./scripts/run-tests.sh || { echo "❌ Pruebas fallidas. Abortando."; exit 1; } # Descomenta si tienes el script
+  # ./scripts/run-tests.sh || { echo "❌ Pruebas fallidas. Abortando."; exit 1; }
   echo "✅ (Placeholder) Pruebas pasaron." # Reemplaza con tu script de pruebas real
 fi
 
@@ -45,7 +44,7 @@ if [[ "$update_method" == "r" ]]; then
     exit 1
   }
   echo "⏫ Forzando push de la rama rebaseada (necesario después de rebase)..."
-  git push origin "$current_branch" --force-with-lease # Más seguro que --force
+  git push origin "$current_branch" --force-with-lease
 elif [[ "$update_method" == "m" ]]; then
   git merge "origin/$DEVELOP_BRANCH" -m "Merge $DEVELOP_BRANCH into $current_branch"
   git push origin "$current_branch"
@@ -55,7 +54,6 @@ else
 fi
 echo "✅ Rama '$current_branch' actualizada y pusheada."
 
-
 # 4. Cambiar a la rama de desarrollo y actualizarla
 echo "🔄 Cambiando a '$DEVELOP_BRANCH' y actualizándola..."
 git checkout "$DEVELOP_BRANCH"
@@ -63,10 +61,7 @@ git pull origin "$DEVELOP_BRANCH"
 
 # 5. Fusionar la rama feature en develop
 echo "🔗 Fusionando '$current_branch' en '$DEVELOP_BRANCH'..."
-# --no-ff crea un commit de merge, manteniendo la historia de la feature.
-# Puedes añadir una opción para hacer squash si prefieres: git merge --squash "$current_branch"
 git merge --no-ff "$current_branch" -m "Merge feature: $current_branch"
-
 
 # 6. Pushear develop
 echo "⏫ Haciendo push de '$DEVELOP_BRANCH'..."

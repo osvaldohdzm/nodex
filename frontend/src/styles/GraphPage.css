@@ -1,0 +1,185 @@
+/* frontend/src/styles/GraphPage.css */
+
+.graph-page-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Changed from height: 100% to fill flex parent */
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 0; /* Allows shrinking if parent space is constrained */
+}
+
+.upload-panel {
+  padding: 1rem;
+  background-color: var(--bg-secondary);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 0.5rem;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--accent-cyan);
+  text-align: center;
+}
+
+.upload-panel-content {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch; /* Make children same height */
+  justify-content: space-between; /* Distribute space between children */
+  gap: 1.5rem; /* Space between left (upload) and right (info) sections */
+  margin-top: 1rem; /* Space below the panel-title */
+}
+
+.upload-area {
+  flex: 1; /* Share space equally */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border: 1px dashed var(--input-border-hover); /* Use a distinct border */
+  border-radius: 0.5rem;
+  text-align: center;
+  min-height: 150px; /* Ensure it has some height */
+}
+
+.loaded-file-info {
+  flex: 1; /* Share space equally */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center children horizontally */
+  justify-content: center; /* Also center vertically */
+  padding: 1rem; /* Add some internal spacing */
+  border: 1px dashed var(--input-border-hover); /* Match upload-area border */
+  border-radius: 0.5rem;
+  min-height: 150px; /* Ensure it has some height */
+}
+
+.file-name-display {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.graph-action-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--input-bg);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan-darker);
+  box-shadow: 0 0 10px 0px rgba(0, 0, 0, 0.2);
+}
+
+.graph-action-button:hover:not(:disabled) {
+  background-color: var(--accent-cyan-darker);
+  color: var(--bg-primary);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px 2px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.graph-action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--input-bg);
+  color: var(--text-secondary);
+  border-color: var(--input-border);
+  box-shadow: none;
+}
+
+.graph-viewport-container {
+  flex-grow: 1;
+  flex-shrink: 1; /* Default shrink behavior, part of flex: 1 shorthand */
+  flex-basis: 0%;  /* Start from 0 and grow to fill available space */
+  margin-top: 1rem;
+  background-color: var(--graph-bg);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  position: relative; /* Essential for absolutely positioned children */
+  min-height: 400px; /* Fallback minimum height, adjust as needed */
+  overflow: hidden;  /* Crucial for containing children and BFC */
+  box-sizing: border-box;
+}
+
+.reactflow-wrapper {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box; /* Added for consistent layout calculations */
+}
+
+.placeholder-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+  background-color: var(--bg-primary);
+}
+
+.json-details-viewer {
+  width: 100%;
+  max-width: 40rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.json-details-summary {
+  cursor: pointer;
+  color: var(--accent-cyan);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.json-details-pre {
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+  overflow: auto;
+  max-height: 20rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: var(--input-bg);
+  border-radius: 0.5rem;
+  border: 1px solid var(--input-border);
+}
+
+.graph-page-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}

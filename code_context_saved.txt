@@ -1,3 +1,7 @@
+vamos mejro per aun no esta sobrealapado 
+
+http://192.168.0.4:4545/graph
+
 ===== frontend/tsconfig.json =====
 {
   "compilerOptions": {
@@ -48,21 +52,50 @@
 
 
 ===== frontend/eslint.config.mjs =====
-import js from "@eslint/js";
-import globals from "globals";
-import pluginReact from "eslint-plugin-react";
-import { defineConfig } from "eslint/config";
-
-export default defineConfig([
-  { files: ["**/*.{js,mjs,cjs,jsx}"], plugins: { js }, extends: ["js/recommended"] },
-  { files: ["**/*.{js,mjs,cjs,jsx}"], languageOptions: { globals: globals.browser } },
-  pluginReact.configs.flat.recommended,
+// eslint.config.mjs
+import globals from "globals"; 
+import pluginJs from "@eslint/js"; // Renamed to avoid conflict if you meant something else by 'js' 
+import pluginReact from "eslint-plugin-react"; 
+import pluginReactHooks from "eslint-plugin-react-hooks"; // Added this 
+import { defineConfig } from "eslint/config"; // Keep if using ESLint v9+ style 
+ 
+export default defineConfig([ 
+  { 
+    files: ["src/**/*.{js,jsx,ts,tsx}"], // Apply to all relevant files in src 
+    plugins: { 
+      react: pluginReact, 
+      "react-hooks": pluginReactHooks, // Register the plugin 
+    }, 
+    languageOptions: { 
+      globals: globals.browser, 
+      ecmaVersion: 2021, 
+      sourceType: 'module', 
+      parserOptions: { 
+        ecmaFeatures: { 
+          jsx: true, 
+        }, 
+      }, 
+    }, 
+    rules: { 
+      ...pluginJs.configs.recommended.rules, // Basic JS rules 
+      ...pluginReact.configs.recommended.rules, // React specific rules 
+      ...pluginReactHooks.configs.recommended.rules, // Rules for Hooks 
+      "react/react-in-jsx-scope": "off", // Not needed with new JSX transform 
+      "react/jsx-uses-react": "off",    // Not needed with new JSX transform 
+      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }], // Warn on unused vars 
+    }, 
+    settings: { 
+      react: { 
+        version: "detect", // Automatically detect React version 
+      }, 
+    }, 
+  } 
 ]);
 
 
 ===== frontend/tailwind.config.js =====
 module.exports = {
-  content: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
+  content: ['./src/**/*.{js,jsx,ts,tsx,css}', './public/index.html'],
   theme: {
     extend: {},
   },
@@ -75,53 +108,96 @@ module.exports = {
 @tailwind components;
 @tailwind utilities;
 
+/* React Flow specific styles */
+/* Estas clases ya no son necesarias aquí si el layout se maneja bien con flex/grid y w-full/h-full */
+/* .react-flow-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.react-flow__viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.react-flow__background {
+  width: 100%;
+  height: 100%;
+} */
+
+/* Ensure proper sizing for the graph container */
+/* Esta clase es buena, la usaremos */
+.graph-container {
+  width: 100%;
+  /* height: 100%; Let flex-grow determine height */
+  min-height: 300px; /* Fallback minimum height */
+  position: relative; /* Important for ReactFlow's positioning context */
+}
+
 :root {
-  --bg-primary: #03070C;
-  --bg-secondary: #0A0F1A;
+  --bg-primary: #03070C; /* Muy oscuro, casi negro azulado */
+  --bg-secondary: #0A0F1A; /* Azul oscuro para elementos secundarios */
   --bg-glass: rgba(10, 15, 26, 0.6);
   --border-glass: rgba(0, 229, 255, 0.2);
-  --text-primary: #E0E7FF;
-  --text-secondary: #94A3B8;
-  --accent-cyan: #00E5FF;
-  --accent-cyan-darker: #00B8D4;
-  --input-bg: #101827;
-  --input-border: #303F5E;
-  --input-focus-border: var(--accent-cyan);
+  --text-primary: #E0E7FF; /* Texto principal, azul claro/lavanda */
+  --text-secondary: #94A3B8; /* Texto secundario, gris azulado */
+  --accent-cyan: #00E5FF; /* Acento principal, cian brillante */
+  --accent-cyan-darker: #00B8D4; /* Cian más oscuro para bordes o estados hover */
+  
+  --accent-pink: #F472B6;
+  --accent-purple: #A78BFA;
+  --accent-orange: #F59E0B;
+  --accent-green: #34D399;
 
-  --graph-bg: var(--bg-primary);
-  --node-person-bg: var(--bg-secondary);
-  --node-person-border: var(--accent-cyan-darker);
-  --node-company-bg: var(--bg-secondary);
-  --node-company-border: var(--accent-cyan);
-  --shadow-node-glow: 0 0 15px var(--accent-cyan);
+  --input-bg: #101827; /* Fondo para inputs */
+  --input-border: #303F5E; /* Borde para inputs y elementos sutiles del grafo */
+  --input-focus-border: var(--accent-cyan); /* Corregido: sin espacio */
 
-  --edge-employer: #82DDFF;
-  --edge-bestfriend: #A78BFA;
-  --edge-boardmember: #F472B6;
-  --edge-default: #94A3B8;
+  /* Estilos específicos del Grafo */
+  --graph-bg: var(--bg-primary); /* Corregido: sin espacio */
+  --graph-lines-color: var(--input-border);
 
+  --node-bg: var(--bg-secondary);
+  --node-border: var(--accent-cyan-darker);
+  --node-border-selected: var(--accent-cyan);
+  --node-shadow-selected: 0 0 15px var(--accent-cyan);
+  
+  /* Colores específicos por tipo de nodo (ejemplos) */
+  --node-person-icon-color: var(--accent-cyan); /* Corregido */
+  --node-company-icon-color: var(--accent-pink); /* Corregido */
+  --node-generic-icon-color: var(--text-secondary); /* Corregido */
+
+  --edge-default-color: #6B7280;
+  --edge-selected-color: var(--accent-cyan); /* Corregido */
+  --edge-label-color: var(--text-secondary); /* Corregido */
+
+  /* Variables de styles.css (para consistencia si se usan en otros lados) */
   --hue: 200;
   --saturation-accent: 100%;
   --lightness-accent: 50%;
-  --first-color: hsl(var(--hue), var(--saturation-accent), var(--lightness-accent));
+  --first-color: hsl(var(--hue), var(--saturation-accent), var(--lightness-accent)); /* Corregido */
   --first-color-alt: hsl(var(--hue), var(--saturation-accent), 45%);
   --first-color-light: hsl(var(--hue), var(--saturation-accent), 65%);
   --bg-dark-primary: #05080D;
   --bg-form-color: hsla(212, 70%, 10%, 0.75);
   --input-bg-color: #0E1625;
-  --title-color: var(--first-color);
+  --title-color: var(--first-color); /* Corregido */
   --text-color: #C0C8D8;
   --text-color-light: #8892b0;
-  --text-on-accent: var(--bg-dark-primary);
-  --body-color: var(--bg-dark-primary);
-  --container-color: var(--bg-form-color);
+  --text-on-accent: var(--bg-dark-primary); /* Corregido */
+  --body-color: var(--bg-dark-primary); /* Corregido */
+  --container-color: var(--bg-form-color); /* Corregido */
   --input-border-color: hsl(var(--hue), var(--saturation-accent), 35%);
 }
 
-body {
+body, #root, .App {
   @apply bg-bg-primary text-text-primary font-sans;
   margin: 0;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Asegurar que ocupen toda la altura disponible */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -132,26 +208,28 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-secondary); /* Corregido */
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--accent-cyan-darker);
+  background: var(--accent-cyan-darker); /* Corregido */
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-cyan);
+  background: var(--accent-cyan); /* Corregido */
 }
 
 /* React Flow specific styles */
 .react-flow__minimap {
   background-color: var(--bg-secondary) !important;
   border: 1px solid var(--accent-cyan-darker) !important;
+  border-radius: 4px;
 }
 .react-flow__controls-button {
   background-color: var(--bg-secondary) !important;
   border: 1px solid var(--accent-cyan-darker) !important;
   color: var(--accent-cyan) !important;
   fill: var(--accent-cyan) !important;
+  box-shadow: none !important;
 }
 .react-flow__controls-button:hover {
   background-color: var(--input-bg) !important;
@@ -160,10 +238,195 @@ body {
   display: none;
 }
 
-.debug-border {
-  border: 2px solid red !important;
+/* Estilo para las aristas */
+.react-flow__edge-path {
+  stroke-width: 1.5;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--edge-selected-color); /* Corregido */
 }
 
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background-color: var(--accent-cyan-darker) !important;
+  border: 1px solid var(--bg-secondary) !important;
+}
+.react-flow__handle-connecting {
+  background-color: var(--accent-cyan) !important;
+}
+
+
+@keyframes nodeEnterAnimation {
+  0% {
+    transform: scale(0.3) translateZ(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1) translateZ(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1) translateZ(0);
+    opacity: 1;
+  }
+}
+
+@keyframes edgeEnterAnimation {
+  from {
+    opacity: 0;
+    stroke-dasharray: 2000;
+    stroke-dashoffset: 2000;
+  }
+  to {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+.react-flow__node.node-appear {
+  animation: nodeEnterAnimation 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.react-flow__edge.edge-appear .react-flow__edge-path {
+  animation: edgeEnterAnimation 0.4s ease-out forwards;
+  animation-delay: 0.05s; 
+}
+
+.react-flow__edge.edge-appear-static .react-flow__edge-path {
+  opacity: 1;
+}
+
+===== frontend/src/styles/GraphPage.css =====
+/* frontend/src/styles/GraphPage.css */
+
+.graph-page-container {
+  @apply flex flex-col h-full w-full bg-bg-primary text-text-primary;
+  min-height: 0; /* Crucial for flex children that also grow */
+}
+
+.upload-panel {
+  @apply p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0;
+  background-color: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  margin: 1rem;
+  position: relative; /* Ensure it's part of the stacking context */
+  z-index: 10; /* Higher z-index for the upload panel */
+}
+
+.panel-title {
+  @apply text-xl font-semibold mb-4 text-accent-cyan text-center;
+  text-shadow: 0 0 8px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.5);
+}
+
+.file-name-display {
+  @apply text-xs text-text-secondary mt-3 text-center;
+}
+
+.action-buttons-container {
+  @apply flex flex-col sm:flex-row justify-center items-center gap-3 mt-4;
+}
+
+.graph-action-button {
+  @apply px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ease-in-out
+         flex items-center justify-center gap-2 focus:outline-none;
+  background-color: var(--input-bg);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan-darker);
+  box-shadow: 0 0 10px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2),
+              inset 0 0 5px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.1);
+  text-shadow: 0 0 3px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.4);
+}
+
+.graph-action-button:hover:not(:disabled) {
+  background-color: var(--accent-cyan-darker);
+  color: var(--bg-primary);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px 2px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.4),
+              inset 0 0 8px 1px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2);
+  transform: translateY(-1px);
+}
+
+.graph-action-button:active:not(:disabled) {
+  transform: translateY(0px);
+  box-shadow: 0 0 5px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.3),
+              inset 0 0 3px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.15);
+}
+
+.graph-action-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+  background-color: var(--input-bg);
+  color: var(--text-secondary);
+  border-color: var(--input-border);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.button-icon {
+  @apply mr-1.5;
+}
+
+/* Specific button colors if needed, but base is good for futuristic */
+.overwrite-button {
+  /* You can add specific overrides here if needed, e.g., a different accent color */
+  /* color: var(--accent-orange); */
+  /* border-color: var(--accent-orange); */
+}
+.overwrite-button:hover:not(:disabled) {
+  /* background-color: var(--accent-orange); */
+}
+
+.merge-button {
+  /* color: var(--accent-green); */
+  /* border-color: var(--accent-green); */
+}
+.merge-button:hover:not(:disabled) {
+  /* background-color: var(--accent-green); */
+}
+
+.loading-text {
+  @apply text-sm text-accent-cyan mt-3 animate-pulse text-center;
+}
+
+.graph-viewport-container {
+  @apply flex-grow relative rounded-lg shadow-lg;
+  background-color: var(--graph-bg);
+  min-height: 0; /* Essential for flex-grow to work correctly in nested flex scenarios */
+  margin: 0 1rem 1rem 1rem;
+  overflow: hidden; /* Crucial for ReactFlow's scrollable container */
+  z-index: 1; /* Lower z-index than the upload panel */
+}
+
+/* This div directly wraps ReactFlow and MUST have 100% height and width */
+.reactflow-wrapper {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.placeholder-message {
+  @apply absolute inset-0 flex flex-col items-center justify-center text-text-secondary text-lg p-6 text-center;
+  background-color: var(--bg-primary);
+}
+
+.json-details-viewer {
+  @apply w-full max-w-2xl mt-4 text-left;
+}
+
+.json-details-summary {
+  @apply cursor-pointer text-accent-cyan hover:underline font-semibold;
+}
+
+.json-details-pre {
+  @apply text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-80 mt-2 p-3 bg-input-bg rounded-md border border-input-border;
+}
 
 ===== frontend/src/App.js =====
 import React from 'react';
@@ -292,79 +555,87 @@ root.render(
 );
 
 ===== frontend/src/App.tsx =====
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// frontend/src/App.tsx
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
-import GraphPage from './pages/GraphPage';
+import GraphPageWithProvider from './pages/GraphPage';
 import './styles/globals.css';
 
-function App() {
-  console.log("App component is rendering");
-  const isAuthenticated = !!localStorage.getItem('access_token');
+const AppContent: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('access_token');
+      setIsAuthenticated(!!token);
+    };
+    checkAuth();
+    const handleLoginSuccess = () => {
+      console.log("AppContent: loginSuccess event received, updating auth state.");
+      checkAuth();
+    };
+    window.addEventListener('loginSuccess', handleLoginSuccess);
+    return () => {
+      window.removeEventListener('loginSuccess', handleLoginSuccess);
+    };
+  }, [location.key]);
+
+  console.log("AppContent rendering, isAuthenticated:", isAuthenticated);
 
   return (
-    <Router>
-      <div className="App flex flex-col h-screen bg-gray-700">
-        <header
-          className="App-header"
-          style={{
-            backgroundColor: '#1e1e1e',
-            padding: '20px',
-            textAlign: 'center',
-            color: 'white',
-            flexShrink: 0,
-            borderBottom: '2px solid var(--accent-cyan)'
-          }}
-        >
-          <h1>Nodex</h1>
-        </header>
+    // .App class from globals.css applies: bg-bg-primary text-text-primary font-sans flex flex-col min-h-screen
+    <div className="App"> 
+      <header
+        className="App-header" // This class is defined in App.css, ensure it's flex-shrink-0
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          padding: '1rem',
+          textAlign: 'center',
+          color: 'var(--text-primary)',
+          flexShrink: 0, 
+          borderBottom: '1px solid var(--input-border)'
+        }}
+      >
+        <h1 className="text-2xl font-semibold text-accent-cyan">Nodex</h1>
+      </header>
+      {/* main needs to be a flex container that grows and allows its children to grow */}
+      <main
+        className="flex-grow flex flex-col" // Ensures main itself is a flex container and grows
+        style={{
+          position: 'relative', // For absolutely positioned children if needed
+          minHeight: '0', // CRUCIAL for flex children that also grow
+        }}
+      >
+        {/* Routes will render GraphPageWithProvider, which has .graph-page-container (flex-grow) */}
+        <Routes>
+          <Route 
+            path="/login" 
+            element={!isAuthenticated ? <LoginPage /> : <Navigate to="/graph" replace />} 
+          />
+          <Route
+            path="/graph"
+            element={isAuthenticated ? <GraphPageWithProvider /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/"
+            element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
+        </Routes>
+      </main>
+    </div>
+  );
+};
 
-        {/* SIMPLIFIED MAIN SECTION FOR DEBUGGING */}
-        <main
-          className="flex-grow"
-          style={{
-            border: '5px solid limegreen',
-            backgroundColor: 'rgba(50, 50, 150, 0.3)',
-            position: 'relative'
-          }}
-        >
-          <div style={{
-              width: '100%',
-              height: '100%',
-              border: '3px dashed yellow',
-              backgroundColor: 'rgba(255, 255, 0, 0.1)',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-          >
-            <div style={{ 
-                flexGrow: 1, 
-                border: '2px solid orange', 
-                position: 'relative',
-                width: '100%',
-                height: '100%'
-            }}>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route
-                  path="/graph"
-                  element={
-                    isAuthenticated ? <GraphPage /> : <Navigate to="/login" replace />
-                  }
-                />
-                <Route
-                  path="/"
-                  element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
-                />
-                <Route
-                  path="*"
-                  element={<Navigate to="/" replace />}
-                />
-              </Routes>
-            </div>
-          </div>
-        </main>
-      </div>
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
@@ -696,7 +967,8 @@ button {
 
 
 ===== frontend/src/pages/GraphPage.tsx =====
-import React, { useState, useCallback, useMemo } from 'react';
+// frontend/src/pages/GraphPage.tsx
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -708,21 +980,29 @@ import ReactFlow, {
   Edge,
   Connection,
   BackgroundVariant,
-  // Position, // Not directly used for layout here
+  MarkerType,
+  useReactFlow,
+  ReactFlowProvider,
+  NodeChange,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-// import '../styles/react-flow-theme.css'; // Still commented out
 import '../styles/globals.css';
+import '../styles/GraphPage.css'; // Import the specific CSS
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
+import { UploadCloud, Replace, Layers } from 'lucide-react';
 
 const nodeTypes = {
   person: PersonNode,
   company: CompanyNode,
 };
 
+// --- (JsonData and OnlineProfile interfaces remain the same) ---
 interface JsonData {
   _id?: { $oid: string };
   curp_online?: { data?: { registros?: Array<any> } };
@@ -737,300 +1017,287 @@ interface JsonData {
   [key: string]: any;
 }
 
-// Define el tipo para los perfiles en línea
 interface OnlineProfile {
   link: string;
   title: string;
   snippet?: string;
   source: string;
 }
+// --- (defaultNodes and defaultEdges remain the same) ---
+const defaultNodes: Node[] = [
+  { id: 'center-hub', type: 'company', position: { x: 400, y: 200 }, data: { name: 'Nodex Central Hub', location: 'Cyber Espacio', details: { info: 'Punto de partida de la demostración.'} }, className: 'node-appear' },
+  { id: 'analyst-1', type: 'person', position: { x: 150, y: 50 }, data: { name: 'Analista Alpha', title: 'IA de Datos', details: { skill: 'Análisis Predictivo'} }, className: 'node-appear' },
+  { id: 'data-stream-A', type: 'company', position: { x: 100, y: 350 }, data: { name: 'Flujo de Datos A', location: 'Sector Gamma', details: { type: 'Información encriptada'} }, className: 'node-appear' },
+  { id: 'analyst-2', type: 'person', position: { x: 650, y: 50 }, data: { name: 'Operador Beta', title: 'Vigilancia de Red', details: { skill: 'Seguridad de Redes'} }, className: 'node-appear' },
+  { id: 'data-stream-B', type: 'company', position: { x: 700, y: 350 }, data: { name: 'Flujo de Datos B', location: 'Sector Delta', details: { type: 'Comunicaciones Seguras'} }, className: 'node-appear' },
+];
 
-const GraphPage: React.FC = () => {
-  console.log("GraphPage IS RENDERING - Now with Graph Display Logic");
+const defaultEdges: Edge[] = [
+  { id: 'e-hub-analyst1', source: 'center-hub', target: 'analyst-1', label: 'Asigna Tarea', type: 'smoothstep', animated: true, className: 'edge-appear', style: { stroke: 'var(--accent-green)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-green)' } },
+  { id: 'e-hub-datastreamA', source: 'center-hub', target: 'data-stream-A', label: 'Monitorea', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-purple)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-purple)' } },
+  { id: 'e-analyst1-datastreamA', source: 'analyst-1', target: 'data-stream-A', label: 'Analiza', type: 'smoothstep', className: 'edge-appear' },
+  { id: 'e-hub-analyst2', source: 'center-hub', target: 'analyst-2', label: 'Coordina con', type: 'smoothstep', animated: true, className: 'edge-appear', style: { stroke: 'var(--accent-green)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-green)' } },
+  { id: 'e-hub-datastreamB', source: 'center-hub', target: 'data-stream-B', label: 'Supervisa', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-purple)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-purple)' } },
+  { id: 'e-analyst2-datastreamB', source: 'analyst-2', target: 'data-stream-B', label: 'Protege', type: 'smoothstep', className: 'edge-appear' },
+  { id: 'e-analyst1-analyst2', source: 'analyst-1', target: 'analyst-2', label: 'Colabora', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-orange)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-orange)' } },
+];
+
+export const GraphPage: React.FC = () => {
+  const firstLoadFitViewDone = useRef(false);
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
-
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
+  const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
+  const [isLoadingGraph, setIsLoadingGraph] = useState(false);
+  const [isDemoDataVisible, setIsDemoDataVisible] = useState(true);
+  
+  const { fitView, getNodes, getEdges } = useReactFlow();
+  const demoLoadedRef = useRef(false);
+  const animationCleanupRef = useRef<(() => void) | null>(null);
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    [setNodes]
+  );
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    [setEdges]
+  );
 
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target) {
         setEdges((eds) => addEdge({
           ...params,
-          id: `e${Date.now()}-${Math.random()}`,
-          type: 'smoothstep',
-          animated: true,
-          style: { stroke: 'var(--edge-default)' },
+          id: `user-e-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          type: 'smoothstep', animated: false, style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+          className: 'edge-appear-static'
         }, eds));
       }
     },
     [setEdges]
   );
 
-  const processJsonToGraph = (data: JsonData): { initialNodes: Node[]; initialEdges: Edge[] } => {
+  const processJsonToGraph = useCallback((data: JsonData): { initialNodes: Node[]; initialEdges: Edge[] } => {
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
     const nodeIds = new Set<string>();
-    let edgeIdCounter = 0;
-    let mainPersonNodeId = '';
-    let mainPersonName = '';
-    let mainPersonDetails: any = { fullJson: data };
+    let edgeIdCounter = Date.now(); 
 
     const addNodeSafely = (node: Node) => {
-      if (!nodeIds.has(node.id)) {
-        newNodes.push(node);
-        nodeIds.add(node.id);
+      const uniqueNodeId = `user-node-${node.id}`; 
+      if (!nodeIds.has(uniqueNodeId)) {
+        newNodes.push({ ...node, id: uniqueNodeId, className: 'node-appear' }); 
+        nodeIds.add(uniqueNodeId);
       } else {
-        const existingNode = newNodes.find(n => n.id === node.id);
-        if (existingNode) {
-          existingNode.data = { ...existingNode.data, ...node.data, details: { ...existingNode.data.details, ...node.data.details } };
+        const existingNodeIndex = newNodes.findIndex(n => n.id === uniqueNodeId);
+        if (existingNodeIndex !== -1) {
+          newNodes[existingNodeIndex] = {
+            ...newNodes[existingNodeIndex], ...node, id: uniqueNodeId,
+            data: { ...newNodes[existingNodeIndex].data, ...node.data, details: { ...newNodes[existingNodeIndex].data.details, ...node.data.details } }
+          };
         }
       }
     };
 
     const addEdgeInternal = (sourceId: string, targetId: string, label: string, edgeData?: any) => {
-      if (nodeIds.has(sourceId) && nodeIds.has(targetId) && sourceId !== targetId) {
+      const prefixedSourceId = nodeIds.has(`user-node-${sourceId}`) ? `user-node-${sourceId}` : sourceId;
+      const prefixedTargetId = nodeIds.has(`user-node-${targetId}`) ? `user-node-${targetId}` : targetId;
+
+      if (nodeIds.has(prefixedSourceId) && nodeIds.has(prefixedTargetId) && prefixedSourceId !== prefixedTargetId) {
+        const edgeId = `user-e-${edgeIdCounter++}-${prefixedSourceId.slice(-10)}-${prefixedTargetId.slice(-10)}-${label.replace(/[^a-zA-Z0-9]/g, '_').slice(0,10)}`;
         newEdges.push({
-          id: `e${edgeIdCounter++}-${sourceId}-${targetId}-${label.replace(/\s+/g, '_')}`,
-          source: sourceId,
-          target: targetId,
-          label,
-          type: 'smoothstep',
-          animated: false,
-          style: { stroke: 'var(--edge-default)' },
-          data: edgeData,
+          id: edgeId, source: prefixedSourceId, target: prefixedTargetId, label,
+          type: 'smoothstep', animated: false, style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+          data: edgeData, className: 'edge-appear' 
         });
       }
     };
     
-    let yOffset = 50;
-    const xSpacing = 220;
-    const ySpacing = 180;
-    let currentX = 250;
-
-    if (!data) return { initialNodes: [], initialEdges: [] };
-
-    if (data.curp_online?.data?.registros?.[0]) {
-      const personData = data.curp_online.data.registros[0];
-      mainPersonNodeId = personData.curp || `person-curp-${Date.now()}`;
-      mainPersonName = `${personData.nombres || ''} ${personData.primerApellido || ''} ${personData.segundoApellido || ''}`.trim();
-      mainPersonDetails = { ...mainPersonDetails, ...personData, source: 'curp_online' };
-    } else if (data.ine1?.data?.[0]) {
-      const personData = data.ine1.data[0];
-      mainPersonNodeId = personData.cve || `person-ine-${Date.now()}`;
-      mainPersonName = `${personData.nombre || ''} ${personData.paterno || ''} ${personData.materno || ''}`.trim();
-      mainPersonDetails = { ...mainPersonDetails, ...personData, source: 'ine1' };
-    } else {
-      mainPersonNodeId = data._id?.$oid || `json-root-${Date.now()}`;
-      mainPersonName = "Individuo Principal (Datos Generales)";
-      mainPersonDetails = { ...mainPersonDetails, id: data._id?.$oid, source: 'root' };
-    }
-    
-    if (data.ine1?.data?.[0]) {
-        mainPersonDetails.ine1 = data.ine1.data[0];
-        if (!mainPersonDetails.ocupacion) mainPersonDetails.ocupacion = data.ine1.data[0].ocupacion;
-        if (!mainPersonDetails.direccion_ine) {
-            mainPersonDetails.direccion_ine = `${data.ine1.data[0].calle || ''} ${data.ine1.data[0].exterior || ''} ${data.ine1.data[0].interior || ''}, Col. ${data.ine1.data[0].colonia || ''}, CP ${data.ine1.data[0].codigo_postal || ''}`.trim();
-        }
-    }
-     if (data.ine2?.data?.[0]) mainPersonDetails.ine2 = data.ine2.data[0];
-     if (data.ine3?.data?.[0]) mainPersonDetails.ine3 = data.ine3.data[0];
-
-    addNodeSafely({
-      id: mainPersonNodeId,
-      type: 'person',
-      position: { x: currentX, y: yOffset },
-      data: {
-        name: mainPersonName,
-        title: mainPersonDetails.ocupacion || 'Individuo Principal',
-        details: mainPersonDetails,
-      },
-    });
-    currentX += xSpacing + 100; 
-
-    const buroComercios = [
-        ...(data.buro1?.data?.[0]?.comercios || []),
-        ...(data.buro2?.data?.[0]?.comercios2 || [])
-    ];
-    
-    let buroX = 50;
-    const buroY = yOffset + ySpacing;
-
-    buroComercios.forEach((comercio, index) => {
-      const institucionName = comercio.institucion || `Empresa Desconocida ${index}`;
-      const empresaId = `empresa-buro-${institucionName.replace(/\s+/g, '_').substring(0,50)}-${index}`;
-      addNodeSafely({
-        id: empresaId,
-        type: 'company',
-        position: { x: buroX + index * xSpacing, y: buroY + (index % 2 * 80) },
-        data: {
-          name: institucionName,
-          location: "Información de Buró",
-          details: { ...comercio, source: data.buro1?.data?.[0]?.comercios?.includes(comercio) ? 'buro1' : 'buro2' },
-        },
-      });
-      addEdgeInternal(mainPersonNodeId, empresaId, 'Relación Financiera (Buró)');
-    });
-    if (buroComercios.length > 0) currentX = Math.max(currentX, buroX + buroComercios.length * xSpacing);
-
-    let sociosY = yOffset + ySpacing * 2;
-    if (data.socios_empresas?.data?.datos_subconsulta?.[0]) {
-      const empresaSociaData = data.socios_empresas.data.datos_subconsulta[0];
-      const empresaSociaName = empresaSociaData.nombre_razon_social || `Sociedad Desconocida ${empresaSociaData.fme}`;
-      const empresaSociaId = `empresa-socia-${empresaSociaName.replace(/\s+/g, '_').substring(0,50)}`;
-      
-      addNodeSafely({
-        id: empresaSociaId,
-        type: 'company',
-        position: { x: currentX - xSpacing, y: sociosY },
-        data: {
-          name: empresaSociaName,
-          location: empresaSociaData.domicilio_social?.split('\n')[0] || "Ubicación Desconocida",
-          details: { ...empresaSociaData, source: 'socios_empresas' },
-        },
-      });
-      addEdgeInternal(mainPersonNodeId, empresaSociaId, 'Es Socio/Accionista en');
-
-      if (data.socios_empresas.data.socios) {
-        data.socios_empresas.data.socios.forEach((socio: any, index: number) => {
-          const socioNameFull = `${socio.nombre || ''} ${socio.apellido_paterno || ''} ${socio.apellido_materno || ''}`.trim();
-          if (socioNameFull.toLowerCase() !== mainPersonName.toLowerCase()) { 
-            const socioId = `persona-socio-${(socio.rfc || socioNameFull.replace(/\s+/g, '_') || `socioidx-${index}`).substring(0,50)}`;
-            addNodeSafely({
-              id: socioId,
-              type: 'person',
-              position: { x: currentX + index * xSpacing, y: sociosY + (index % 2 * 80) },
-              data: {
-                name: socioNameFull,
-                title: "Socio/Accionista",
-                details: { ...socio, source: 'socios_empresas.socios' }
-              }
-            });
-            addEdgeInternal(empresaSociaId, socioId, 'Tiene como Socio/Accionista a');
-          }
+    if (data && Object.keys(data).length > 0) {
+        const baseId = data._id?.$oid || 'parsedData'; // Ensure baseId is always a string
+        addNodeSafely({ 
+            id: `${baseId}-main`, 
+            type: 'person', 
+            position: { x: 100, y: 100 }, 
+            data: { 
+                name: `Processed: ${baseId.substring(0,10)}`, 
+                title: 'Main Entity',
+                details: { fullJson: data }
+            } 
         });
-      }
-    }
 
-    let contactoY = yOffset + ySpacing * 1.5;
-    const pasaportesData = [...(data.pasaportes2022?.data || []), ...(data.pasaportes2023?.data || [])];
-    const emergencyContacts = new Map<string, any>();
-
-    pasaportesData.forEach(pasaporte => {
-        const contactoRaw = pasaporte?.solicitud?.datos_personales?.contacto_emergencia;
-        if (contactoRaw) {
-            const contactoName = `${contactoRaw.nombre || ''} ${contactoRaw.apellido || ''} ${contactoRaw.apellido2 || ''}`.trim();
-            if (contactoName && !emergencyContacts.has(contactoName)) {
-                emergencyContacts.set(contactoName, { ...contactoRaw, source: pasaporte.cod_documento ? `pasaporte_${pasaporte.cod_documento}` : 'pasaporte' });
-            }
-        }
-    });
-    
-    Array.from(emergencyContacts.entries()).forEach(([contactoName, contactoDetails], index) => {
-        const contactoId = `persona-contacto-${contactoName.replace(/\s+/g, '_').substring(0,50)}-${index}`;
-        addNodeSafely({
-            id: contactoId,
-            type: 'person',
-            position: { x: 50 + index * xSpacing, y: contactoY + (index % 2 * 60) },
-            data: {
-                name: contactoName,
-                title: "Contacto de Emergencia",
-                details: contactoDetails
-            }
-        });
-        addEdgeInternal(mainPersonNodeId, contactoId, 'Contacto de Emergencia');
-    });
-
-    let internetX = currentX + xSpacing;
-    let internetY = yOffset;
-    const onlineProfiles: OnlineProfile[] = []; // Tipo explícito para evitar errores
-
-    if (data.internet1?.data?.ResultadosGoogle?.resultados) {
-        data.internet1.data.ResultadosGoogle.resultados.forEach(res => {
-            if (res.link && res.title) onlineProfiles.push({ ...res, source: 'Google (internet1)'});
-        });
-    }
-    if (data.internet1?.data?.ResultadosBing) {
-        Object.values(data.internet1.data.ResultadosBing).forEach((res: any) => {
-            if (res.url && res.name) onlineProfiles.push({ link: res.url, title: res.name, snippet: res.snippet, source: 'Bing (internet1)' });
-        });
-    }
-    if (data.internet2?.data) {
-        data.internet2.data.forEach(res => {
-            if (res.link && res.title) onlineProfiles.push({ ...res, source: 'internet2'});
-        });
-    }
-    
-    const uniqueOnlineProfiles = Array.from(new Map(onlineProfiles.map(p => [p.link, p])).values());
-
-    uniqueOnlineProfiles.forEach((profile, index) => {
-        const connectToMain = mainPersonName && profile.title.toLowerCase().includes(mainPersonName.split(" ")[0].toLowerCase());
-        if (connectToMain) {
-            const perfilId = `online-profile-${profile.link.substring(0,30).replace(/[^a-zA-Z0-9]/g, '_')}-${index}`;
-            addNodeSafely({
-                id: perfilId,
+        if (newNodes.length > 0 && data.buro1?.data?.[0]?.comercios?.[0]) {
+            const comercio = data.buro1.data[0].comercios[0];
+            const comercioName = (comercio.institucion || 'ComercioBuro1').replace(/\W/g, '');
+            const comercioId = `${baseId}-buro-${comercioName}`;
+            addNodeSafely({ 
+                id: comercioId, 
                 type: 'company', 
-                position: { x: internetX, y: internetY + index * 80 },
-                data: {
-                    name: profile.title.substring(0, 40) + (profile.title.length > 40 ? "..." : ""),
-                    location: profile.link.includes("linkedin.com") ? "LinkedIn" : "Web",
-                    details: profile
-                }
+                position: { x: 350, y: 100 }, 
+                data: { 
+                    name: comercio.institucion || 'Buro Co.', 
+                    location: 'Buró',
+                    details: { ...comercio, source: 'buro1' }
+                } 
             });
-            addEdgeInternal(mainPersonNodeId, perfilId, 'Perfil Online');
-        }
-    });
-    
-    if (!mainPersonDetails.direccion_principal && pasaportesData.length > 0) {
-        const passDir = pasaportesData[0]?.solicitud?.datos_personales?.direccion;
-        if (passDir) {
-            mainPersonDetails.direccion_pasaporte = `${passDir.direccion || ''}, Col. ${passDir.colonia || ''}, ${passDir.ciudad || ''}, CP ${passDir.cod_postal || ''}`.trim();
-            const mainNode = newNodes.find(n => n.id === mainPersonNodeId);
-            if (mainNode) {
-                mainNode.data.details = mainPersonDetails;
-            }
+            addEdgeInternal(`${baseId}-main`, comercioId, 'Rel. Buró');
         }
     }
-
-    console.log("Nodos generados:", newNodes);
-    console.log("Aristas generadas:", newEdges);
+    console.log(`[processJsonToGraph] Generated ${newNodes.length} nodes, ${newEdges.length} edges.`);
     return { initialNodes: newNodes, initialEdges: newEdges };
-  };
+  }, []);
 
-  const handleJsonUploaded = useCallback((uploadedData: JsonData, name?: string) => {
-    console.log("JSON data received in GraphPage:", uploadedData);
-    setJsonData(uploadedData);
-    if (name) {
-      setFileName(name);
+  const animateGraphLoad = useCallback((nodesToLoad: Node[], edgesToLoad: Edge[], isOverwrite: boolean) => {
+    // ... (animateGraphLoad logic remains the same as previous correct version)
+    if (animationCleanupRef.current) {
+      animationCleanupRef.current();
     }
+    setIsLoadingGraph(true);
+
+    const currentInternalNodes = getNodes();
+    const currentInternalEdges = getEdges();
+    
+    let targetNodes = isOverwrite ? [] : [...currentInternalNodes];
+    let targetEdges = isOverwrite ? [] : [...currentInternalEdges];
+
+    const finalNodesMap = new Map(targetNodes.map(n => [n.id, n]));
+    nodesToLoad.forEach(n => finalNodesMap.set(n.id, {...finalNodesMap.get(n.id), ...n, data: {...finalNodesMap.get(n.id)?.data, ...n.data}}));
+    
+    const finalEdgesMap = new Map(targetEdges.map(e => [e.id, e]));
+    edgesToLoad.forEach(e => finalEdgesMap.set(e.id, {...finalEdgesMap.get(e.id), ...e}));
+
+    const finalNodes = Array.from(finalNodesMap.values());
+    const finalEdges = Array.from(finalEdgesMap.values());
+    
+    setNodes(isOverwrite ? [] : currentNodes => currentNodes.filter(cn => finalNodesMap.has(cn.id)));
+    setEdges(isOverwrite ? [] : currentEdges => currentEdges.filter(ce => finalEdgesMap.has(ce.id)));
+    
+    let nodeTimeoutId: NodeJS.Timeout | null = null;
+    let edgeTimeoutId: NodeJS.Timeout | null = null;
+
+    const batchAdd = (items: any[], setter: React.Dispatch<React.SetStateAction<any[]>>, batchSize: number, delay: number, onDone: () => void) => {
+      let i = 0;
+      function nextBatch() {
+        if (i < items.length) {
+          const batch = items.slice(i, Math.min(i + batchSize, items.length));
+          setter(prev => {
+            const prevMap = new Map(prev.map(item => [item.id, item]));
+            batch.forEach(item => prevMap.set(item.id, item));
+            return Array.from(prevMap.values());
+          });
+          i += batch.length;
+          if (setter === setNodes) nodeTimeoutId = setTimeout(nextBatch, delay);
+          else edgeTimeoutId = setTimeout(nextBatch, delay);
+        } else {
+          onDone();
+        }
+      }
+      nextBatch();
+    };
+
+    setTimeout(() => { 
+        batchAdd(finalNodes, setNodes, Math.max(1, Math.floor(finalNodes.length / 15)), 15, () => {
+            batchAdd(finalEdges, setEdges, Math.max(1, Math.floor(finalEdges.length / 15)), 15, () => {
+                setIsLoadingGraph(false);
+                console.log(`Animated graph load complete (${isOverwrite ? 'overwrite' : 'merge'}).`);
+                setTimeout(() => {
+                    fitView({ duration: 600, padding: 0.15 });
+                    firstLoadFitViewDone.current = true; 
+                }, 100);
+            });
+        });
+    }, 50);
+
+    animationCleanupRef.current = () => {
+      if (nodeTimeoutId) clearTimeout(nodeTimeoutId);
+      if (edgeTimeoutId) clearTimeout(edgeTimeoutId);
+      setIsLoadingGraph(false);
+    };
+    return animationCleanupRef.current;
+  }, [getNodes, getEdges, setNodes, setEdges, fitView]);
+
+  const handleJsonUploaded = useCallback((uploadedData: JsonData, name?: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
+    setJsonData(uploadedData);
+    if (name) setFileName(name);
+    setIsDemoDataVisible(false);
+    firstLoadFitViewDone.current = false;
+    
     const { initialNodes, initialEdges } = processJsonToGraph(uploadedData);
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-  }, [setNodes, setEdges]);
+
+    if (initialNodes.length > 0 || initialEdges.length > 0) {
+      animateGraphLoad(initialNodes, initialEdges, mode === 'overwrite');
+    } else {
+      if (mode === 'overwrite') {
+        setNodes([]);
+        setEdges([]);
+      }
+      setIsLoadingGraph(false);
+      console.warn("Uploaded JSON resulted in no nodes or edges.");
+    }
+  }, [processJsonToGraph, animateGraphLoad, setNodes, setEdges]);
+
+  useEffect(() => {
+    if (isDemoDataVisible && !demoLoadedRef.current) {
+      console.log("Loading default demo data (useEffect).");
+      firstLoadFitViewDone.current = false;
+      animateGraphLoad(
+        defaultNodes.map(n => ({...n, data: {...n.data}})),
+        defaultEdges.map(e => ({...e})),
+        true
+      );
+      demoLoadedRef.current = true;
+    }
+  }, [isDemoDataVisible, animateGraphLoad]);
+
+  useEffect(() => {
+    return () => {
+      if (animationCleanupRef.current) {
+        animationCleanupRef.current();
+      }
+    };
+  }, []);
 
   return (
-    // This is the main container for GraphPage, it should fill its parent from App.tsx
-    // Added p-2 here for overall page padding, removed from direct children previously.
-    <div className="h-full w-full flex flex-col bg-bg-secondary text-text-primary p-2">
-      
-      {/* Upload Section - this will take some fixed height */}
-      <div className="mb-4 p-3 bg-bg-primary shadow-md rounded-md flex-shrink-0">
-        <h2 className="text-xl font-semibold mb-3 text-accent-cyan">
-          Cargar Archivo JSON del Grafo
-        </h2>
-        <JsonUploadButton onJsonUploaded={handleJsonUploaded} />
-        {fileName && <p className="text-xs text-text-secondary mt-2">Archivo cargado: {fileName}</p>}
+    <div className="graph-page-container">
+      <div className="upload-panel">
+        <h2 className="panel-title">Cargar Archivo JSON del Grafo</h2>
+        <JsonUploadButton onJsonUploaded={(data, name) => handleJsonUploaded(data, name, 'overwrite')} />
+        {fileName && <p className="file-name-display">Archivo cargado: {fileName}</p>}
+        <div className="action-buttons-container">
+          <button 
+            className="graph-action-button overwrite-button"
+            onClick={() => {
+              if (jsonData) handleJsonUploaded(jsonData, fileName, 'overwrite');
+              else alert("Primero carga un archivo JSON para sobrescribir.");
+            }}
+            disabled={!jsonData || isLoadingGraph}
+          >
+            <Replace size={18} className="button-icon" />
+            Sobrescribir Resultados
+          </button>
+          <button 
+            className="graph-action-button merge-button"
+            onClick={() => {
+              if (jsonData) handleJsonUploaded(jsonData, fileName, 'merge');
+              else alert("Primero carga un archivo JSON para agregar/actualizar.");
+            }}
+            disabled={!jsonData || isLoadingGraph}
+          >
+            <Layers size={18} className="button-icon" />
+            Agregar y Actualizar
+          </button>
+        </div>
+        {isLoadingGraph && <p className="loading-text">Cargando grafo...</p>}
       </div>
 
-      {/* Graph Section - this should take all remaining vertical space */}
-      {/* Added mt-2 here for margin above the graph area */}
-      <div className="flex-grow relative rounded-lg shadow-lg bg-graph-bg mt-2">
-        {/* TEMPORARY: Hardcode dimensions for debugging */}
-        <div style={{ width: '800px', height: '600px', border: '2px solid red' }}> {/* HARDCODED FOR DEBUG */}
-          {nodes.length > 0 ? (
+      <div className="graph-viewport-container">
+        <div className="reactflow-wrapper">
+          {(nodes.length > 0 || isLoadingGraph) ? (
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -1038,51 +1305,64 @@ const GraphPage: React.FC = () => {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               nodeTypes={memoizedNodeTypes}
-              fitView
-              fitViewOptions={{ padding: 0.2 }}
-              minZoom={0.1}
+              fitView={!firstLoadFitViewDone.current}
+              fitViewOptions={{ duration: 800, padding: 0.2 }}
+              minZoom={0.05}
+              maxZoom={2.5}
+              className="themed-flow"
+              onlyRenderVisibleElements={true}
             >
-              <Controls />
+              <Controls position="bottom-right" />
               <MiniMap 
                 nodeStrokeWidth={3}
                 nodeColor={(n) => {
-                  if (n.type === 'person') return 'var(--node-person-border)';
-                  if (n.type === 'company') return 'var(--node-company-border)';
+                  if (n.type === 'person') return 'var(--node-person-icon-color)';
+                  if (n.type === 'company') return 'var(--node-company-icon-color)';
                   return 'var(--text-secondary)';
                 }}
+                nodeBorderRadius={2}
                 pannable 
                 zoomable
+                position="top-right"
               />
               <Background 
-                variant={BackgroundVariant.Dots} 
-                gap={16} 
-                size={0.7} 
-                color="var(--input-border)" 
+                variant={BackgroundVariant.Lines} 
+                gap={30} 
+                size={0.5} 
+                color="var(--graph-lines-color)" 
               />
             </ReactFlow>
-          ) : jsonData ? (
-            <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4">
-              <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo.</p>
-              <p className="mb-2 text-sm">El JSON podría no contener la estructura esperada o suficiente para generar el grafo.</p>
-              <details className="w-full max-w-2xl mt-4">
-                <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON</summary>
-                <pre className="text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-96 mt-2 p-3 bg-input-bg rounded-md">
-                  {JSON.stringify(jsonData, null, 2)}
-                </pre>
-              </details>
+          ) : !isLoadingGraph ? (
+            <div className="placeholder-message">
+              <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
+              <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
+              <p className="mb-2 text-sm">Utiliza el área de carga de arriba.</p>
+              {isDemoDataVisible && !demoLoadedRef.current && (
+                <p className="text-sm text-accent-green mt-2">Cargando datos de demostración...</p>
+              )}
+              {jsonData && nodes.length === 0 && (
+                <details className="json-details-viewer">
+                  <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
+                  <pre className="json-details-pre">
+                    {JSON.stringify(jsonData, null, 2)}
+                  </pre>
+                </details>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-text-secondary text-lg">
-              <p>Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
   );
 };
 
-export default GraphPage;
+const GraphPageWithProvider: React.FC = () => (
+  <ReactFlowProvider>
+    <GraphPage />
+  </ReactFlowProvider>
+);
+
+export default GraphPageWithProvider;
 
 ===== frontend/src/pages/LoginPage.tsx =====
 import React from 'react';
@@ -1111,33 +1391,32 @@ const LoginPage: React.FC = () => {
 export default LoginPage;
 
 ===== frontend/src/components/auth/LoginForm.tsx =====
+// frontend/src/components/auth/LoginForm.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../assets/css/styles.css';
 
 interface LoginFormProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: () => void; // This prop might become less critical if AppContent handles state
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  // const [showPassword, setShowPassword] = useState(false); // Not used in current UI
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Loading state
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Prevent multiple submissions
+    if (loading) return;
 
     setError('');
-    setLoading(true); // Set loading state
+    setLoading(true);
 
     try {
-      console.log('Attempting fetch to http://192.168.0.4:8000/token');
-
-      const response = await fetch('http://192.168.0.4:8000/token', {
+      const response = await fetch('http://192.168.0.4:8000/token', { // Ensure this URL is correct
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -1145,40 +1424,43 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         body: new URLSearchParams({ username, password }).toString(),
       });
 
-      console.log('Fetch response status:', response.status);
-
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Login failed:', errorData);
+        const errorData = await response.json().catch(() => ({ detail: 'Login failed. Server error.' }));
         setError(errorData.detail || 'Login failed');
+        setLoading(false);
         return;
       }
 
       const data = await response.json();
-      console.log('Token from backend:', data.access_token);
       localStorage.setItem('access_token', data.access_token);
-      onLoginSuccess();
-      navigate('/graph');
+      
+      // Dispatch a custom event to notify AppContent
+      window.dispatchEvent(new CustomEvent('loginSuccess'));
+      
+      onLoginSuccess(); // Call original prop if still needed for other purposes
+      navigate('/graph', { replace: true }); // Use replace to avoid login page in history
+
     } catch (err) {
-      console.error('Login fetch CATCH block error:', err);
-      setError('An error occurred during login. Check console for details.');
+      console.error('Login fetch error:', err);
+      setError('An error occurred. Please try again.');
     } finally {
-      setLoading(false); // Reset loading state
-      console.log('handleSubmit finally block, loading set to false');
+      // setLoading(false); // setLoading will be handled by navigation and re-render
+      // No, keep setLoading(false) in case of error before navigation
+      if (!localStorage.getItem('access_token')) { // Only set loading false if not navigated
+          setLoading(false);
+      }
     }
   };
 
   return (
-    <div className="login"> {/* This class ensures proper styling for the login form */}
+    <div className="login">
       <form className="login__form" onSubmit={handleSubmit}>
         <h1 className="login__title">Login</h1>
-
         {error && (
           <p className="text-sm text-red-500 mb-4 text-center bg-red-900 bg-opacity-50 p-2 rounded">
             {error}
           </p>
         )}
-
         <div className="login__content">
           <div className="login__box">
             <div className="login__box-input">
@@ -1190,28 +1472,28 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 id="login-username"
                 required
+                autoComplete="username"
               />
               <label htmlFor="login-username" className="login__label">Username</label>
             </div>
           </div>
-
           <div className="login__box">
             <div className="login__box-input">
               <input
-                type={showPassword ? "text" : "password"}
+                type="password" // Was: type={showPassword ? "text" : "password"}
                 className="login__input"
                 placeholder=" "
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 id="login-password"
                 required
+                autoComplete="current-password"
               />
               <label htmlFor="login-password" className="login__label">Password</label>
             </div>
           </div>
         </div>
-
-        <button type="submit" className="login__button" disabled={loading}> {/* Disable button when loading */}
+        <button type="submit" className="login__button" disabled={loading}>
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
@@ -1221,11 +1503,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
 export default LoginForm;
 
-
 ===== frontend/src/components/graph/PersonNode.tsx =====
 import React, { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { User, ImagePlus } from 'lucide-react';
+import { User, ImagePlus } from 'lucide-react'; // Lucide icons
 import classnames from 'classnames';
 
 export interface PersonNodeData {
@@ -1234,6 +1515,7 @@ export interface PersonNodeData {
   imageUrl?: string;
   onImageUpload?: (nodeId: string, file: File) => void;
   isHighlighted?: boolean;
+  details?: any; // Para mostrar más info si es necesario
 }
 
 const PersonNode: React.FC<NodeProps<PersonNodeData>> = ({ data, id, selected }) => {
@@ -1245,6 +1527,7 @@ const PersonNode: React.FC<NodeProps<PersonNodeData>> = ({ data, id, selected })
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // ... (tu lógica de subida de imagen)
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       if (data.onImageUpload) {
@@ -1272,51 +1555,53 @@ const PersonNode: React.FC<NodeProps<PersonNodeData>> = ({ data, id, selected })
     }
   };
 
+  const isSelectedOrHighlighted = selected || data.isHighlighted;
+
   return (
     <div
       className={classnames(
-        'rounded-full w-32 h-32 p-1 flex flex-col items-center justify-center text-center shadow-lg relative',
-        'bg-node-person-bg border-2',
-        selected || data.isHighlighted ? 'border-accent-cyan shadow-node-glow' : 'border-node-person-border',
-        'transition-all duration-300'
+        'person-node w-36 p-3 rounded-lg flex flex-col items-center justify-center text-center relative transition-all duration-200',
+        'bg-node-bg border-2', // Usar variables CSS
+        isSelectedOrHighlighted ? 'border-node-border-selected shadow-node-selected' : 'border-node-border',
       )}
+      style={{
+        // @ts-ignore
+        '--tw-shadow-color': isSelectedOrHighlighted ? 'var(--accent-cyan)' : 'transparent',
+        boxShadow: isSelectedOrHighlighted ? 'var(--node-shadow-selected)' : '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)' // Sombra sutil por defecto
+      }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-accent-cyan w-3 h-3" />
-      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/50 mb-1 relative group">
+      <Handle type="target" position={Position.Top} className="react-flow__handle" />
+      
+      <div className="w-12 h-12 mb-2 rounded-full flex items-center justify-center bg-black/20 border border-white/10 relative group">
         {imageSrc ? (
-          <img src={imageSrc} alt={data.name} className="w-full h-full object-cover" onError={handleImageError} />
+          <img src={imageSrc} alt={data.name} className="w-full h-full object-cover rounded-full" onError={handleImageError} />
         ) : (
-          <User className="w-full h-full text-node-person-border p-2" />
+          <User size={28} className="text-node-person-icon-color" /> // Usar variable CSS para color de icono
         )}
         {data.onImageUpload && (
           <label
             htmlFor={`upload-${id}`}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-full"
           >
-            <ImagePlus size={24} className="text-white" />
+            <ImagePlus size={20} className="text-white" />
             <input
-              type="file"
-              id={`upload-${id}`}
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={isUploading}
+              type="file" id={`upload-${id}`} accept="image/*" className="hidden"
+              onChange={handleFileChange} disabled={isUploading}
             />
           </label>
         )}
       </div>
 
-      <div className="text-xs font-semibold text-text-primary truncate w-full px-1">{data.name}</div>
-      {data.title && <div className="text-[10px] text-text-secondary truncate w-full px-1">{data.title}</div>}
+      <div className="text-sm font-medium text-text-primary truncate w-full px-1">{data.name}</div>
+      {data.title && <div className="text-xs text-text-secondary truncate w-full px-1">{data.title}</div>}
 
-      <Handle type="source" position={Position.Bottom} className="!bg-accent-cyan w-3 h-3" />
-      {isUploading && <div className="absolute bottom-1 left-1 text-xs text-accent-cyan">Uploading...</div>}
+      <Handle type="source" position={Position.Bottom} className="react-flow__handle" />
+      {isUploading && <div className="absolute bottom-1 left-1 text-xs text-accent-cyan">Cargando...</div>}
     </div>
   );
 };
 
 export default memo(PersonNode);
-
 
 ===== frontend/src/components/graph/JsonUploadButton.tsx =====
 import React, { useRef } from 'react';
@@ -1456,6 +1741,7 @@ export interface CompanyNodeData {
   logoUrl?: string;
   onImageUpload?: (nodeId: string, file: File) => void;
   isHighlighted?: boolean;
+  details?: any;
 }
 
 const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, id, selected }) => {
@@ -1467,6 +1753,7 @@ const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, id, selected 
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    // ... (tu lógica de subida de imagen)
     if (event.target.files && event.target.files[0] && data.onImageUpload) {
       const file = event.target.files[0];
       setIsUploading(true);
@@ -1484,52 +1771,54 @@ const CompanyNode: React.FC<NodeProps<CompanyNodeData>> = ({ data, id, selected 
       }
     }
   };
+  
+  const isSelectedOrHighlighted = selected || data.isHighlighted;
 
   return (
     <div
       className={classnames(
-        'rounded-lg w-40 p-3 flex flex-col items-center justify-center text-center shadow-lg relative',
-        'bg-node-company-bg border-2',
-        selected || data.isHighlighted ? 'border-accent-cyan shadow-node-glow' : 'border-node-company-border',
-        'transition-all duration-300'
+        'company-node w-44 p-3 rounded-lg flex flex-col items-center justify-center text-center relative transition-all duration-200',
+        'bg-node-bg border-2', // Usar variables CSS
+        isSelectedOrHighlighted ? 'border-node-border-selected shadow-node-selected' : 'border-node-border',
       )}
+      style={{
+        // @ts-ignore
+        '--tw-shadow-color': isSelectedOrHighlighted ? 'var(--accent-cyan)' : 'transparent',
+        boxShadow: isSelectedOrHighlighted ? 'var(--node-shadow-selected)' : '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)'
+      }}
     >
-      <Handle type="target" position={Position.Left} className="!bg-accent-cyan w-3 h-3" />
-      <div className="w-16 h-16 rounded-md overflow-hidden border-2 border-white/30 mb-2 relative group">
+      <Handle type="target" position={Position.Left} className="react-flow__handle" />
+      
+      <div className="w-12 h-12 mb-2 rounded-md flex items-center justify-center bg-black/20 border border-white/10 relative group">
         {logoSrc ? (
-          <img src={logoSrc} alt={data.name} className="w-full h-full object-contain p-1" onError={handleImageError} />
+          <img src={logoSrc} alt={data.name} className="w-full h-full object-contain p-1 rounded-md" onError={handleImageError} />
         ) : (
-          <Building className="w-full h-full text-node-company-border p-2" />
+          <Building size={28} className="text-node-company-icon-color" /> // Usar variable CSS para color de icono
         )}
         {data.onImageUpload && (
           <label
             htmlFor={`upload-logo-${id}`}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-md"
           >
-            <ImagePlus size={24} className="text-white" />
+            <ImagePlus size={20} className="text-white" />
             <input
-              type="file"
-              id={`upload-logo-${id}`}
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-              disabled={isUploading}
+              type="file" id={`upload-logo-${id}`} accept="image/*" className="hidden"
+              onChange={handleFileChange} disabled={isUploading}
             />
           </label>
         )}
       </div>
 
-      <div className="text-sm font-bold text-text-primary truncate w-full">{data.name}</div>
+      <div className="text-sm font-semibold text-text-primary truncate w-full">{data.name}</div>
       {data.location && <div className="text-xs text-text-secondary truncate w-full">{data.location}</div>}
 
-      <Handle type="source" position={Position.Right} className="!bg-accent-cyan w-3 h-3" />
-      {isUploading && <div className="absolute bottom-1 left-1 text-xs text-accent-cyan">Uploading...</div>}
+      <Handle type="source" position={Position.Right} className="react-flow__handle" />
+      {isUploading && <div className="absolute bottom-1 left-1 text-xs text-accent-cyan">Cargando...</div>}
     </div>
   );
 };
 
 export default memo(CompanyNode);
-
 
 ===== frontend/src/components/FileUploader.js =====
 import React from 'react';
