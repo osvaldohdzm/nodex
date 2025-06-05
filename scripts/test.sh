@@ -60,8 +60,9 @@ fi
 echo "➕ Preparando (staging) todos los cambios..."
 git add .
 
-# 5. Buscar el último número de "Prueba N" en los commits de la rama destino
-last_test_number=$(git log --pretty=%s -n 50 "$target_test_branch" | grep -oP '^Prueba \K\d+' | sort -nr | head -n1 || echo "0")
+# 5. Buscar el último número de "Prueba N" en los commits de la rama destino actual
+last_test_number=$(git log "$target_test_branch" --pretty=format:"%s" | grep -oP '^Prueba \K\d+' | sort -nr | head -n1)
+last_test_number="${last_test_number:-0}"
 next_test_number=$((last_test_number + 1))
 
 # 6. Construir mensaje por defecto con incremento

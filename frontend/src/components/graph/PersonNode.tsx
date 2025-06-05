@@ -4,6 +4,35 @@ import classnames from 'classnames';
 import { User, Upload } from 'lucide-react';
 import { DemoNodeData } from '../../types/graph';
 
+// Estilos para los handles
+const baseHandleStyle = {
+  width: '12px',
+  height: '12px',
+  border: '2px solid var(--bg-secondary)',
+  borderRadius: '4px',
+  zIndex: 20,
+  opacity: 0.8,
+  transition: 'all 0.2s ease',
+};
+
+const sourceHandleStyle = {
+  ...baseHandleStyle,
+  background: 'var(--accent-pink)',
+  '&:hover': {
+    opacity: 1,
+    transform: 'scale(1.2)',
+  },
+};
+
+const targetHandleStyle = {
+  ...baseHandleStyle,
+  background: 'var(--accent-green)',
+  '&:hover': {
+    opacity: 1,
+    transform: 'scale(1.2)',
+  },
+};
+
 const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id }) => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -28,18 +57,69 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id }) =
       )}
       style={{ minHeight: '200px' }}
     >
-      {/* Handles for connections - positioned with proper spacing */}
-      <Handle type="target" position={Position.Top} className="react-flow__handle !bg-accent-green !w-3 !h-3 !-mt-1.5" />
-      <Handle type="source" position={Position.Top} className="react-flow__handle !bg-accent-pink !w-3 !h-3 !-mt-1.5" />
-      
-      <Handle type="target" position={Position.Bottom} className="react-flow__handle !bg-accent-green !w-3 !h-3 !-mb-1.5" />
-      <Handle type="source" position={Position.Bottom} className="react-flow__handle !bg-accent-pink !w-3 !h-3 !-mb-1.5" />
+      {/* Top Handles */}
+      <Handle 
+        type="source" 
+        position={Position.Top} 
+        id={`${id}-source-top`}
+        style={{ ...sourceHandleStyle, top: '-6px' }}
+        className="handle-source"
+      />
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        id={`${id}-target-top`}
+        style={{ ...targetHandleStyle, top: '3px' }}
+        className="handle-target"
+      />
 
-      <Handle type="target" position={Position.Left} className="react-flow__handle !bg-accent-green !w-3 !h-3 !-ml-1.5 !top-1/2" />
-      <Handle type="source" position={Position.Left} className="react-flow__handle !bg-accent-pink !w-3 !h-3 !-ml-1.5 !top-1/2" />
+      {/* Bottom Handles */}
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        id={`${id}-source-bottom`}
+        style={{ ...sourceHandleStyle, bottom: '-6px' }}
+        className="handle-source"
+      />
+      <Handle 
+        type="target" 
+        position={Position.Bottom} 
+        id={`${id}-target-bottom`}
+        style={{ ...targetHandleStyle, bottom: '3px' }}
+        className="handle-target"
+      />
 
-      <Handle type="target" position={Position.Right} className="react-flow__handle !bg-accent-green !w-3 !h-3 !-mr-1.5 !top-1/2" />
-      <Handle type="source" position={Position.Right} className="react-flow__handle !bg-accent-pink !w-3 !h-3 !-mr-1.5 !top-1/2" />
+      {/* Left Handles */}
+      <Handle 
+        type="source" 
+        position={Position.Left} 
+        id={`${id}-source-left`}
+        style={{ ...sourceHandleStyle, left: '-6px' }}
+        className="handle-source"
+      />
+      <Handle 
+        type="target" 
+        position={Position.Left} 
+        id={`${id}-target-left`}
+        style={{ ...targetHandleStyle, left: '3px' }}
+        className="handle-target"
+      />
+
+      {/* Right Handles */}
+      <Handle 
+        type="source" 
+        position={Position.Right} 
+        id={`${id}-source-right`}
+        style={{ ...sourceHandleStyle, right: '-6px' }}
+        className="handle-source"
+      />
+      <Handle 
+        type="target" 
+        position={Position.Right} 
+        id={`${id}-target-right`}
+        style={{ ...targetHandleStyle, right: '3px' }}
+        className="handle-target"
+      />
       
       <div className="relative mb-2">
         {data.imageUrl ? (

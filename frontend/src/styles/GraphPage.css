@@ -207,3 +207,111 @@
 .graph-page-container .overflow-auto::-webkit-scrollbar-track {
   background-color: var(--bg-secondary);
 }
+
+/* Styles for the resizable details section */
+.details-section {
+  position: relative;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--input-border-hover);
+  overflow: auto;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  cursor: ns-resize;
+  background-color: var(--accent-cyan);
+}
+
+/* Estilos para los handles */
+.react-flow__handle {
+  transition: all 0.2s ease;
+}
+
+.react-flow__handle:hover {
+  opacity: 1 !important;
+  transform: scale(1.2);
+}
+
+.handle-source {
+  background-color: var(--accent-pink) !important;
+}
+
+.handle-target {
+  background-color: var(--accent-green) !important;
+}
+
+/* Estilos para las aristas */
+.react-flow__edge {
+  transition: all 0.2s ease;
+}
+
+.react-flow__edge:hover {
+  filter: drop-shadow(0 0 2px var(--accent-cyan));
+}
+
+.react-flow__edge.selected {
+  filter: drop-shadow(0 0 3px var(--accent-cyan));
+}
+
+.react-flow__edge-path {
+  transition: all 0.2s ease;
+}
+
+.react-flow__edge-text {
+  font-size: 12px;
+  fill: var(--node-text);
+  font-weight: 500;
+  text-shadow: 0 0 2px var(--node-bg);
+}
+
+.react-flow__edge-text:hover {
+  fill: var(--accent-cyan);
+}
+
+/* Animaciones para aristas */
+.edge-appear {
+  animation: edgeAppear 1s ease-out forwards;
+}
+
+.edge-appear-static {
+  animation: none;
+}
+
+@keyframes edgeAppear {
+  from {
+    opacity: 0;
+    stroke-dasharray: 5;
+    stroke-dashoffset: 100;
+  }
+  to {
+    opacity: 1;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Estilos para la línea de conexión durante el arrastre */
+.react-flow__connection-path {
+  stroke: var(--accent-cyan) !important;
+  stroke-width: 2.5 !important;
+}
+
+.react-flow__connection-line {
+  stroke: var(--accent-cyan) !important;
+  stroke-width: 2.5 !important;
+}
+
+/* Estilos para el nodo cuando se está arrastrando una conexión */
+.react-flow__node:hover .react-flow__handle {
+  opacity: 1;
+}
+
+/* Estilos para el nodo cuando se está arrastrando una conexión sobre él */
+.react-flow__node.react-flow__node-dragging .react-flow__handle {
+  opacity: 1;
+  transform: scale(1.2);
+}
