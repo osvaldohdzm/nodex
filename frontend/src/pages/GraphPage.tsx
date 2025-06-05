@@ -358,6 +358,27 @@ export const GraphPage: React.FC = () => {
     }
   }, [nodes, edges]);
 
+  // Adding isValidConnection to ReactFlow for better connection validation
+  const isValidConnection = useCallback(
+    (connection: Connection): boolean => {
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      const isSourceHandleSourceType = connection.sourceHandle?.startsWith('s-');
+      const isTargetHandleTargetType = connection.targetHandle?.startsWith('t-');
+
+      const valid =
+        sourceNode?.type === 'person' &&
+        targetNode?.type === 'person' &&
+        connection.source !== connection.target &&
+        !!isSourceHandleSourceType && !!isTargetHandleTargetType;
+
+      console.log(`isValidConnection: S_Node=${sourceNode?.id}, T_Node=${targetNode?.id}, S_Handle=${connection.sourceHandle}, T_Handle=${connection.targetHandle}, Valid=${valid}`);
+      return !!valid;
+    },
+    [nodes]
+  );
+
   const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
     if (editingEdge) {
       // Actualizar arista existente
@@ -524,6 +545,7 @@ export const GraphPage: React.FC = () => {
           connectionLineComponent={CustomConnectionLine}
           connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
           deleteKeyCode={['Backspace', 'Delete']}
+          isValidConnection={isValidConnection}
         >
           <Background />
           <Controls />
