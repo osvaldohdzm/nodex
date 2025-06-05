@@ -11,8 +11,10 @@ const useIsConnecting = () => {
   return { isConnecting, connectionStartHandleNodeId: connectionStartHandle?.nodeId };
 };
 
-// Simplifying handle rendering for diagnostic purposes
-const handleBaseClasses = "!w-3 !h-3 !border-2 !border-bg-secondary !rounded-sm !z-20 !opacity-80 hover:!opacity-100 hover:!scale-125 !transition-all";
+// Estilos base para los handles usando Tailwind
+const handleBaseClasses = "!w-3 !h-3 !border-2 !border-bg-secondary !rounded-sm !z-[100] !transition-all !duration-150";
+const sourceHandleClasses = `${handleBaseClasses} !bg-accent-pink hover:!scale-125 hover:!shadow-lg`;
+const targetHandleClasses = `${handleBaseClasses} !bg-accent-green hover:!scale-125 hover:!shadow-lg`;
 
 const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nodeId }) => {
   const { isConnecting, connectionStartHandleNodeId } = useIsConnecting();
@@ -35,9 +37,6 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
     rightSource: 's-right', rightTarget: 't-right',
   };
 
-  const sourceHandleClasses = `${handleBaseClasses} !bg-accent-pink`;
-  const targetHandleClasses = `${handleBaseClasses} !bg-accent-green`;
-
   return (
     <div
       className={classnames(
@@ -54,15 +53,70 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
       style={{ minHeight: '200px' }}
     >
       {/* Always render all handles for testing */}
-      <Handle type="source" position={Position.Top} id={handleIds.topSource} className={`${sourceHandleClasses} !-top-[5px]`} />
-      <Handle type="target" position={Position.Top} id={handleIds.topTarget} className={`${targetHandleClasses} !top-[2px]`} />
-      <Handle type="source" position={Position.Bottom} id={handleIds.bottomSource} className={`${sourceHandleClasses} !-bottom-[5px]`} />
-      <Handle type="target" position={Position.Bottom} id={handleIds.bottomTarget} className={`${targetHandleClasses} !bottom-[2px]`} />
-      <Handle type="source" position={Position.Left} id={handleIds.leftSource} className={`${sourceHandleClasses} !-left-[5px]`} />
-      <Handle type="target" position={Position.Left} id={handleIds.leftTarget} className={`${targetHandleClasses} !left-[2px]`} />
-      <Handle type="source" position={Position.Right} id={handleIds.rightSource} className={`${sourceHandleClasses} !-right-[5px]`} />
-      <Handle type="target" position={Position.Right} id={handleIds.rightTarget} className={`${targetHandleClasses} !right-[2px]`} />
+      {/* TOP */}
+      <Handle 
+        type="source" 
+        position={Position.Top} 
+        id={handleIds.topSource} 
+        className={`${sourceHandleClasses} !-top-[6px]`}
+        style={{ zIndex: 100 }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Top} 
+        id={handleIds.topTarget} 
+        className={`${targetHandleClasses} !top-[3px]`}
+        style={{ zIndex: 100 }}
+      />
 
+      {/* BOTTOM */}
+      <Handle 
+        type="source" 
+        position={Position.Bottom} 
+        id={handleIds.bottomSource} 
+        className={`${sourceHandleClasses} !-bottom-[6px]`}
+        style={{ zIndex: 100 }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Bottom} 
+        id={handleIds.bottomTarget} 
+        className={`${targetHandleClasses} !bottom-[3px]`}
+        style={{ zIndex: 100 }}
+      />
+
+      {/* LEFT */}
+      <Handle 
+        type="source" 
+        position={Position.Left} 
+        id={handleIds.leftSource} 
+        className={`${sourceHandleClasses} !-left-[6px]`}
+        style={{ zIndex: 100 }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Left} 
+        id={handleIds.leftTarget} 
+        className={`${targetHandleClasses} !left-[3px]`}
+        style={{ zIndex: 100 }}
+      />
+
+      {/* RIGHT */}
+      <Handle 
+        type="source" 
+        position={Position.Right} 
+        id={handleIds.rightSource} 
+        className={`${sourceHandleClasses} !-right-[6px]`}
+        style={{ zIndex: 100 }}
+      />
+      <Handle 
+        type="target" 
+        position={Position.Right} 
+        id={handleIds.rightTarget} 
+        className={`${targetHandleClasses} !right-[3px]`}
+        style={{ zIndex: 100 }}
+      />
+      
       <div className="relative mb-2">
         {data.imageUrl ? (
           <img src={data.imageUrl} alt={data.name} className="w-16 h-16 rounded-full object-cover border-2 border-node-border" />

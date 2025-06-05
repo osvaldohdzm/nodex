@@ -16,6 +16,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
 import '../styles/GraphPage.css';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
@@ -52,9 +53,7 @@ export const GraphPage: React.FC = () => {
 
   const [height, setHeight] = useState(300); // Default height for the details section
   const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
-  const [detailPanelHeight, setDetailPanelHeight] = useState(200); // Default height in px
-  const minDetailPanelHeight = 100;
-  const maxDetailPanelHeightPercentage = 0.7; // 70% of window height
+  const [detailPanelWidth, setDetailsPanelWidth] = useState(400); // Default width for the details section
   const uploadPanelRef = useRef<HTMLDivElement>(null);
   const [uploadPanelActualHeight, setUploadPanelActualHeight] = useState(0);
 
@@ -212,26 +211,6 @@ export const GraphPage: React.FC = () => {
     }
   }, []);
 
-  const handleDetailPanelResize = (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
-    mouseDownEvent.preventDefault();
-    const startY = mouseDownEvent.clientY;
-    const startHeight = detailPanelHeight;
-    const maxAllowedHeight = window.innerHeight * maxDetailPanelHeightPercentage;
-
-    const doDrag = (mouseMoveEvent: MouseEvent) => {
-      const newHeight = startHeight - (mouseMoveEvent.clientY - startY);
-      setDetailPanelHeight(Math.max(minDetailPanelHeight, Math.min(newHeight, maxAllowedHeight)));
-    };
-
-    const stopDrag = () => {
-      document.removeEventListener('mousemove', doDrag);
-      document.removeEventListener('mouseup', stopDrag);
-    };
-
-    document.addEventListener('mousemove', doDrag);
-    document.addEventListener('mouseup', stopDrag);
-  };
-
   // Update upload panel height when content changes
   useEffect(() => {
     if (uploadPanelRef.current) {
@@ -240,7 +219,7 @@ export const GraphPage: React.FC = () => {
   }, [selectedFileContent]);
 
   // Calculate available height for graph viewport
-  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - ${detailsNode ? detailPanelHeight : 0}px - 1rem - ${detailsNode ? '1rem' : '0px'})`;
+  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - ${detailsNode ? height : 0}px - 1rem - ${detailsNode ? '1rem' : '0px'})`;
 
   const handleExportPDF = async () => {
     const currentGraphNodes = reactFlowInstance.getNodes();
@@ -512,76 +491,75 @@ export const GraphPage: React.FC = () => {
         </div>
       </div>
 
-      <div 
-        className="graph-viewport-container"
-        style={{ height: graphViewportHeight, marginTop: '1rem' }}
-      >
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onEdgeClick={onEdgeClick}
-          onNodesDelete={(nodesToDelete) => {
-            const nodeIds = new Set(nodesToDelete.map(n => n.id));
-            setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
-            if (detailsNode && nodeIds.has(detailsNode.id)) {
-              setDetailsNode(null);
-            }
-          }}
-          onEdgesDelete={(edgesToDelete) => {
-            const edgeIds = new Set(edgesToDelete.map(e => e.id));
-            setEdges((eds) => eds.filter((edge) => !edgeIds.has(edge.id)));
-          }}
-          nodeTypes={memoizedNodeTypes}
-          fitView={false}
-          minZoom={0.1}
-          maxZoom={2.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          proOptions={{ hideAttribution: true }}
-          className="graph-viewport"
-          connectionLineComponent={CustomConnectionLine}
-          connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
-          deleteKeyCode={['Backspace', 'Delete']}
-          isValidConnection={isValidConnection}
-        >
-          <Background />
-          <Controls />
-          {nodes.length === 0 && (
-            <div className="placeholder-message">
-              <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
-              <p className="mb-4">Carga un archivo JSON para visualizar a la persona en el grafo.</p>
-              <p className="mb-2 text-sm">Utiliza el panel de carga de arriba.</p>
+      <PanelGroup direction="horizontal" className="flex-grow min-h-0 mt-4">
+        {/* Graph Panel */}
+        <Panel defaultSize={70} minSize={30}>
+          <div className="w-full h-full relative p-1 bg-bg-secondary rounded-md">
+            <div className="graph-viewport-container" style={{ height: graphViewportHeight, marginTop: '1rem' }}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                onEdgeClick={onEdgeClick}
+                onNodesDelete={(nodesToDelete) => {
+                  const nodeIds = new Set(nodesToDelete.map(n => n.id));
+                  setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
+                  if (detailsNode && nodeIds.has(detailsNode.id)) {
+                    setDetailsNode(null);
+                  }
+                }}
+                onEdgesDelete={(edgesToDelete) => {
+                  const edgeIdsToRemove = new Set(edgesToDelete.map(e => e.id));
+                  setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
+                }}
+                nodeTypes={memoizedNodeTypes}
+                fitView={false}
+                minZoom={0.1}
+                maxZoom={2.5}
+                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                proOptions={{ hideAttribution: true }}
+                className="graph-viewport"
+                connectionLineComponent={CustomConnectionLine}
+                connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
+                deleteKeyCode={['Backspace', 'Delete']}
+                isValidConnection={isValidConnection}
+              >
+                <Background />
+                <Controls />
+                {nodes.length === 0 && (
+                  <div className="placeholder-message">
+                    <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
+                    <p className="mb-4">Carga un archivo JSON para visualizar a la persona en el grafo.</p>
+                    <p className="mb-2 text-sm">Utiliza el panel de carga de arriba.</p>
+                  </div>
+                )}
+              </ReactFlow>
             </div>
-          )}
-        </ReactFlow>
-      </div>
-      
-      {/* Resizable Details Panel */}
-      {detailsNode && detailsNode.data?.rawJsonData && (
-        <div 
-          className="bg-bg-secondary border-t-2 border-accent-cyan-darker relative"
-          style={{ height: `${detailPanelHeight}px`, marginTop: '1rem' }}
-        >
-          <div 
-            className="absolute -top-[5px] left-0 w-full h-[10px] bg-accent-cyan hover:bg-accent-cyan-darker cursor-ns-resize transition-colors flex items-center justify-center group"
-            onMouseDown={handleDetailPanelResize}
-            title="Arrastrar para redimensionar"
-          >
-            <div className="w-8 h-[3px] bg-bg-primary rounded-full group-hover:bg-bg-secondary transition-colors"></div>
           </div>
-          <div className="p-4 h-full flex flex-col">
-            <h3 className="text-lg font-semibold text-accent-cyan mb-2 flex-shrink-0">
-              Detalles Completos de: {detailsNode.data.name}
-            </h3>
-            <pre className="flex-grow bg-input-bg text-text-secondary p-3 rounded overflow-auto text-xs scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-input-bg">
-              {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
+        </Panel>
+        {/* Only show details panel if a node is selected */}
+        {detailsNode && (
+          <>
+            <PanelResizeHandle className="w-2 flex items-center justify-center bg-accent-cyan data-[resizing]:bg-accent-cyan-darker outline-none">
+              <div className="w-[3px] h-8 bg-bg-primary rounded-full"></div>
+            </PanelResizeHandle>
+            <Panel defaultSize={30} minSize={20} style={{ width: detailPanelWidth, flexShrink: 0 }}>
+              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden p-4 rounded-md">
+                <h3 className="text-lg font-semibold text-accent-cyan mb-2 flex-shrink-0">
+                  Detalles de: {detailsNode.data.name}
+                  <button onClick={() => setDetailsNode(null)} className="float-right text-lg text-text-secondary hover:text-white">&times;</button>
+                </h3>
+                <pre className="flex-grow bg-input-bg text-text-secondary p-3 rounded overflow-auto text-xs scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-input-bg">
+                  {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
+                </pre>
+              </div>
+            </Panel>
+          </>
+        )}
+      </PanelGroup>
 
       {/* Relationship Modal */}
       <RelationshipModal
