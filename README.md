@@ -102,4 +102,6 @@ docker push ozzyman23/nodex-frontend:latest
 docker-compose logs -f frontend
 docker-compose logs -f backend
 
+
+http://192.168.0.4:4545/graph
 ```

@@ -1,0 +1,107 @@
+/* frontend/src/styles/GraphPage.css */
+
+.graph-page-container {
+  @apply flex flex-col w-full bg-bg-primary text-text-primary;
+  flex-grow: 1; /* Make this container take all available space from its parent in App.tsx */
+  min-height: 0; /* Essential for nested flex layouts */
+  overflow: hidden; /* Prevent this container itself from scrolling */
+}
+
+.upload-panel {
+  @apply p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0;
+  background-color: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  margin: 1rem;
+  position: relative; 
+  z-index: 10; 
+}
+
+.panel-title {
+  @apply text-xl font-semibold mb-4 text-accent-cyan text-center;
+  text-shadow: 0 0 8px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.5);
+}
+
+.file-name-display {
+  @apply text-xs text-text-secondary mt-3 text-center;
+}
+
+.action-buttons-container {
+  @apply flex flex-col sm:flex-row justify-center items-center gap-3 mt-4;
+}
+
+.graph-action-button {
+  @apply px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ease-in-out
+         flex items-center justify-center gap-2 focus:outline-none;
+  background-color: var(--input-bg);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan-darker);
+  box-shadow: 0 0 10px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2),
+              inset 0 0 5px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.1);
+  text-shadow: 0 0 3px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.4);
+}
+
+.graph-action-button:hover:not(:disabled) {
+  background-color: var(--accent-cyan-darker);
+  color: var(--bg-primary);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 15px 2px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.4),
+              inset 0 0 8px 1px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.2);
+  transform: translateY(-1px);
+}
+
+.graph-action-button:active:not(:disabled) {
+  transform: translateY(0px);
+  box-shadow: 0 0 5px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.3),
+              inset 0 0 3px 0px hsla(var(--hue), var(--saturation-accent), var(--lightness-accent), 0.15);
+}
+
+.graph-action-button:disabled {
+  @apply opacity-50 cursor-not-allowed;
+  background-color: var(--input-bg);
+  color: var(--text-secondary);
+  border-color: var(--input-border);
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.button-icon {
+  @apply mr-1.5;
+}
+
+.loading-text {
+  @apply text-sm text-accent-cyan mt-3 animate-pulse text-center;
+}
+
+.graph-viewport-container {
+  @apply flex-grow relative rounded-lg shadow-lg; /* This makes it take remaining space */
+  background-color: var(--graph-bg); /* Use graph-bg for consistency */
+  min-height: 0; /* Essential for flex-grow to work correctly in nested flex scenarios */
+  margin: 0 1rem 1rem 1rem; /* Margin for spacing below panel and on sides/bottom */
+  overflow: hidden; /* Crucial for ReactFlow's scrollable container */
+  z-index: 1; /* Lower z-index than the upload panel */
+}
+
+/* This div directly wraps ReactFlow and MUST have 100% height and width */
+.reactflow-wrapper {
+  width: 100%;
+  height: 100%;
+  /* position: absolute; top: 0; left: 0; right: 0; bottom: 0; */ /* This might not be needed if parent is set up correctly */
+}
+
+.placeholder-message {
+  /* This will be centered by its parent if its parent is a flex container */
+  @apply flex flex-col items-center justify-center h-full text-text-secondary text-lg p-6 text-center;
+  background-color: var(--bg-primary); /* Ensure it has a background */
+}
+
+.json-details-viewer {
+  @apply w-full max-w-2xl mt-4 text-left;
+}
+.json-details-summary {
+  @apply cursor-pointer text-accent-cyan hover:underline font-semibold;
+}
+.json-details-pre {
+  @apply text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-80 mt-2 p-3 bg-input-bg rounded-md border border-input-border;
+}

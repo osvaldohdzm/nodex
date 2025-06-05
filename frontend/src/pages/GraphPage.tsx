@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-// import { CSSProperties } from 'react'; // No se usa CSSProperties directamente
+// frontend/src/pages/GraphPage.tsx
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -12,22 +12,28 @@ import ReactFlow, {
   Connection,
   BackgroundVariant,
   MarkerType,
-  // ReactFlowInstance, // No se usa directamente si usamos el hook
   useReactFlow,
-  ReactFlowProvider, // Mover ReactFlowProvider al componente que usa GraphPage
+  ReactFlowProvider,
+  NodeChange,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
+import '../styles/GraphPage.css'; // Import the specific CSS
 
 import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
+import { UploadCloud, Replace, Layers } from 'lucide-react';
 
 const nodeTypes = {
   person: PersonNode,
   company: CompanyNode,
 };
 
+// --- (JsonData and OnlineProfile interfaces remain the same) ---
 interface JsonData {
   _id?: { $oid: string };
   curp_online?: { data?: { registros?: Array<any> } };
@@ -48,27 +54,56 @@ interface OnlineProfile {
   snippet?: string;
   source: string;
 }
+// --- (defaultNodes and defaultEdges remain the same) ---
+const defaultNodes: Node[] = [
+  { id: 'center-hub', type: 'company', position: { x: 400, y: 200 }, data: { name: 'Nodex Central Hub', location: 'Cyber Espacio', details: { info: 'Punto de partida de la demostración.'} }, className: 'node-appear' },
+  { id: 'analyst-1', type: 'person', position: { x: 150, y: 50 }, data: { name: 'Analista Alpha', title: 'IA de Datos', details: { skill: 'Análisis Predictivo'} }, className: 'node-appear' },
+  { id: 'data-stream-A', type: 'company', position: { x: 100, y: 350 }, data: { name: 'Flujo de Datos A', location: 'Sector Gamma', details: { type: 'Información encriptada'} }, className: 'node-appear' },
+  { id: 'analyst-2', type: 'person', position: { x: 650, y: 50 }, data: { name: 'Operador Beta', title: 'Vigilancia de Red', details: { skill: 'Seguridad de Redes'} }, className: 'node-appear' },
+  { id: 'data-stream-B', type: 'company', position: { x: 700, y: 350 }, data: { name: 'Flujo de Datos B', location: 'Sector Delta', details: { type: 'Comunicaciones Seguras'} }, className: 'node-appear' },
+];
+
+const defaultEdges: Edge[] = [
+  { id: 'e-hub-analyst1', source: 'center-hub', target: 'analyst-1', label: 'Asigna Tarea', type: 'smoothstep', animated: true, className: 'edge-appear', style: { stroke: 'var(--accent-green)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-green)' } },
+  { id: 'e-hub-datastreamA', source: 'center-hub', target: 'data-stream-A', label: 'Monitorea', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-purple)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-purple)' } },
+  { id: 'e-analyst1-datastreamA', source: 'analyst-1', target: 'data-stream-A', label: 'Analiza', type: 'smoothstep', className: 'edge-appear' },
+  { id: 'e-hub-analyst2', source: 'center-hub', target: 'analyst-2', label: 'Coordina con', type: 'smoothstep', animated: true, className: 'edge-appear', style: { stroke: 'var(--accent-green)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-green)' } },
+  { id: 'e-hub-datastreamB', source: 'center-hub', target: 'data-stream-B', label: 'Supervisa', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-purple)' }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-purple)' } },
+  { id: 'e-analyst2-datastreamB', source: 'analyst-2', target: 'data-stream-B', label: 'Protege', type: 'smoothstep', className: 'edge-appear' },
+  { id: 'e-analyst1-analyst2', source: 'analyst-1', target: 'analyst-2', label: 'Colabora', type: 'smoothstep', className: 'edge-appear', style: { stroke: 'var(--accent-orange)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--accent-orange)' } },
+];
 
 export const GraphPage: React.FC = () => {
+  const firstLoadFitViewDone = useRef(false);
   const [jsonData, setJsonData] = useState<JsonData | null>(null);
   const [fileName, setFileName] = useState<string>('');
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChangeInternal] = useNodesState([]);
+  const [edges, setEdges, onEdgesChangeInternal] = useEdgesState([]);
   const [isLoadingGraph, setIsLoadingGraph] = useState(false);
+  const [isDemoDataVisible, setIsDemoDataVisible] = useState(true);
   
-  const reactFlowInstance = useReactFlow();
+  const { fitView, getNodes, getEdges } = useReactFlow();
+  const demoLoadedRef = useRef(false);
+  const animationCleanupRef = useRef<(() => void) | null>(null);
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    [setNodes]
+  );
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    [setEdges]
+  );
 
   const onConnect = useCallback(
     (params: Connection) => {
       if (params.source && params.target) {
         setEdges((eds) => addEdge({
           ...params,
-          id: `e${Date.now()}-${Math.random()}`,
-          type: 'smoothstep',
-          animated: false,
-          style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
+          id: `user-e-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          type: 'smoothstep', animated: false, style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
           className: 'edge-appear-static'
         }, eds));
@@ -78,388 +113,267 @@ export const GraphPage: React.FC = () => {
   );
 
   const processJsonToGraph = useCallback((data: JsonData): { initialNodes: Node[]; initialEdges: Edge[] } => {
-    // ... (tu lógica de processJsonToGraph sin cambios, solo asegúrate de que addNodeSafely y addEdgeInternal añadan las clases 'node-appear' y 'edge-appear')
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
     const nodeIds = new Set<string>();
-    let edgeIdCounter = 0;
-    let mainPersonNodeId = '';
-    let mainPersonName = '';
-    let mainPersonDetails: any = { fullJson: data };
+    let edgeIdCounter = Date.now(); 
 
     const addNodeSafely = (node: Node) => {
-      if (!nodeIds.has(node.id)) {
-        newNodes.push({ ...node, className: 'node-appear' }); // Añadir clase para animación
-        nodeIds.add(node.id);
+      const uniqueNodeId = `user-node-${node.id}`; 
+      if (!nodeIds.has(uniqueNodeId)) {
+        newNodes.push({ ...node, id: uniqueNodeId, className: 'node-appear' }); 
+        nodeIds.add(uniqueNodeId);
       } else {
-        const existingNode = newNodes.find(n => n.id === node.id);
-        if (existingNode) {
-          existingNode.data = { ...existingNode.data, ...node.data, details: { ...existingNode.data.details, ...node.data.details } };
+        const existingNodeIndex = newNodes.findIndex(n => n.id === uniqueNodeId);
+        if (existingNodeIndex !== -1) {
+          newNodes[existingNodeIndex] = {
+            ...newNodes[existingNodeIndex], ...node, id: uniqueNodeId,
+            data: { ...newNodes[existingNodeIndex].data, ...node.data, details: { ...newNodes[existingNodeIndex].data.details, ...node.data.details } }
+          };
         }
       }
     };
 
     const addEdgeInternal = (sourceId: string, targetId: string, label: string, edgeData?: any) => {
-      if (nodeIds.has(sourceId) && nodeIds.has(targetId) && sourceId !== targetId) {
+      const prefixedSourceId = nodeIds.has(`user-node-${sourceId}`) ? `user-node-${sourceId}` : sourceId;
+      const prefixedTargetId = nodeIds.has(`user-node-${targetId}`) ? `user-node-${targetId}` : targetId;
+
+      if (nodeIds.has(prefixedSourceId) && nodeIds.has(prefixedTargetId) && prefixedSourceId !== prefixedTargetId) {
+        const edgeId = `user-e-${edgeIdCounter++}-${prefixedSourceId.slice(-10)}-${prefixedTargetId.slice(-10)}-${label.replace(/[^a-zA-Z0-9]/g, '_').slice(0,10)}`;
         newEdges.push({
-          id: `e${edgeIdCounter++}-${sourceId}-${targetId}-${label.replace(/\s+/g, '_')}`,
-          source: sourceId,
-          target: targetId,
-          label,
-          type: 'smoothstep',
-          animated: false,
-          style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
+          id: edgeId, source: prefixedSourceId, target: prefixedTargetId, label,
+          type: 'smoothstep', animated: false, style: { stroke: 'var(--edge-default-color)', strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-          data: edgeData,
-          className: 'edge-appear' // Añadir clase para animación
+          data: edgeData, className: 'edge-appear' 
         });
       }
     };
     
-    let yOffset = 50;
-    const xSpacing = 250; 
-    const ySpacing = 200; 
-    let currentX = 250;
+    if (data && Object.keys(data).length > 0) {
+        const baseId = data._id?.$oid || 'parsedData'; 
+        addNodeSafely({ 
+            id: `${baseId}-main`, type: 'person', position: { x: 100, y: 100 }, 
+            data: { name: `Processed: ${baseId.substring(0,10)}`, title: 'Main Entity', details: { fullJson: data } } 
+        });
 
-    if (!data) return { initialNodes: [], initialEdges: [] };
-
-    if (data.curp_online?.data?.registros?.[0]) {
-      const personData = data.curp_online.data.registros[0];
-      mainPersonNodeId = personData.curp || `person-curp-${Date.now()}`;
-      mainPersonName = `${personData.nombres || ''} ${personData.primerApellido || ''} ${personData.segundoApellido || ''}`.trim();
-      mainPersonDetails = { ...mainPersonDetails, ...personData, source: 'curp_online' };
-    } else if (data.ine1?.data?.[0]) {
-      const personData = data.ine1.data[0];
-      mainPersonNodeId = personData.cve || `person-ine-${Date.now()}`;
-      mainPersonName = `${personData.nombre || ''} ${personData.paterno || ''} ${personData.materno || ''}`.trim();
-      mainPersonDetails = { ...mainPersonDetails, ...personData, source: 'ine1' };
-    } else {
-      mainPersonNodeId = data._id?.$oid || `json-root-${Date.now()}`;
-      mainPersonName = "Individuo Principal (Datos Generales)";
-      mainPersonDetails = { ...mainPersonDetails, id: data._id?.$oid, source: 'root' };
-    }
-    
-    if (data.ine1?.data?.[0]) {
-        mainPersonDetails.ine1 = data.ine1.data[0];
-        if (!mainPersonDetails.ocupacion) mainPersonDetails.ocupacion = data.ine1.data[0].ocupacion;
-        if (!mainPersonDetails.direccion_ine) {
-            mainPersonDetails.direccion_ine = `${data.ine1.data[0].calle || ''} ${data.ine1.data[0].exterior || ''} ${data.ine1.data[0].interior || ''}, Col. ${data.ine1.data[0].colonia || ''}, CP ${data.ine1.data[0].codigo_postal || ''}`.trim();
-        }
-    }
-     if (data.ine2?.data?.[0]) mainPersonDetails.ine2 = data.ine2.data[0];
-     if (data.ine3?.data?.[0]) mainPersonDetails.ine3 = data.ine3.data[0];
-
-    addNodeSafely({
-      id: mainPersonNodeId,
-      type: 'person',
-      position: { x: currentX, y: yOffset },
-      data: {
-        name: mainPersonName,
-        title: mainPersonDetails.ocupacion || 'Individuo Principal',
-        details: mainPersonDetails,
-      },
-    });
-    currentX += xSpacing + 100; 
-
-    const buroComercios = [
-        ...(data.buro1?.data?.[0]?.comercios || []),
-        ...(data.buro2?.data?.[0]?.comercios2 || [])
-    ];
-    
-    let buroX = 50;
-    const buroY = yOffset + ySpacing;
-
-    buroComercios.forEach((comercio, index) => {
-      const institucionName = comercio.institucion || `Empresa Desconocida ${index}`;
-      const empresaId = `empresa-buro-${institucionName.replace(/\s+/g, '_').substring(0,50)}-${index}`;
-      addNodeSafely({
-        id: empresaId,
-        type: 'company',
-        position: { x: buroX + index * xSpacing, y: buroY + (index % 2 * 80) },
-        data: {
-          name: institucionName,
-          location: "Información de Buró",
-          details: { ...comercio, source: data.buro1?.data?.[0]?.comercios?.includes(comercio) ? 'buro1' : 'buro2' },
-        },
-      });
-      addEdgeInternal(mainPersonNodeId, empresaId, 'Relación Financiera (Buró)');
-    });
-    if (buroComercios.length > 0) currentX = Math.max(currentX, buroX + buroComercios.length * xSpacing);
-
-    let sociosY = yOffset + ySpacing * 2;
-    if (data.socios_empresas?.data?.datos_subconsulta?.[0]) {
-      const empresaSociaData = data.socios_empresas.data.datos_subconsulta[0];
-      const empresaSociaName = empresaSociaData.nombre_razon_social || `Sociedad Desconocida ${empresaSociaData.fme}`;
-      const empresaSociaId = `empresa-socia-${empresaSociaName.replace(/\s+/g, '_').substring(0,50)}`;
-      
-      addNodeSafely({
-        id: empresaSociaId,
-        type: 'company',
-        position: { x: currentX - xSpacing, y: sociosY },
-        data: {
-          name: empresaSociaName,
-          location: empresaSociaData.domicilio_social?.split('\n')[0] || "Ubicación Desconocida",
-          details: { ...empresaSociaData, source: 'socios_empresas' },
-        },
-      });
-      addEdgeInternal(mainPersonNodeId, empresaSociaId, 'Es Socio/Accionista en');
-
-      if (data.socios_empresas.data.socios) {
-        data.socios_empresas.data.socios.forEach((socio: any, index: number) => {
-          const socioNameFull = `${socio.nombre || ''} ${socio.apellido_paterno || ''} ${socio.apellido_materno || ''}`.trim();
-          if (socioNameFull.toLowerCase() !== mainPersonName.toLowerCase()) { 
-            const socioId = `persona-socio-${(socio.rfc || socioNameFull.replace(/\s+/g, '_') || `socioidx-${index}`).substring(0,50)}`;
-            addNodeSafely({
-              id: socioId,
-              type: 'person',
-              position: { x: currentX + index * xSpacing, y: sociosY + (index % 2 * 80) },
-              data: {
-                name: socioNameFull,
-                title: "Socio/Accionista",
-                details: { ...socio, source: 'socios_empresas.socios' }
-              }
+        if (newNodes.length > 0 && data.buro1?.data?.[0]?.comercios?.[0]) {
+            const comercio = data.buro1.data[0].comercios[0];
+            const comercioName = (comercio.institucion || 'ComercioBuro1').replace(/\W/g, '');
+            const comercioId = `${baseId}-buro-${comercioName}`;
+            addNodeSafely({ 
+                id: comercioId, type: 'company', position: { x: 350, y: 100 }, 
+                data: { name: comercio.institucion || 'Buro Co.', location: 'Buró', details: { ...comercio, source: 'buro1' } } 
             });
-            addEdgeInternal(empresaSociaId, socioId, 'Tiene como Socio/Accionista a');
-          }
-        });
-      }
-    }
-
-    let contactoY = yOffset + ySpacing * 1.5;
-    const pasaportesData = [...(data.pasaportes2022?.data || []), ...(data.pasaportes2023?.data || [])];
-    const emergencyContacts = new Map<string, any>();
-
-    pasaportesData.forEach(pasaporte => {
-        const contactoRaw = pasaporte?.solicitud?.datos_personales?.contacto_emergencia;
-        if (contactoRaw) {
-            const contactoName = `${contactoRaw.nombre || ''} ${contactoRaw.apellido || ''} ${contactoRaw.apellido2 || ''}`.trim();
-            if (contactoName && !emergencyContacts.has(contactoName)) {
-                emergencyContacts.set(contactoName, { ...contactoRaw, source: pasaporte.cod_documento ? `pasaporte_${pasaporte.cod_documento}` : 'pasaporte' });
-            }
-        }
-    });
-    
-    Array.from(emergencyContacts.entries()).forEach(([contactoName, contactoDetails], index) => {
-        const contactoId = `persona-contacto-${contactoName.replace(/\s+/g, '_').substring(0,50)}-${index}`;
-        addNodeSafely({
-            id: contactoId,
-            type: 'person',
-            position: { x: 50 + index * xSpacing, y: contactoY + (index % 2 * 60) },
-            data: {
-                name: contactoName,
-                title: "Contacto de Emergencia",
-                details: contactoDetails
-            }
-        });
-        addEdgeInternal(mainPersonNodeId, contactoId, 'Contacto de Emergencia');
-    });
-
-    let internetX = currentX + xSpacing;
-    let internetY = yOffset;
-    const onlineProfiles: OnlineProfile[] = []; 
-
-    if (data.internet1?.data?.ResultadosGoogle?.resultados) {
-        data.internet1.data.ResultadosGoogle.resultados.forEach(res => {
-            if (res.link && res.title) onlineProfiles.push({ ...res, source: 'Google (internet1)'});
-        });
-    }
-    if (data.internet1?.data?.ResultadosBing) {
-        Object.values(data.internet1.data.ResultadosBing).forEach((res: any) => {
-            if (res.url && res.name) onlineProfiles.push({ link: res.url, title: res.name, snippet: res.snippet, source: 'Bing (internet1)' });
-        });
-    }
-    if (data.internet2?.data) {
-        data.internet2.data.forEach(res => {
-            if (res.link && res.title) onlineProfiles.push({ ...res, source: 'internet2'});
-        });
-    }
-    
-    const uniqueOnlineProfiles = Array.from(new Map(onlineProfiles.map(p => [p.link, p])).values());
-
-    uniqueOnlineProfiles.forEach((profile, index) => {
-        const connectToMain = mainPersonName && profile.title.toLowerCase().includes(mainPersonName.split(" ")[0].toLowerCase());
-        if (connectToMain) {
-            const perfilId = `online-profile-${profile.link.substring(0,30).replace(/[^a-zA-Z0-9]/g, '_')}-${index}`;
-            addNodeSafely({
-                id: perfilId,
-                type: 'company', 
-                position: { x: internetX, y: internetY + index * 80 },
-                data: {
-                    name: profile.title.substring(0, 40) + (profile.title.length > 40 ? "..." : ""),
-                    location: profile.link.includes("linkedin.com") ? "LinkedIn" : "Web",
-                    details: profile
-                }
-            });
-            addEdgeInternal(mainPersonNodeId, perfilId, 'Perfil Online');
-        }
-    });
-    
-    if (!mainPersonDetails.direccion_principal && pasaportesData.length > 0) {
-        const passDir = pasaportesData[0]?.solicitud?.datos_personales?.direccion;
-        if (passDir) {
-            mainPersonDetails.direccion_pasaporte = `${passDir.direccion || ''}, Col. ${passDir.colonia || ''}, ${passDir.ciudad || ''}, CP ${passDir.cod_postal || ''}`.trim();
-            const mainNode = newNodes.find(n => n.id === mainPersonNodeId);
-            if (mainNode) {
-                mainNode.data.details = mainPersonDetails;
-            }
+            addEdgeInternal(`${baseId}-main`, comercioId, 'Rel. Buró');
         }
     }
-
-    const sortedNodes = newNodes.sort((a, b) => {
-        if (a.id === mainPersonNodeId) return -1;
-        if (b.id === mainPersonNodeId) return 1;
-        return 0;
-    });
-
-    return { initialNodes: sortedNodes, initialEdges: newEdges };
+    console.log(`[processJsonToGraph] Generated ${newNodes.length} nodes, ${newEdges.length} edges.`);
+    return { initialNodes: newNodes, initialEdges: newEdges };
   }, []);
 
-  const animateGraphLoad = useCallback((allNodes: Node[], allEdges: Edge[]) => {
+  const animateGraphLoad = useCallback((nodesToLoad: Node[], edgesToLoad: Edge[], isOverwrite: boolean) => {
+    if (animationCleanupRef.current) {
+      animationCleanupRef.current();
+    }
     setIsLoadingGraph(true);
-    setNodes([]); // Limpiar nodos existentes antes de la animación
-    setEdges([]); // Limpiar aristas existentes
 
-    const nodeBatchSize = Math.max(1, Math.floor(allNodes.length / 5));
-    const edgeBatchSize = Math.max(1, Math.floor(allEdges.length / 5));
-    const delayBetweenNodeBatches = 20; 
-    const delayBetweenEdgeBatches = 15;
+    const currentInternalNodes = getNodes();
+    const currentInternalEdges = getEdges();
+    
+    let targetNodes = isOverwrite ? [] : [...currentInternalNodes];
+    let targetEdges = isOverwrite ? [] : [...currentInternalEdges];
 
-    let currentNodeIndex = 0;
-    let currentEdgeIndex = 0;
-    let animationTimeoutId: NodeJS.Timeout | null = null; // Permitir que sea null
+    const finalNodesMap = new Map(targetNodes.map(n => [n.id, n]));
+    nodesToLoad.forEach(n => finalNodesMap.set(n.id, {...finalNodesMap.get(n.id), ...n, data: {...finalNodesMap.get(n.id)?.data, ...n.data}}));
+    
+    const finalEdgesMap = new Map(targetEdges.map(e => [e.id, e]));
+    edgesToLoad.forEach(e => finalEdgesMap.set(e.id, {...finalEdgesMap.get(e.id), ...e}));
 
-    function addNextNodeBatch() {
-      if (currentNodeIndex < allNodes.length) {
-        const batch = allNodes.slice(currentNodeIndex, currentNodeIndex + nodeBatchSize);
-        setNodes(prev => [...prev, ...batch]);
-        currentNodeIndex += batch.length;
-        animationTimeoutId = setTimeout(addNextNodeBatch, delayBetweenNodeBatches);
-      } else {
-        addNextEdgeBatch();
+    const finalNodes = Array.from(finalNodesMap.values());
+    const finalEdges = Array.from(finalEdgesMap.values());
+    
+    setNodes(isOverwrite ? [] : currentNodes => currentNodes.filter(cn => finalNodesMap.has(cn.id)));
+    setEdges(isOverwrite ? [] : currentEdges => currentEdges.filter(ce => finalEdgesMap.has(ce.id)));
+    
+    let nodeTimeoutId: NodeJS.Timeout | null = null;
+    let edgeTimeoutId: NodeJS.Timeout | null = null;
+
+    const batchAdd = (items: any[], setter: React.Dispatch<React.SetStateAction<any[]>>, batchSize: number, delay: number, onDone: () => void) => {
+      let i = 0;
+      function nextBatch() {
+        if (i < items.length) {
+          const batch = items.slice(i, Math.min(i + batchSize, items.length));
+          setter(prev => {
+            const prevMap = new Map(prev.map(item => [item.id, item]));
+            batch.forEach(item => prevMap.set(item.id, item));
+            return Array.from(prevMap.values());
+          });
+          i += batch.length;
+          if (setter === setNodes) nodeTimeoutId = setTimeout(nextBatch, delay);
+          else edgeTimeoutId = setTimeout(nextBatch, delay);
+        } else {
+          onDone();
+        }
       }
-    }
-
-    function addNextEdgeBatch() {
-      if (currentEdgeIndex < allEdges.length) {
-        const batch = allEdges.slice(currentEdgeIndex, currentEdgeIndex + edgeBatchSize);
-        setEdges(prev => [...prev, ...batch]);
-        currentEdgeIndex += batch.length;
-        animationTimeoutId = setTimeout(addNextEdgeBatch, delayBetweenEdgeBatches);
-      } else {
-        setIsLoadingGraph(false);
-        console.log("Carga animada completada.");
-        setTimeout(() => {
-          if (reactFlowInstance) {
-            reactFlowInstance.fitView({ duration: 400, padding: 0.2 });
-          }
-        }, 100);
-      }
-    }
-
-    addNextNodeBatch();
-
-    return () => {
-      if (animationTimeoutId) clearTimeout(animationTimeoutId);
+      nextBatch();
     };
 
-  }, [setNodes, setEdges, reactFlowInstance]);
+    setTimeout(() => { 
+        batchAdd(finalNodes, setNodes, Math.max(1, Math.floor(finalNodes.length / 15)), 15, () => {
+            batchAdd(finalEdges, setEdges, Math.max(1, Math.floor(finalEdges.length / 15)), 15, () => {
+                setIsLoadingGraph(false);
+                console.log(`Animated graph load complete (${isOverwrite ? 'overwrite' : 'merge'}).`);
+                setTimeout(() => {
+                    fitView({ duration: 600, padding: 0.15 });
+                    firstLoadFitViewDone.current = true; 
+                }, 100);
+            });
+        });
+    }, 50);
 
+    animationCleanupRef.current = () => {
+      if (nodeTimeoutId) clearTimeout(nodeTimeoutId);
+      if (edgeTimeoutId) clearTimeout(edgeTimeoutId);
+      setIsLoadingGraph(false);
+    };
+    return animationCleanupRef.current;
+  }, [getNodes, getEdges, setNodes, setEdges, fitView]);
 
-  const handleJsonUploaded = useCallback((uploadedData: JsonData, name?: string) => {
+  const handleJsonUploaded = useCallback((uploadedData: JsonData, name?: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
     setJsonData(uploadedData);
     if (name) setFileName(name);
+    setIsDemoDataVisible(false);
+    firstLoadFitViewDone.current = false;
     
     const { initialNodes, initialEdges } = processJsonToGraph(uploadedData);
 
-    if (initialNodes.length > 0) {
-      animateGraphLoad(initialNodes, initialEdges);
+    if (initialNodes.length > 0 || initialEdges.length > 0) {
+      animateGraphLoad(initialNodes, initialEdges, mode === 'overwrite');
     } else {
-      setNodes([]);
-      setEdges([]);
-      setIsLoadingGraph(false); // Asegurar que se detenga la carga si no hay nodos
+      if (mode === 'overwrite') {
+        setNodes([]);
+        setEdges([]);
+      }
+      setIsLoadingGraph(false);
+      console.warn("Uploaded JSON resulted in no nodes or edges.");
     }
-  }, [processJsonToGraph, animateGraphLoad]);
+  }, [processJsonToGraph, animateGraphLoad, setNodes, setEdges]);
 
-  // Limpieza de timeouts
   useEffect(() => {
-    // La función animateGraphLoad ya devuelve su propia función de limpieza
-    // que se activa cuando cambian sus dependencias o el componente se desmonta.
-    // No es necesario un useEffect adicional aquí para la limpieza del timeout de animación.
+    if (isDemoDataVisible && !demoLoadedRef.current) {
+      console.log("Loading default demo data (useEffect).");
+      firstLoadFitViewDone.current = false;
+      animateGraphLoad(
+        defaultNodes.map(n => ({...n, data: {...n.data}})),
+        defaultEdges.map(e => ({...e})),
+        true
+      );
+      demoLoadedRef.current = true;
+    }
+  }, [isDemoDataVisible, animateGraphLoad]);
+
+  useEffect(() => {
+    return () => {
+      if (animationCleanupRef.current) {
+        animationCleanupRef.current();
+      }
+    };
   }, []);
 
-
   return (
-    <div className="h-full w-full flex flex-col bg-bg-primary text-text-primary p-4 space-y-4">
-      <div className="p-4 bg-bg-secondary shadow-lg rounded-lg flex-shrink-0">
-        <h2 className="text-xl font-semibold mb-3 text-accent-cyan text-center">
-          Cargar Archivo JSON del Grafo
-        </h2>
-        <JsonUploadButton onJsonUploaded={handleJsonUploaded} />
-        {fileName && <p className="text-xs text-text-secondary mt-2 text-center">Archivo cargado: {fileName}</p>}
-        {isLoadingGraph && <p className="text-sm text-accent-cyan mt-2 animate-pulse text-center">Cargando grafo...</p>}
+    <div className="graph-page-container">
+      <div className="upload-panel">
+        <h2 className="panel-title">Cargar Archivo JSON del Grafo</h2>
+        <JsonUploadButton onJsonUploaded={(data, name) => handleJsonUploaded(data, name, 'overwrite')} />
+        {fileName && <p className="file-name-display">Archivo cargado: {fileName}</p>}
+        <div className="action-buttons-container">
+          <button 
+            className="graph-action-button overwrite-button"
+            onClick={() => {
+              if (jsonData) handleJsonUploaded(jsonData, fileName, 'overwrite');
+              else alert("Primero carga un archivo JSON para sobrescribir.");
+            }}
+            disabled={!jsonData || isLoadingGraph}
+          >
+            <Replace size={18} className="button-icon" />
+            Sobrescribir Resultados
+          </button>
+          <button 
+            className="graph-action-button merge-button"
+            onClick={() => {
+              if (jsonData) handleJsonUploaded(jsonData, fileName, 'merge');
+              else alert("Primero carga un archivo JSON para agregar/actualizar.");
+            }}
+            disabled={!jsonData || isLoadingGraph}
+          >
+            <Layers size={18} className="button-icon" />
+            Agregar y Actualizar
+          </button>
+        </div>
+        {isLoadingGraph && <p className="loading-text">Cargando grafo...</p>}
       </div>
 
-      <div 
-        className="flex-grow rounded-lg shadow-lg bg-graph-bg overflow-hidden graph-container" 
-        style={{ border: '5px solid red', backgroundColor: 'rgba(0, 0, 255, 0.1)' }}
-      >
-        {(nodes.length > 0 || isLoadingGraph) ? (
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            nodeTypes={memoizedNodeTypes}
-            fitViewOptions={{ duration: 300, padding: 0.2 }}
-            minZoom={0.1}
-            maxZoom={2}
-            className="themed-flow"
-            onlyRenderVisibleElements={true}
-            defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
-            style={{ width: '100%', height: '100%' }}
-          >
-            <Controls position="bottom-right" />
-            <MiniMap 
-              nodeStrokeWidth={3}
-              nodeColor={(n) => {
-                if (n.type === 'person') return 'var(--node-person-icon-color)';
-                if (n.type === 'company') return 'var(--node-company-icon-color)';
-                return 'var(--text-secondary)';
-              }}
-              nodeBorderRadius={2}
-              pannable 
-              zoomable
-              position="top-right"
-            />
-            <Background 
-              variant={BackgroundVariant.Lines} 
-              gap={24} 
-              size={0.4} 
-              color="var(--graph-lines-color)" 
-            />
-          </ReactFlow>
-        ) : jsonData ? (
-          <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4 text-center">
-            <p className="mb-4">El archivo JSON se cargó, pero no se generaron nodos para el grafo.</p>
-            <p className="mb-2 text-sm">Verifica la consola para errores o la estructura del JSON.</p>
-            <details className="w-full max-w-2xl mt-4">
-              <summary className="cursor-pointer text-accent-cyan hover:underline">Ver contenido del JSON</summary>
-              <pre className="text-xs whitespace-pre-wrap break-all text-text-secondary overflow-auto max-h-96 mt-2 p-3 bg-input-bg rounded-md">
-                {JSON.stringify(jsonData, null, 2)}
-              </pre>
-            </details>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-text-secondary text-lg p-4 text-center">
-            <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
-            <p className="mb-2 text-sm">Utiliza el área de carga de arriba.</p>
-          </div>
-        )}
+      <div className="graph-viewport-container">
+        <div className="reactflow-wrapper"> 
+          {(nodes.length > 0 || isLoadingGraph) ? (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              nodeTypes={memoizedNodeTypes}
+              fitView={!firstLoadFitViewDone.current}
+              fitViewOptions={{ duration: 800, padding: 0.2 }}
+              minZoom={0.05}
+              maxZoom={2.5}
+              className="themed-flow"
+              onlyRenderVisibleElements={true}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <Controls position="bottom-right" />
+              <MiniMap 
+                nodeStrokeWidth={3}
+                nodeColor={(n) => {
+                  if (n.type === 'person') return 'var(--node-person-icon-color)';
+                  if (n.type === 'company') return 'var(--node-company-icon-color)';
+                  return 'var(--text-secondary)';
+                }}
+                nodeBorderRadius={2}
+                pannable 
+                zoomable
+                position="top-right"
+              />
+              <Background 
+                variant={BackgroundVariant.Lines} 
+                gap={30} 
+                size={0.5} 
+                color="var(--graph-lines-color)" 
+              />
+            </ReactFlow>
+          ) : !isLoadingGraph ? (
+            <div className="placeholder-message">
+              <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
+              <p className="mb-4">Arrastra o selecciona un archivo JSON para visualizar el grafo.</p>
+              <p className="mb-2 text-sm">Utiliza el área de carga de arriba.</p>
+              {isDemoDataVisible && !demoLoadedRef.current && (
+                <p className="text-sm text-accent-green mt-2">Cargando datos de demostración...</p>
+              )}
+              {jsonData && nodes.length === 0 && (
+                <details className="json-details-viewer">
+                  <summary className="json-details-summary">JSON cargado pero no se generaron nodos. Ver JSON.</summary>
+                  <pre className="json-details-pre">
+                    {JSON.stringify(jsonData, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </div>
+          ) : null }
+        </div>
       </div>
     </div>
   );
-}
+};
 
 const GraphPageWithProvider: React.FC = () => (
   <ReactFlowProvider>

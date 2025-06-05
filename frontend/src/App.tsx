@@ -1,65 +1,85 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// frontend/src/App.tsx
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
-// import GraphPageWrapper from './pages/GraphPageWrapper'; // Comenta o elimina 
-import GraphPageWithProvider from './pages/GraphPage'; // Use default export which includes Provider
+import GraphPageWithProvider from './pages/GraphPage';
 import './styles/globals.css';
 
-function App() {
-  console.log("App component is rendering");
-  const isAuthenticated = !!localStorage.getItem('access_token');
+const AppContent: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem('access_token');
+      setIsAuthenticated(!!token);
+    };
+    checkAuth();
+    const handleLoginSuccess = () => {
+      console.log("AppContent: loginSuccess event received, updating auth state.");
+      checkAuth();
+    };
+    window.addEventListener('loginSuccess', handleLoginSuccess);
+    return () => {
+      window.removeEventListener('loginSuccess', handleLoginSuccess);
+    };
+  }, [location.key]);
 
   return (
-    <Router>
-      {/* .App ya tiene flex flex-col h-screen desde globals.css o Tailwind */}
-      <div className="App"> 
-        <header
-          className="App-header"
-          style={{
-            backgroundColor: 'var(--bg-secondary)',
-            padding: '1rem',
-            textAlign: 'center',
-            color: 'var(--text-primary)',
-            flexShrink: 0, 
-            borderBottom: '1px solid var(--input-border)'
-          }}
-        >
-          <h1 className="text-2xl font-semibold text-accent-cyan">Nodex</h1>
-        </header>
+    // .App class from globals.css applies: bg-bg-primary text-text-primary font-sans
+    // Ensure .App itself is flex flex-col and takes full screen height
+    <div className="App flex flex-col h-screen">
+      <header
+        className="flex-shrink-0" // Prevent header from shrinking
+        style={{
+          backgroundColor: 'var(--bg-secondary)',
+          padding: '1rem',
+          textAlign: 'center',
+          color: 'var(--text-primary)',
+          borderBottom: '1px solid var(--input-border)',
+          zIndex: 20 // Ensure header is above other content
+        }}
+      >
+        <h1 className="text-2xl font-semibold text-accent-cyan">Nodex</h1>
+      </header>
+      {/* main needs to be a flex container that grows and allows its children to grow */}
+      <main
+        className="flex-grow flex flex-col" // This makes main a flex container that grows
+        style={{
+          minHeight: '0', // CRUCIAL for flex children that also grow and might overflow
+          overflow: 'hidden' // Prevent main from showing scrollbars if children manage their own
+        }}
+      >
+        {/* Routes will render GraphPageWithProvider.
+            GraphPageWithProvider's root div (.graph-page-container) needs to fill this space.
+        */}
+        <Routes>
+          <Route 
+            path="/login" 
+            element={!isAuthenticated ? <LoginPage /> : <Navigate to="/graph" replace />} 
+          />
+          <Route
+            path="/graph"
+            element={isAuthenticated ? <GraphPageWithProvider /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/"
+            element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
+        </Routes>
+      </main>
+    </div>
+  );
+};
 
-        {/* Contenedor principal del contenido */}
-        <main
-          className="flex-grow flex flex-col overflow-hidden"
-          style={{
-            position: 'relative',
-            border: '5px solid limegreen', // DEBUG STYLE
-            backgroundColor: 'rgba(0, 255, 0, 0.1)' // DEBUG STYLE
-          }}
-        >
-          <div 
-            className="flex-grow flex flex-col" 
-            style={{ border: '3px solid orange', minHeight: '100px' }} // DEBUG STYLE
-          >
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route
-                path="/graph"
-                element={ 
-                  isAuthenticated ? <GraphPageWithProvider /> : <Navigate to="/login" replace />
-                }
-              />
-              <Route
-                path="/"
-                element={<Navigate to={isAuthenticated ? "/graph" : "/login"} replace />}
-              />
-              <Route
-                path="*" // Catch-all
-                element={<Navigate to="/" replace />}
-              />
-            </Routes>
-          </div>
-        </main>
-      </div>
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

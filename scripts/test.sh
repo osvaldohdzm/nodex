@@ -1,30 +1,43 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "🧪 Ejecutando pruebas..."
+echo "🧹 Limpiando contenedores..."
+./scripts/clean_containters.sh 
 
-# --- EJEMPLOS (AJUSTA A TU PROYECTO) ---
+echo "💾 Guardando cambios en Git..."
 
-# Para Node.js:
-# npm test
+current_branch=$(git branch --show-current)
 
-# Para Python con Pytest:
-# pytest
-
-# Para Python con unittest:
-# python -m unittest discover
-
-# Para Java con Maven:
-# ./mvnw test
-
-# Para Java con Gradle:
-# ./gradlew test
-result=$(./scripts/start.sh)
-if [[ $? -ne 0 ]]; then
-  echo "❌ Pruebas fallidas. Abortando."
+if [[ -z "$current_branch" ]]; then
+  echo "❌ No estás en ninguna rama. Operación abortada."
   exit 1
 fi
-echo "✅ Pruebas completadas."
-# El script de pruebas debe salir con código de error si alguna prueba falla.
-# Esto es crucial para la integración en pipelines CI/CD, ya que un código de error indica que el proceso debe detenerse
-# y evitar que cambios defectuosos se desplieguen automáticamente.
+
+# Verificar si hay cambios para commitear
+if git diff-index --quiet HEAD --; then
+  echo "ℹ️ No hay cambios para hacer commit."
+else
+  git add .
+  read -p "Mensaje del commit (deja vacío para mensaje por defecto 'WIP: Save changes before test'): " commit_message
+  if [[ -z "$commit_message" ]]; then
+    commit_message="WIP: Save changes on $current_branch"
+  fi
+  git commit -m "$commit_message"
+fi
+
+# Push con configuración de upstream si no está definido
+if ! git rev-parse --abbrev-ref --symbolic-full-name "@{u}" &>/dev/null; then
+  echo "🔁 Estableciendo upstream para '$current_branch' y haciendo push..."
+  git push --set-upstream origin "$current_branch"
+else
+  echo "⏫ Haciendo push a remoto..."
+  git push
+fi
+
+echo "🧪 Ejecutando pruebas..."
+if ./scripts/start.sh; then
+  echo "✅ Pruebas completadas con éxito."
+else
+  echo "❌ Pruebas fallidas. Revisa el log."
+  exit 1
+fi

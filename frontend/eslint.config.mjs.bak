@@ -1,0 +1,34 @@
+// eslint.config.mjs
+import globals from "globals";
+import pluginReact from "eslint-plugin-react";
+import pluginReactHooks from 'eslint-plugin-react-hooks';
+
+// We are not using defineConfig to keep it simple and avoid potential import issues.
+// We are also not importing 'js' from '@eslint/js' to prevent ESLint v9/v8 conflicts.
+
+export default [
+  // General configuration for browser globals and basic language features.
+  // This applies to all JavaScript and TypeScript files in the src directory.
+  {
+    files: ["src/**/*.{js,jsx,ts,tsx}"],
+    languageOptions: {
+      globals: globals.browser, // Sets up browser environment globals (window, document, etc.)
+      ecmaVersion: 2021, // Specifies the ECMAScript version (e.g., ES2021 features)
+      sourceType: 'module', // Indicates that the code is in ES modules
+      parserOptions: { // Basic parser options for JSX
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    }
+  },
+
+  // Recommended configuration for eslint-plugin-react.
+  // This object includes rules, parser settings (for JSX/TSX via @typescript-eslint/parser if available),
+  // and plugin registration for React-specific linting.
+  pluginReact.configs.flat.recommended,
+
+  // Recommended configuration for eslint-plugin-react-hooks.
+  // This object includes rules and plugin registration for linting React Hooks usage.
+  pluginReactHooks.configs.flat.recommended,
+];
