@@ -27,6 +27,7 @@ import RelationshipModal from '../components/modals/RelationshipModal';
 
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 
 const nodeTypes = {
   person: PersonNode,
@@ -520,6 +521,7 @@ export const GraphPage: React.FC = () => {
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           proOptions={{ hideAttribution: true }}
           className="graph-viewport"
+          connectionLineComponent={CustomConnectionLine}
           connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
           deleteKeyCode={['Backspace', 'Delete']}
         >
