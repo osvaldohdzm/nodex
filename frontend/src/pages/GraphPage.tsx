@@ -27,7 +27,7 @@ import JsonUploadButton from '../components/graph/JsonUploadButton';
 import PersonNode from '../components/graph/PersonNode';
 import CompanyNode from '../components/graph/CompanyNode';
 import { UploadCloud, Replace, Layers } from 'lucide-react';
-import { JsonData } from '../types/graph';
+import { JsonData, NodeData } from '../types/graph';
 import { defaultNodes as demoNodes, defaultEdges as demoEdges } from '../data/defaultGraphData'; // Import default data
 
 const nodeTypes = {
@@ -51,7 +51,7 @@ export const GraphPage: React.FC = () => {
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
   const animateGraphLoad = useCallback(
-    (initialNodes: Node[], initialEdges: Edge[], isOverwrite: boolean = false) => {
+    (initialNodes: Node<NodeData>[], initialEdges: Edge[], isOverwrite: boolean = false) => {
       // Clear any existing animation cleanup
       if (animationCleanupRef.current) {
         animationCleanupRef.current();
@@ -109,8 +109,8 @@ export const GraphPage: React.FC = () => {
     [setNodes, setEdges, fitView, nodes, edges]
   );
 
-  const processJsonToGraph = useCallback((data: any): { initialNodes: Node[]; initialEdges: Edge[] } => {
-    const newNodes: Node[] = [];
+  const processJsonToGraph = useCallback((data: any): { initialNodes: Node<NodeData>[]; initialEdges: Edge[] } => {
+    const newNodes: Node<NodeData>[] = [];
     const newEdges: Edge[] = [];
     const nodeIds = new Set<string>();
     let edgeIdCounter = Date.now(); 
@@ -134,7 +134,7 @@ export const GraphPage: React.FC = () => {
       return { initialNodes: processedNodes, initialEdges: processedEdges };
     }
 
-    const addNodeSafely = (node: Node) => {
+    const addNodeSafely = (node: Node<NodeData>) => {
       const uniqueNodeId = `user-node-${node.id}`; 
       if (!nodeIds.has(uniqueNodeId)) {
         nodeIds.add(uniqueNodeId);
@@ -167,6 +167,8 @@ export const GraphPage: React.FC = () => {
         data: { 
           name: `Processed: ${baseId.substring(0,10)}`, 
           title: 'Main Entity',
+          typeDetails: 'Processed JSON Data',
+          status: 'normal',
           details: { fullJson: data }
         },
         className: 'node-appear'
@@ -195,8 +197,8 @@ export const GraphPage: React.FC = () => {
     if (isDemoDataVisible && !demoLoadedRef.current && !jsonData) {
       console.log("Loading default demo data (useEffect).");
       animateGraphLoad(
-        demoNodes.map(n => ({...n, data: {...n.data}})), // Use imported demo data
-        demoEdges.map(e => ({...e})), // Use imported demo data
+        demoNodes.map((n: Node<NodeData>) => ({...n, data: {...n.data}})), // Use imported demo data
+        demoEdges.map((e: Edge) => ({...e})), // Use imported demo data
         true // Overwrite existing graph with demo data
       );
       demoLoadedRef.current = true; // Mark demo as loaded
