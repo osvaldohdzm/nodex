@@ -82,7 +82,7 @@ git push origin test/"$current_branch"
 read -rp "¿Ejecutar pruebas para 'test/$current_branch' antes de continuar? (s/n): " run_tests_confirm
 if [[ "$run_tests_confirm" == "s" ]]; then
   echo "🧪 Ejecutando pruebas..."
-  if ! ./scripts/run-tests.sh; then
+  if ! ./scripts/start.sh; then
     echo "❌ Pruebas fallaron. Abortando."
     exit 1
   fi
