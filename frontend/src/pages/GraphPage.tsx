@@ -30,7 +30,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 import TopMenuBar from '../components/layout/TopMenuBar';
-import { deepSearchInObject, flattenObject } from '@utils/dataUtils';
+import { deepSearchInObject, flattenObject } from '../utils/dataUtils';
 
 const nodeTypes = {
   person: PersonNode,

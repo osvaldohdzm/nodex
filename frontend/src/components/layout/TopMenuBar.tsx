@@ -64,10 +64,7 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
 
   return (
     <div className="flex items-center w-full px-2 bg-menu-bg border-b border-menu-border h-10 shadow-sm flex-shrink-0">
-      <div className="flex items-center mr-4">
-        <p className="text-lg font-bold text-blue-600">Nodex</p>
-      </div>
-      <div className="flex items-center h-full">
+       <div className="flex items-center h-full">
         <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} triggerIcon={FileText} />
         <DropdownMenu triggerLabel="Editar" items={editMenuItems} triggerIcon={Edit3} />
         <DropdownMenu triggerLabel="Datos" items={dataMenuItems} triggerIcon={Layers} />
