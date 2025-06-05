@@ -57,6 +57,9 @@ export const GraphPage: React.FC = () => {
   const uploadPanelRef = useRef<HTMLDivElement>(null);
   const [uploadPanelActualHeight, setUploadPanelActualHeight] = useState(0);
 
+  // Define the height for the details panel
+  const detailPanelHeight = 300; // You can adjust this value as needed
+
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
 
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
@@ -220,6 +223,7 @@ export const GraphPage: React.FC = () => {
         }));
         animateGraphLoad(nodesToSet, [], true);
       } else {
+        // Merge mode
         const nodeWithAnimation = { 
           ...nodeWithUploadCallback, 
           className: `${nodeWithUploadCallback.className || ''} node-appear`.trim() 
@@ -296,12 +300,17 @@ export const GraphPage: React.FC = () => {
   // Update upload panel height when content changes
   useEffect(() => {
     if (uploadPanelRef.current) {
-      setUploadPanelActualHeight(uploadPanelRef.current.offsetHeight);
+      const height = uploadPanelRef.current.offsetHeight;
+      console.log("Upload panel height:", height); // Debugging
+      setUploadPanelActualHeight(height);
     }
   }, [selectedFileContent]);
 
-  // Calculate available height for graph viewport (subtract upload panel height and margins)
-  const graphViewportHeight = `calc(100% - ${uploadPanelActualHeight}px - 1rem)`; // Removed details panel height calculation as it's now on the side
+  // Ensuring the graph container has valid dimensions
+  const APP_HEADER_HEIGHT = 60; // Approximate height of the header
+  const MARGINS_AND_GAPS = 16 * 2; // Margins and gaps around the graph
+
+  const graphViewportHeight = `calc(100vh - ${APP_HEADER_HEIGHT}px - ${uploadPanelActualHeight}px - ${detailsNode ? detailPanelHeight : 0}px - ${MARGINS_AND_GAPS}px)`;
 
   const handleExportPDF = async () => {
     const currentGraphNodes = reactFlowInstance.getNodes();
@@ -403,48 +412,42 @@ export const GraphPage: React.FC = () => {
     }
   }, [nodes, edges]);
 
-  // Adding isValidConnection to ReactFlow for better connection validation
-  const isValidConnection = useCallback(
-    (connection: Connection): boolean => {
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
-
-      const isSourceHandleSourceType = connection.sourceHandle?.startsWith('s-');
-      const isTargetHandleTargetType = connection.targetHandle?.startsWith('t-');
-
-      const valid =
-        sourceNode?.type === 'person' &&
-        targetNode?.type === 'person' &&
-        connection.source !== connection.target &&
-        !!isSourceHandleSourceType && !!isTargetHandleTargetType;
-
-      console.log(`isValidConnection: S_Node=${sourceNode?.id}, T_Node=${targetNode?.id}, S_Handle=${connection.sourceHandle}, T_Handle=${connection.targetHandle}, Valid=${valid}`);
-      return !!valid;
-    },
-    [nodes]
-  );
-
   const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
+    console.log("handleCreateOrUpdateRelationship called with:", { label, isDirected, editingEdge, pendingConnection });
+    
     if (editingEdge) {
       // Actualizar arista existente
+      const updatedEdge: Edge = {
+        ...editingEdge,
+        label,
+        markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
+        style: defaultEdgeStyle,
+        className: 'edge-appear',
+      };
+      
+      console.log("Updating existing edge:", updatedEdge);
       setEdges((eds) =>
         eds.map((edge) =>
-          edge.id === editingEdge.id
-            ? {
-                ...edge,
-                label,
-                markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
-                style: defaultEdgeStyle,
-                className: 'edge-appear',
-              }
-            : edge
+          edge.id === editingEdge.id ? updatedEdge : edge
         )
       );
+      
+      // Animar la actualización
+      setTimeout(() => {
+        setEdges((eds) =>
+          eds.map((e) =>
+            e.id === updatedEdge.id
+              ? { ...e, className: 'edge-appear-static' }
+              : e
+          )
+        );
+      }, 1000);
+      
       setEditingEdge(null);
     } else if (pendingConnection) {
       // Crear nueva arista
       const newEdge: Edge = {
-        id: `edge-${pendingConnection.source}-${pendingConnection.target}-${Date.now()}`,
+        id: `edge-${pendingConnection.source}-${pendingConnection.target}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         source: pendingConnection.source!,
         target: pendingConnection.target!,
         sourceHandle: pendingConnection.sourceHandle,
@@ -456,23 +459,76 @@ export const GraphPage: React.FC = () => {
         className: 'edge-appear',
       };
 
-      setEdges((eds) => addEdge(newEdge, eds));
+      console.log("Creating new edge:", newEdge);
+      setEdges((eds) => {
+        const updatedEdges = addEdge(newEdge, eds);
+        console.log("Updated edges after adding:", updatedEdges);
+        return updatedEdges;
+      });
 
       // Animar la nueva arista
       setTimeout(() => {
-        setEdges((eds) =>
-          eds.map((e) =>
+        setEdges((eds) => {
+          const finalEdges = eds.map((e) =>
             e.id === newEdge.id
               ? { ...e, className: 'edge-appear-static' }
               : e
-          )
-        );
+          );
+          console.log("Final edges after animation:", finalEdges);
+          return finalEdges;
+        });
       }, 1000);
     }
 
     setPendingConnection(null);
     setIsRelationshipModalOpen(false);
   }, [editingEdge, pendingConnection, setEdges]);
+
+  // Añadir un efecto para depurar cambios en edges
+  useEffect(() => {
+    console.log("Edges state updated:", edges);
+  }, [edges]);
+
+  // Mejorar isValidConnection para ser más específico
+  const isValidConnection = useCallback(
+    (connection: Connection): boolean => {
+      if (!connection.source || !connection.target || !connection.sourceHandle || !connection.targetHandle) {
+        console.log("Invalid connection: missing required fields", connection);
+        return false;
+      }
+
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+
+      if (!sourceNode || !targetNode) {
+        console.log("Invalid connection: source or target node not found", { sourceNode, targetNode });
+        return false;
+      }
+
+      const isSourceHandleSourceType = connection.sourceHandle.startsWith('s-');
+      const isTargetHandleTargetType = connection.targetHandle.startsWith('t-');
+
+      const valid =
+        sourceNode.type === 'person' &&
+        targetNode.type === 'person' &&
+        connection.source !== connection.target &&
+        isSourceHandleSourceType &&
+        isTargetHandleTargetType;
+
+      console.log("Connection validation:", {
+        sourceNode: sourceNode.id,
+        targetNode: targetNode.id,
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle,
+        isSourceHandleSourceType,
+        isTargetHandleTargetType,
+        valid
+      });
+
+      return valid;
+    },
+    [nodes]
+  );
 
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.stopPropagation();
@@ -498,8 +554,8 @@ export const GraphPage: React.FC = () => {
   }, [setNodes, setEdges, detailsNode]);
 
   return (
-    <div className="graph-page-container">
-      <div className="upload-panel" ref={uploadPanelRef}>
+    <div className="graph-page-container flex flex-col h-full w-full">
+      <div className="upload-panel" ref={uploadPanelRef} style={{ flexShrink: 0 }}>
         <h2 className="panel-title">Cargar Archivo JSON de Persona</h2>
         <div 
           className="upload-area" 
@@ -557,95 +613,106 @@ export const GraphPage: React.FC = () => {
         </div>
       </div>
 
-      <PanelGroup direction="horizontal" className="flex-grow min-h-0 mt-4">
-        {/* Graph Panel */}
-        <Panel defaultSize={70} minSize={30}>
-          <div className="w-full h-full relative p-1 bg-bg-secondary rounded-md">
-            <div className="graph-viewport-container" style={{ height: graphViewportHeight, marginTop: '1rem' }}>
-              <ReactFlow
-                nodes={nodes.map(node => ({
-                  ...node,
-                  data: {
-                    ...node.data,
-                    onImageUpload: node.type === 'person' ? handleImageUploadForNode : undefined,
-                  }
-                }))}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onNodeClick={onNodeClick}
-                onEdgeClick={onEdgeClick}
-                onNodesDelete={(nodesToDelete) => {
-                  const nodeIds = new Set(nodesToDelete.map(n => n.id));
-                  setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
-                  if (detailsNode && nodeIds.has(detailsNode.id)) {
-                    setDetailsNode(null);
-                  }
-                }}
-                onEdgesDelete={(edgesToDelete) => {
-                  const edgeIdsToRemove = new Set(edgesToDelete.map(e => e.id));
-                  setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
-                }}
-                nodeTypes={memoizedNodeTypes}
-                fitView={false}
-                minZoom={0.1}
-                maxZoom={2.5}
-                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-                proOptions={{ hideAttribution: true }}
-                className="graph-viewport"
-                connectionLineComponent={CustomConnectionLine}
-                connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
-                deleteKeyCode={['Backspace', 'Delete']}
-                isValidConnection={isValidConnection}
-              >
-                <Background />
-                <Controls />
-                {nodes.length === 0 && (
-                  <div className="placeholder-message">
-                    <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
-                    <p className="mb-4">Carga un archivo JSON para visualizar a la persona en el grafo.</p>
-                    <p className="mb-2 text-sm">Utiliza el panel de carga de arriba.</p>
-                  </div>
-                )}
-              </ReactFlow>
-            </div>
-          </div>
-        </Panel>
-        {/* Details Panel - Only show if a node is selected */}
-        {detailsNode && (
-          <>
-            <PanelResizeHandle className="w-2 flex items-center justify-center group">
-              <div className="w-1 h-16 bg-accent-cyan/30 rounded-full group-hover:bg-accent-cyan transition-colors duration-200"></div>
-            </PanelResizeHandle>
-            <Panel defaultSize={30} minSize={20} maxSize={50} className="h-full">
-              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden rounded-md border border-border">
-                <div className="p-4 border-b border-border">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold text-accent-cyan">
-                      {detailsNode.data.name}
-                    </h3>
-                    <button 
-                      onClick={() => setDetailsNode(null)} 
-                      className="text-text-secondary hover:text-white transition-colors"
-                      aria-label="Cerrar panel de detalles"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto p-4">
-                  <pre className="text-xs bg-input-bg p-3 rounded-md h-full overflow-auto">
-                    {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
-                  </pre>
-                </div>
+      <div
+        className="graph-viewport-container relative"
+        style={{
+          height: graphViewportHeight,
+          minHeight: '300px',
+          flexGrow: 1,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        <div 
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            position: 'absolute', 
+            top: 0, 
+            left: 0 
+          }}
+        >
+          <ReactFlow
+            nodes={nodes.map(node => ({
+              ...node,
+              data: {
+                ...node.data,
+                onImageUpload: node.type === 'person' ? handleImageUploadForNode : undefined,
+              }
+            }))}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onEdgeClick={onEdgeClick}
+            onNodesDelete={(nodesToDelete) => {
+              const nodeIds = new Set(nodesToDelete.map(n => n.id));
+              setNodes((nds) => nds.filter((node) => !nodeIds.has(node.id)));
+              if (detailsNode && nodeIds.has(detailsNode.id)) {
+                setDetailsNode(null);
+              }
+            }}
+            onEdgesDelete={(edgesToDelete) => {
+              const edgeIdsToRemove = new Set(edgesToDelete.map(e => e.id));
+              setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
+            }}
+            nodeTypes={memoizedNodeTypes}
+            fitView={false}
+            minZoom={0.1}
+            maxZoom={2.5}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            proOptions={{ hideAttribution: true }}
+            className="graph-viewport"
+            connectionLineComponent={CustomConnectionLine}
+            connectionLineStyle={{ stroke: 'var(--accent-cyan)', strokeWidth: 2.5 }}
+            deleteKeyCode={['Backspace', 'Delete']}
+            isValidConnection={isValidConnection}
+          >
+            <Background />
+            <Controls />
+            {nodes.length === 0 && (
+              <div className="placeholder-message">
+                <UploadCloud size={64} className="mx-auto mb-6 text-gray-600" />
+                <p className="mb-4">Carga un archivo JSON para visualizar a la persona en el grafo.</p>
+                <p className="mb-2 text-sm">Utiliza el panel de carga de arriba.</p>
               </div>
-            </Panel>
-          </>
-        )}
-      </PanelGroup>
+            )}
+          </ReactFlow>
+        </div>
+      </div>
 
-      {/* Relationship Modal */}
+      {detailsNode && detailsNode.data?.rawJsonData && (
+        <div
+          className="details-panel bg-bg-secondary border-t-2 border-accent-cyan-darker overflow-hidden"
+          style={{ 
+            height: `${detailPanelHeight}px`, 
+            marginTop: '1rem', 
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <div className="flex justify-between items-center p-3 border-b border-input-border">
+            <h3 className="text-lg font-semibold text-accent-cyan">
+              Detalles de: {detailsNode.data.name}
+            </h3>
+            <button
+              onClick={() => setDetailsNode(null)}
+              className="text-text-secondary hover:text-accent-cyan transition-colors text-xl font-semibold"
+              aria-label="Cerrar panel de detalles"
+            >
+              ×
+            </button>
+          </div>
+          <div className="flex-grow overflow-auto p-4">
+            <pre className="text-xs text-text-secondary whitespace-pre-wrap break-words scrollbar-thin scrollbar-thumb-accent-cyan-darker scrollbar-track-bg-secondary">
+              {JSON.stringify(detailsNode.data.rawJsonData, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
+
       <RelationshipModal
         isOpen={isRelationshipModalOpen}
         onClose={() => {
@@ -656,20 +723,18 @@ export const GraphPage: React.FC = () => {
         onSubmit={handleCreateOrUpdateRelationship}
         sourceNodeName={
           editingEdge
-            ? nodes.find(n => n.id === editingEdge.source)?.data?.name ?? 'Nodo Origen'
+            ? nodes.find(n => n.id === editingEdge.source)?.data?.name ?? 'Source Node'
             : pendingConnection
-              ? nodes.find(n => n.id === pendingConnection.source)?.data?.name ?? 'Nodo Origen'
-              : 'Nodo Origen'
+              ? nodes.find(n => n.id === pendingConnection.source)?.data?.name ?? 'Source Node'
+              : 'Source Node'
         }
         targetNodeName={
           editingEdge
-            ? nodes.find(n => n.id === editingEdge.target)?.data?.name ?? 'Nodo Destino'
+            ? nodes.find(n => n.id === editingEdge.target)?.data?.name ?? 'Target Node'
             : pendingConnection
-              ? nodes.find(n => n.id === pendingConnection.target)?.data?.name ?? 'Nodo Destino'
-              : 'Nodo Destino'
+              ? nodes.find(n => n.id === pendingConnection.target)?.data?.name ?? 'Target Node'
+              : 'Target Node'
         }
-        initialLabel={editingEdge?.label as string | undefined}
-        initialIsDirected={editingEdge ? editingEdge.markerEnd !== undefined : true}
       />
     </div>
   );

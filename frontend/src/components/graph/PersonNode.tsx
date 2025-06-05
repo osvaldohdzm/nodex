@@ -18,7 +18,8 @@ const targetHandleClasses = `${handleBaseClasses} !bg-accent-green hover:!scale-
 
 const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nodeId }) => {
   const { isConnecting, connectionStartHandleNodeId } = useIsConnecting();
-  const isTargetCandidate = isConnecting && connectionStartHandleNodeId !== nodeId;
+  const amISourceNode = isConnecting && connectionStartHandleNodeId === nodeId;
+  const amIPotentialTarget = isConnecting && connectionStartHandleNodeId !== nodeId;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleIconClick = () => {
@@ -38,14 +39,6 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
 
   const isSelectedOrHighlighted = selected || data.isHighlighted;
 
-  // IDs de los handles (simples, React Flow los asociará al nodo)
-  const handleIds = {
-    topSource: 's-top', topTarget: 't-top',
-    bottomSource: 's-bottom', bottomTarget: 't-bottom',
-    leftSource: 's-left', leftTarget: 't-left',
-    rightSource: 's-right', rightTarget: 't-right',
-  };
-
   return (
     <div
       className={classnames(
@@ -56,7 +49,6 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
           'border-node-border': !isSelectedOrHighlighted && data.status !== 'alert' && data.status !== 'warning',
           'node-alert-style': data.status === 'alert',
           'node-warning-style': data.status === 'warning',
-          'border-accent-green !shadow-accent-green': isTargetCandidate,
         }
       )}
       style={{ minHeight: '200px' }}
@@ -66,14 +58,14 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
       <Handle 
         type="source" 
         position={Position.Top} 
-        id={handleIds.topSource} 
+        id={`${nodeId}-source-top`} 
         className={`${sourceHandleClasses} !-top-[6px]`}
         style={{ zIndex: 100 }}
       />
       <Handle 
         type="target" 
         position={Position.Top} 
-        id={handleIds.topTarget} 
+        id={`${nodeId}-target-top`} 
         className={`${targetHandleClasses} !top-[3px]`}
         style={{ zIndex: 100 }}
       />
@@ -82,14 +74,14 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
       <Handle 
         type="source" 
         position={Position.Bottom} 
-        id={handleIds.bottomSource} 
+        id={`${nodeId}-source-bottom`} 
         className={`${sourceHandleClasses} !-bottom-[6px]`}
         style={{ zIndex: 100 }}
       />
       <Handle 
         type="target" 
         position={Position.Bottom} 
-        id={handleIds.bottomTarget} 
+        id={`${nodeId}-target-bottom`} 
         className={`${targetHandleClasses} !bottom-[3px]`}
         style={{ zIndex: 100 }}
       />
@@ -98,14 +90,14 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
       <Handle 
         type="source" 
         position={Position.Left} 
-        id={handleIds.leftSource} 
+        id={`${nodeId}-source-left`} 
         className={`${sourceHandleClasses} !-left-[6px]`}
         style={{ zIndex: 100 }}
       />
       <Handle 
         type="target" 
         position={Position.Left} 
-        id={handleIds.leftTarget} 
+        id={`${nodeId}-target-left`} 
         className={`${targetHandleClasses} !left-[3px]`}
         style={{ zIndex: 100 }}
       />
@@ -114,14 +106,14 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
       <Handle 
         type="source" 
         position={Position.Right} 
-        id={handleIds.rightSource} 
+        id={`${nodeId}-source-right`} 
         className={`${sourceHandleClasses} !-right-[6px]`}
         style={{ zIndex: 100 }}
       />
       <Handle 
         type="target" 
         position={Position.Right} 
-        id={handleIds.rightTarget} 
+        id={`${nodeId}-target-right`} 
         className={`${targetHandleClasses} !right-[3px]`}
         style={{ zIndex: 100 }}
       />
@@ -163,6 +155,14 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         )}
       </div>
 
+      {/* Feedback Visual */}
+      {amISourceNode && (
+        <p className="text-xs text-accent-pink mt-1 animate-pulse absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">Arrastra para conectar...</p>
+      )}
+      {amIPotentialTarget && (
+        <p className="text-xs text-accent-green mt-1 animate-pulse absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap">Soltar aquí</p>
+      )}
+
       <div className="node-content w-full flex-grow flex flex-col overflow-hidden items-center">
         <h3 className="text-base font-semibold text-node-text mb-0.5 flex-shrink-0 px-1 break-words w-full">
           {data.name}
@@ -174,7 +174,7 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         {isConnecting && connectionStartHandleNodeId === nodeId && (
           <p className="text-xs text-accent-pink mt-1 animate-pulse">Arrastra para conectar...</p>
         )}
-        {isTargetCandidate && (
+        {amIPotentialTarget && (
           <p className="text-xs text-accent-green mt-1 animate-pulse">Soltar aquí para conectar</p>
         )}
 
