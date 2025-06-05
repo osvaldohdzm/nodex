@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- Inicio del Script test.sh (Versión Mejorada) ---
+# --- Inicio del Script test.sh (Versión Mejorada con contador en commit) ---
 
 # 1. Verificar si hay cambios sin commitear
 if git diff-index --quiet HEAD --; then
@@ -21,44 +21,32 @@ echo "➡️ Rama actual: $current_branch"
 # 3. Determinar la rama de pruebas destino
 target_test_branch=""
 
-if [[ "$current_branch" == */test ]]; then
-  echo "ℹ️ Ya estás en una rama que parece ser una rama de pruebas ('$current_branch'). Los cambios se commitearán aquí."
-  target_test_branch="$current_branch"
-elif [[ "$current_branch" == *-test && ($(git rev-parse --verify "${current_branch%-test}" >/dev/null 2>&1) || $(git rev-parse --verify "origin/${current_branch%-test}" >/dev/null 2>&1)) ]]; then
-  # Heurística: si la rama actual es como 'algo-test' y 'algo' existe, considerarla una rama de test
-  echo "ℹ️ Ya estás en una rama que parece ser una rama de pruebas ('$current_branch'). Los cambios se commitearán aquí."
+if [[ "$current_branch" == */test ]] || [[ "$current_branch" == *-test ]]; then
+  echo "ℹ️ Ya estás en una rama de pruebas ('$current_branch'). Los cambios se commitearán aquí."
   target_test_branch="$current_branch"
 else
-  # No estamos en una rama que ya parezca ser de pruebas. Vamos a definir la rama destino.
   if [[ "$current_branch" == *"/"* ]]; then
-    # La rama actual ya tiene una estructura jerárquica (ej: feature/foo, hotfix/bar)
-    # Se usará el formato 'jerarquia/actual/test'
-    target_test_branch="${current_branch}/test"
-    echo "🆕 Rama de pruebas destino (para rama jerárquica): $target_test_branch"
-  else
-    # La rama actual es una rama raíz (ej: dev, main, master)
-    # Se usará el formato 'actual-test' para evitar conflictos (ej: dev-test)
     target_test_branch="${current_branch}-test"
-    echo "🆕 Rama de pruebas destino (para rama raíz): $target_test_branch"
+    echo "🆕 Rama de pruebas destino (rama jerárquica ajustada): $target_test_branch"
+  else
+    target_test_branch="${current_branch}-test"
+    echo "🆕 Rama de pruebas destino (rama raíz): $target_test_branch"
   fi
 
-  # Verificar si la rama de pruebas destino ya existe localmente
   if git rev-parse --verify "$target_test_branch" >/dev/null 2>&1; then
     echo "⚠️ La rama de pruebas '$target_test_branch' ya existe localmente."
-    # Preguntar si se quiere cambiar a ella y commitear los cambios actuales allí
     read -rp "¿Deseas cambiar a '$target_test_branch' y commitear los cambios actuales allí? (s/N): " switch_to_existing
-    if [[ "$(echo "$switch_to_existing" | tr '[:upper:]' '[:lower:]')" == "s" ]]; then
+    if [[ "${switch_to_existing,,}" == "s" ]]; then
       if ! git checkout "$target_test_branch"; then
         echo "❌ No se pudo cambiar a la rama '$target_test_branch'." >&2
         exit 1
       fi
       echo "✅ Cambiado a la rama existente '$target_test_branch'."
     else
-      echo "🛑 Operación cancelada. No se han realizado cambios en las ramas."
+      echo "🛑 Operación cancelada. No se han realizado cambios."
       exit 1
     fi
   else
-    # La rama de pruebas no existe localmente, crearla
     echo "🌱 Creando y cambiando a la nueva rama de pruebas '$target_test_branch'..."
     if ! git checkout -b "$target_test_branch"; then
       echo "❌ No se pudo crear o cambiar a la rama '$target_test_branch'." >&2
@@ -68,32 +56,33 @@ else
   fi
 fi
 
-# En este punto, estamos en la 'target_test_branch' (sea nueva o existente)
-# y los cambios del directorio de trabajo están listos para ser commiteados.
-
-# 4. Staging de todos los cambios
+# 4. Preparar todos los cambios para commit
 echo "➕ Preparando (staging) todos los cambios..."
 git add .
 
-# 5. Commit de los cambios
-default_commit_msg="WIP: Pruebas en $target_test_branch"
-user_commit_msg=""
+# 5. Buscar el último número de "Prueba N" en los commits de la rama destino
+last_test_number=$(git log --pretty=%s -n 50 "$target_test_branch" | grep -oP '^Prueba \K\d+' | sort -nr | head -n1 || echo "0")
+next_test_number=$((last_test_number + 1))
+
+# 6. Construir mensaje por defecto con incremento
+default_commit_msg="Prueba $next_test_number"
+
+# 7. Pedir mensaje de commit al usuario, con opción de dejar vacío para usar el mensaje automático
 read -rp "Mensaje para el commit (deja vacío para '$default_commit_msg'): " user_commit_msg
+commit_msg="${user_commit_msg:-$default_commit_msg}"
 
-commit_msg="${user_commit_msg:-$default_commit_msg}" # Usa el default si user_commit_msg está vacío
-
+# 8. Realizar commit
 if git commit -m "$commit_msg"; then
   echo "✅ Cambios commiteados en '$target_test_branch' con el mensaje: '$commit_msg'"
 else
-  echo "❌ Falló el commit. Puede que no haya cambios para commitear después del staging, o algún hook pre-commit falló." >&2
-  # Verifica si realmente hay cambios stagedeados para el commit
+  echo "❌ Falló el commit. Puede que no haya cambios para commitear o algún hook pre-commit falló." >&2
   if git diff --cached --quiet; then
-    echo "ℹ️ No había cambios en el staging area para el commit. Si añadiste archivos nuevos, asegúrate que no estén vacíos o ignorados."
+    echo "ℹ️ No había cambios staged para el commit. Verifica que los archivos no estén vacíos o ignorados."
   fi
   exit 1
 fi
 
-
+# 9. Ejecutar script start.sh
 ./scripts/start.sh
 
 echo "🎉 Proceso completado. Tus cambios están ahora en la rama '$target_test_branch'."
