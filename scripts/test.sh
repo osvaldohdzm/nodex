@@ -25,15 +25,6 @@ else
   git commit -m "$commit_message"
 fi
 
-# Push con configuración de upstream si no está definido
-if ! git rev-parse --abbrev-ref --symbolic-full-name "@{u}" &>/dev/null; then
-  echo "🔁 Estableciendo upstream para '$current_branch' y haciendo push..."
-  git push --set-upstream origin "$current_branch"
-else
-  echo "⏫ Haciendo push a remoto..."
-  git push
-fi
-
 echo "🧪 Ejecutando pruebas..."
 if ./scripts/start.sh; then
   echo "✅ Pruebas completadas con éxito."
