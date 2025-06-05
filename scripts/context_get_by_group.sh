@@ -25,7 +25,7 @@ GROUP="$1"
 # Generar un timestamp para el nombre del archivo de salida.
 # Formato: AAAA-MM-DD_HH-MM-SS
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-OUTPUT_FILE="code_context_${TIMESTAMP}.txt" # Cambiado para incluir el timestamp
+OUTPUT_FILE="auxiliar/code_context/code_context_${TIMESTAMP}.txt" # Cambiado para incluir el timestamp
 
 
 if [[ -z "${GROUP_FILES[$GROUP]}" ]]; then

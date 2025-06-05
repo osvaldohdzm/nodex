@@ -64,13 +64,12 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const handleTriggerClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleTriggerClick = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       setPosition({
         top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
+        left: align === 'left' ? rect.left + window.scrollX : rect.right + window.scrollX - 240,
       });
     }
     setIsOpen(!isOpen);
@@ -119,108 +118,84 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
   const renderMenuItem = (item: MenuItem, index: number) => {
     if (item.isSeparator) {
-      return (
-        <div 
-          key={`separator-${index}`} 
-          className="h-px my-1 bg-gray-200"
-          role="separator"
-        />
-      );
+      return <div key={`separator-${index}`} className="h-px my-1.5 bg-slate-200/80" role="separator" />;
     }
 
     const hasSubmenu = Boolean(item.submenu && item.submenu.length > 0);
     const isActive = activeSubmenu === index;
 
     return (
-      <div 
+      <div
         key={item.label}
-        className="relative"
+        className="relative mx-1"
         onMouseEnter={() => handleItemMouseEnter(index, hasSubmenu)}
         onMouseLeave={() => {
           if (submenuTimer.current) clearTimeout(submenuTimer.current);
         }}
       >
         <button
-          className={`w-full px-4 py-2 text-sm text-left flex items-center justify-between gap-3 whitespace-nowrap
-            ${item.disabled 
-              ? 'text-gray-400 cursor-not-allowed' 
-              : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'}
-            ${isActive ? 'bg-blue-50 text-blue-700' : ''}
-          `}
+          className={`w-full px-3 py-1.5 text-sm text-left flex items-center justify-between gap-3 whitespace-nowrap rounded-md ${item.disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'} ${isActive ? 'bg-slate-100 text-blue-600' : ''}`}
           onClick={(e) => handleItemClick(item, e)}
           disabled={item.disabled}
           role="menuitem"
-          aria-haspopup={hasSubmenu ? 'true' : undefined}
-          aria-expanded={isActive ? 'true' : undefined}
+          aria-haspopup={hasSubmenu}
+          aria-expanded={isActive}
         >
           <div className="flex items-center gap-3">
             {item.icon && (
-              <span className="text-gray-500 w-5 flex justify-center">
+              <span className={`w-5 flex justify-center ${isActive ? 'text-blue-600' : 'text-slate-500'}`}>
                 <item.icon size={16} className={item.disabled ? 'opacity-50' : ''} />
               </span>
             )}
             <span>{item.label}</span>
           </div>
           <div className="flex items-center">
-            {item.shortcut && (
-              <span className="text-xs text-gray-500 ml-4">
-                {item.shortcut}
-              </span>
-            )}
-            {hasSubmenu && <ChevronRight size={16} className="ml-2 text-gray-500" />}
+            {item.shortcut && <span className="text-xs text-slate-500 ml-4">{item.shortcut}</span>}
+            {hasSubmenu && <ChevronRight size={16} className="ml-2 text-slate-500" />}
           </div>
         </button>
-
-        {hasSubmenu && isActive && item.submenu && (
-          <div 
-            className={`absolute ${align === 'right' ? 'right-full' : 'left-full'} top-0 mt-0 ml-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 min-w-[200px]`}
-            onMouseEnter={() => {
-              if (submenuTimer.current) clearTimeout(submenuTimer.current);
-            }}
-            onMouseLeave={handleSubmenuMouseLeave}
-          >
-            {item.submenu.map((subItem, subIndex) => (
-              <React.Fragment key={`sub-${index}-${subIndex}`}>
-                {subItem.isSeparator ? (
-                  <div className="h-px my-1 bg-gray-200" role="separator" />
-                ) : (
-                  <button
-                    className={`w-full px-4 py-2 text-sm text-left flex items-center justify-between gap-3 whitespace-nowrap
-                      ${subItem.disabled 
-                        ? 'text-gray-400 cursor-not-allowed' 
-                        : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'}
-                    `}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!subItem.disabled && subItem.action) {
-                        subItem.action();
-                        setIsOpen(false);
-                        setActiveSubmenu(null);
-                      }
-                    }}
-                    disabled={subItem.disabled}
-                    role="menuitem"
-                  >
-                    <div className="flex items-center gap-3">
-                      {subItem.icon && (
-                        <span className="text-gray-500 w-5 flex justify-center">
-                          <subItem.icon size={16} className={subItem.disabled ? 'opacity-50' : ''} />
-                        </span>
-                      )}
-                      <span>{subItem.label}</span>
-                    </div>
-                    {subItem.shortcut && (
-                      <span className="text-xs text-gray-500">
-                        {subItem.shortcut}
+      {hasSubmenu && isActive && item.submenu && (
+        <div
+          className={`absolute ${align === 'right' ? 'right-full' : 'left-full'} top-0 -mt-1 ml-1 bg-white rounded-lg shadow-xl border border-slate-200/80 py-1.5 z-50 min-w-[220px]`}
+          onMouseEnter={() => {
+            if (submenuTimer.current) clearTimeout(submenuTimer.current);
+          }}
+          onMouseLeave={handleSubmenuMouseLeave}
+        >
+          {item.submenu.map((subItem, subIndex) => (
+            <React.Fragment key={`sub-${index}-${subIndex}`}>
+              {subItem.isSeparator ? (
+                <div className="h-px my-1.5 bg-slate-200/80" role="separator" />
+              ) : (
+                <button
+                  className={`w-full px-3 py-1.5 text-sm text-left flex items-center justify-between gap-3 whitespace-nowrap rounded-md mx-1 ${subItem.disabled ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!subItem.disabled && subItem.action) {
+                      subItem.action();
+                      setIsOpen(false);
+                      setActiveSubmenu(null);
+                    }
+                  }}
+                  disabled={subItem.disabled}
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-3">
+                    {subItem.icon && (
+                      <span className="w-5 flex justify-center text-slate-500">
+                        <subItem.icon size={16} className={subItem.disabled ? 'opacity-50' : ''} />
                       </span>
                     )}
-                  </button>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        )}
-      </div>
+                    <span>{subItem.label}</span>
+                  </div>
+                  {subItem.shortcut && <span className="text-xs text-slate-500">{subItem.shortcut}</span>}
+                </button>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+    </div>
     );
   };
 

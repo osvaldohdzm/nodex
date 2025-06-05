@@ -1,5 +1,5 @@
 import React, { memo, useRef } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
+import { Handle, Position, NodeProps, useReactFlow, NodeResizer } from 'reactflow';
 import classnames from 'classnames';
 import { User, UploadCloud, XCircle } from 'lucide-react';
 import { DemoNodeData } from '../../types/graph';
@@ -34,10 +34,10 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
   return (
     <div
       className={classnames(
-        'person-node w-48 p-3 rounded-lg flex flex-col items-center justify-center text-center relative transition-all duration-200',
+        'person-node p-4 rounded-lg flex flex-col items-center justify-start text-center relative transition-all duration-200 group overflow-hidden',
         'bg-node-bg border-2'
       )}
-      style={{ minHeight: '200px' }}
+      style={{ minHeight: '220px' }}
     >
       {/* Always render all handles for testing */}
       {/* TOP */}
@@ -75,8 +75,14 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         className="react-flow__handle handle-source"
       />
 
+      <NodeResizer
+        isVisible={selected}
+        minWidth={208}
+        minHeight={220}
+      />
+
       <div
-        className="relative mb-3 group cursor-pointer"
+        className="relative mb-3 group cursor-pointer w-24 h-24 flex-shrink-0"
         onClick={handleProfileAreaClick}
         title={data.onImageUpload ? "Cambiar imagen de perfil" : data.name}
       >
@@ -84,17 +90,17 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
           <img
             src={data.imageUrl}
             alt={data.name}
-            className="w-20 h-20 rounded-full object-cover border-2 border-node-border group-hover:border-accent-cyan transition-all"
+            className="w-full h-full rounded-full object-cover border-2 border-node-border group-hover:border-accent-cyan transition-all"
           />
         ) : (
-          <div className="w-20 h-20 rounded-full bg-input-bg border-2 border-node-border flex items-center justify-center group-hover:border-accent-cyan transition-all">
-            <User size={40} className="text-node-icon-color" />
+          <div className="w-full h-full rounded-full bg-input-bg border-2 border-node-border flex items-center justify-center group-hover:border-accent-cyan transition-all">
+            <User size={48} className="text-node-icon-color" />
           </div>
         )}
         {data.onImageUpload && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-60 rounded-full transition-all duration-200">
             <UploadCloud
-              size={28}
+              size={32}
               className="text-white opacity-0 group-hover:opacity-90 transition-opacity duration-200"
             />
           </div>
@@ -110,19 +116,19 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
 
       <button
         onClick={handleDeleteNode}
-        className="absolute top-1 right-1 p-0.5 bg-red-600/70 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50"
+        className="absolute top-1.5 right-1.5 p-0.5 bg-red-600/70 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10"
         title={`Eliminar nodo ${data.name}`}
         aria-label={`Eliminar nodo ${data.name}`}
       >
-        <XCircle size={16} />
+        <XCircle size={18} />
       </button>
 
       <div className="node-content w-full flex-grow flex flex-col overflow-hidden items-center">
-        <h3 className="text-base font-semibold text-node-text mb-0.5 flex-shrink-0 px-1 break-words w-full">
+        <h3 className="text-md font-semibold text-node-text mb-1 flex-shrink-0 px-1 break-words w-full">
           {data.name}
         </h3>
         {data.title && (
-          <p className="text-xs text-node-text-secondary mb-1 flex-shrink-0 px-1 break-words w-full">
+          <p className="text-sm text-node-text-secondary mb-2 flex-shrink-0 px-1 break-words w-full">
             {data.title}
           </p>
         )}

@@ -209,46 +209,20 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
   ];
 
   return (
-    <div className="flex items-center w-full px-4 bg-white border-b border-gray-200 h-10">
-      {/* Logo */}
+    <div className="flex items-center w-full px-4 bg-slate-50 border-b border-slate-200 h-12 shadow-sm flex-shrink-0">
       <div className="flex items-center mr-6">
-        <div className="text-blue-600 font-semibold text-lg">Nodex</div>
+        <div className="text-slate-800 font-bold text-xl">Nodex</div>
       </div>
-      
-      {/* Main Menus */}
       <div className="flex items-center h-full">
-        <DropdownMenu 
-          triggerLabel="Archivo" 
-          items={fileMenuItems} 
-          triggerIcon={FileText}
-          className="h-full flex items-center hover:bg-gray-100 px-3"
-        />
-        <DropdownMenu 
-          triggerLabel="Editar" 
-          items={editMenuItems} 
-          triggerIcon={Edit3}
-          className="h-full flex items-center hover:bg-gray-100 px-3"
-        />
-        <DropdownMenu 
-          triggerLabel="Vista" 
-          items={viewMenuItems} 
-          triggerIcon={Eye}
-          className="h-full flex items-center hover:bg-gray-100 px-3"
-        />
+        <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} />
+        <DropdownMenu triggerLabel="Editar" items={editMenuItems} />
+        <DropdownMenu triggerLabel="Vista" items={viewMenuItems} />
       </div>
-      
       <div className="flex-grow" />
-      
-      {/* Right Side */}
       <div className="flex items-center h-full">
-        <DropdownMenu 
-          triggerLabel="Ayuda" 
-          items={helpMenuItems} 
-          triggerIcon={HelpCircle}
-          className="h-full flex items-center hover:bg-gray-100 px-3"
-        />
-        <div className="ml-4 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-          <User size={16} />
+        <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} align="right" />
+        <div className="ml-4 w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 cursor-pointer hover:bg-slate-300 transition-colors">
+          <User size={18} />
         </div>
       </div>
     </div>

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+clear
+
 # Check if inside a Git repo
 if ! git rev-parse --is-inside-work-tree &>/dev/null; then
   echo "❌ Not inside a Git repository."
