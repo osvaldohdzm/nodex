@@ -116,11 +116,8 @@ echo "🎉 Proceso completado los cambios de la prueba han sido guardados. Tus p
 
 # 9. Ejecutar prueba
 echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
-# Asegúrate que start.sh sea ejecutable (chmod +x ./scripts/start.sh)
-#./scripts/start.sh
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"$SCRIPT_DIR/start.sh"
 
-# 9. Ejecutar prueba
-echo "🧪 Ejecutando script de prueba: ./scripts/build-single-container.sh"
-"$SCRIPT_DIR/build-single-container.sh"
-# --- Fin del Script test.sh ---
+echo "🛑 Deteniendo servicios de Docker Compose para liberar puertos..."
+docker-compose down --remove-orphans
+

@@ -6,7 +6,7 @@ set -e
 declare -A GROUP_FILES
 GROUP_FILES[frontend]="frontend"
 GROUP_FILES[backend]="backend"
-GROUP_FILES[full]="frontend backend docker-compose.yml frontend/Dockerfile"
+GROUP_FILES[full]="frontend backend docker-compose.yml frontend/Dockerfile docker"
 
 # Extensiones permitidas (sólo para grupos distintos de "full")
 INCLUDE_EXTENSIONS=(py js json yml yaml css html tsx ts r)
