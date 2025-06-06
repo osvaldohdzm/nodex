@@ -16,6 +16,7 @@ redis_graph = None  # This will be a redis.graph.Graph object
 async def init_db_connection():
     global redis_conn, redis_graph
     try:
+        print(f"DEBUG: backend/app/crud.py - redis-py version: {redis.__version__}")
         redis_conn = redis.Redis(
             host=REDIS_HOST,
             port=REDIS_PORT,
@@ -24,19 +25,33 @@ async def init_db_connection():
         )
         redis_conn.ping()
         print(f"Successfully connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
-        # Get the Graph object from redis-py connection
-        redis_graph = redis_conn.graph(REDISGRAPH_GRAPH_NAME)
+
+        if hasattr(redis_conn, 'graph'):
+            redis_graph = redis_conn.graph(REDISGRAPH_GRAPH_NAME)
+            print(f"RedisGraph object obtained successfully for graph: {REDISGRAPH_GRAPH_NAME}")
+        else:
+            print(f"ERROR: 'redis.Redis' object does NOT have attribute 'graph'. Available attributes: {dir(redis_conn)}")
+            raise AttributeError(f"'Redis' object (version {redis.__version__}) has no attribute 'graph'")
+
     except redis.exceptions.ConnectionError as e:
         print(f"Failed to connect to Redis: {e}")
         raise HTTPException(
             status_code=503,
             detail=f"Could not connect to Redis: {e}"
         )
-    except Exception as e:  # Catch general issues with getting graph object
-        print(f"Failed to initialize RedisGraph object: {e}")
+    except AttributeError as ae:
+        print(f"AttributeError during RedisGraph client initialization: {ae}")
         raise HTTPException(
             status_code=503,
-            detail=f"Could not initialize RedisGraph: {e}"
+            detail=f"Could not initialize RedisGraph client (AttributeError): {ae}"
+        )
+    except Exception as e:
+        print(f"Failed to initialize RedisGraph object (General Exception): {e}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not initialize RedisGraph (General Exception): {e}"
         )
 
 async def close_db_connection():
