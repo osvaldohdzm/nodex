@@ -12,6 +12,7 @@ import ReactFlow, {
   ReactFlowProvider,
   MarkerType,
   addEdge,
+  Node as ReactFlowNode,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
@@ -41,21 +42,22 @@ const nodeTypes = {
 export const GraphPage: React.FC = () => {
   const reactFlowInstance = useReactFlow();
   const animationCleanupRef = useRef<{ cleanup: (() => void) } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const topBarRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const topBarRef = useRef<HTMLDivElement | null>(null);
   
   const [fileName, setFileName] = useState<string>('');
   const [selectedFileContent, setSelectedFileContent] = useState<JsonData | null>(null);
+  const [jsonLoadConfig, setJsonLoadConfig] = useState<{ mode: 'merge' | 'overwrite', trigger: 'brujes' } | null>(null);
   const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
   const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
-  const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
+  const [detailsNode, setDetailsNode] = useState<ReactFlowNode<DemoNodeData> | null>(null);
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(false);
   const [topBarHeight, setTopBarHeight] = useState(60);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [nodes, setNodes, onNodesChange] = useNodesState<DemoNodeData>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<ReactFlowNode<DemoNodeData>>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedNodes, setHighlightedNodes] = useState<Set<string>>(new Set());
@@ -79,7 +81,7 @@ export const GraphPage: React.FC = () => {
   const connectionLineStyle = { stroke: 'var(--accent-cyan)', strokeWidth: 2.5 };
 
   // Actualizar el estado de detailsNode y visibilidad del panel
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node<DemoNodeData>) => {
+  const onNodeClick = useCallback((event: React.MouseEvent<Element>, node: ReactFlowNode<DemoNodeData>) => {
     if (node.data?.rawJsonData) {
       setDetailsNode(node);
       setIsDetailPanelVisible(true);
@@ -92,6 +94,11 @@ export const GraphPage: React.FC = () => {
   const handleCloseDetailPanel = useCallback(() => {
     setDetailsNode(null);
     setIsDetailPanelVisible(false);
+  }, []);
+
+  // Update edge state handlers
+  const handleEdgeUpdate = useCallback((eds: Edge[]) => {
+    setEdges(eds);
   }, []);
 
   // Mejorar el manejo de conexiones
@@ -108,7 +115,7 @@ export const GraphPage: React.FC = () => {
       markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
     };
 
-    setEdges((eds) => addEdge(newEdge, eds));
+    handleEdgeUpdate(addEdge(newEdge, edges));
 
     const sourceNode = nodes.find(n => n.id === params.source);
     const targetNode = nodes.find(n => n.id === params.target);
@@ -117,7 +124,7 @@ export const GraphPage: React.FC = () => {
       setEditingEdge(newEdge);
       setIsRelationshipModalOpen(true);
     }
-  }, [nodes, setEdges]);
+  }, [nodes, setEdges, handleEdgeUpdate, edges]);
 
   const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
     console.log("Intentando crear/actualizar relación:", { label, isDirected, editingEdge, pendingConnection });
@@ -131,7 +138,7 @@ export const GraphPage: React.FC = () => {
         markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
         style: defaultEdgeStyle,
       };
-      setEdges((eds) => eds.map((edge) => (edge.id === editingEdge.id ? finalEdge as Edge : edge)));
+      handleEdgeUpdate(edges.map((edge: Edge) => (edge.id === editingEdge.id ? finalEdge as Edge : edge)));
       setEditingEdge(null);
     } else if (pendingConnection) {
       finalEdge = {
@@ -147,29 +154,23 @@ export const GraphPage: React.FC = () => {
         className: 'edge-appear',
       };
       
-      setEdges((eds) => {
-        const newEdges = addEdge(finalEdge as Edge, eds);
-        console.log("Nuevas aristas después de añadir:", newEdges);
-        return newEdges;
-      });
+      handleEdgeUpdate(addEdge(finalEdge as Edge, edges));
       setPendingConnection(null);
     }
 
     if (finalEdge) {
       const edgeToAnimateId = finalEdge.id;
       setTimeout(() => {
-        setEdges((eds) =>
-          eds.map((e) =>
-            e.id === edgeToAnimateId 
-              ? { ...e, className: (e.className || '').replace('edge-appear', 'edge-appear-static').trim() } 
-              : e
-          )
-        );
+        handleEdgeUpdate(edges.map((e: Edge) =>
+          e.id === edgeToAnimateId 
+            ? { ...e, className: (e.className || '').replace('edge-appear', 'edge-appear-static').trim() } 
+            : e
+        ));
       }, 400);
     }
     
     setIsRelationshipModalOpen(false);
-  }, [editingEdge, pendingConnection, setEdges, defaultEdgeStyle]);
+  }, [editingEdge, pendingConnection, handleEdgeUpdate, edges, defaultEdgeStyle]);
 
   // Function to handle image uploads for nodes
   const handleImageUploadForNode = useCallback((nodeId: string, file: File) => {
@@ -432,19 +433,54 @@ export const GraphPage: React.FC = () => {
 
   const handleDragLeave = handleDragOver; // Assuming this was intended to be similar
 
+  const handleLoadBrujesJson = useCallback(() => {
+    const userChoiceIsMerge = window.confirm(
+      "Seleccione el modo de carga del archivo JSON:\n\n" +
+      "Presione 'OK' para AGREGAR los datos al grafo existente.\n" +
+      "Presione 'Cancelar' para SOBRESCRIBIR el grafo actual con los nuevos datos."
+    );
+    const mode = userChoiceIsMerge ? 'merge' : 'overwrite';
+
+    setJsonLoadConfig({ mode, trigger: 'brujes' });
+    fileInputRef.current?.click();
+  }, []);
+
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+
+    // Limpiar el input para permitir la re-selección del mismo archivo
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     if (file) {
-      setFileName(file.name);
+      const currentFileName = file.name;
       try {
         const text = await file.text();
         const parsedJson = JSON.parse(text) as JsonData;
-        setSelectedFileContent(parsedJson);
+
+        if (jsonLoadConfig && jsonLoadConfig.trigger === 'brujes') {
+          // Flujo directo desde el menú "Brujes JSON format"
+          await uploadJsonToBackend(parsedJson, jsonLoadConfig.mode, currentFileName);
+          setJsonLoadConfig(null); // Resetear la configuración de carga
+        } else {
+          // Flujo existente (ej. drag & drop, o botón de carga general)
+          setFileName(currentFileName);
+          setSelectedFileContent(parsedJson);
+        }
       } catch (error) {
-        alert('El archivo no es un JSON válido.');
+        alert('El archivo no es un JSON válido o hubo un error al procesarlo.');
         setSelectedFileContent(null);
+        setFileName('');
+        if (jsonLoadConfig && jsonLoadConfig.trigger === 'brujes') {
+          setJsonLoadConfig(null); // Resetear en caso de error también
+        }
       }
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    } else {
+      // No se seleccionó archivo (diálogo cancelado)
+      if (jsonLoadConfig && jsonLoadConfig.trigger === 'brujes') {
+        setJsonLoadConfig(null); // Resetear si el diálogo fue cancelado
+      }
     }
   };
   
@@ -455,19 +491,19 @@ export const GraphPage: React.FC = () => {
     setIsRelationshipModalOpen(true);
   }, []);
 
-  const onElementsRemove = useCallback((elementsToRemove: (Node | Edge)[]) => {
-    const nodeIdsToRemove = new Set(elementsToRemove.filter(el => 'position' in el).map(el => el.id));
-    const edgeIdsToRemove = new Set(elementsToRemove.filter(el => 'source' in el).map(el => el.id));
+  const onElementsRemove = useCallback((elementsToRemove: (Node<DemoNodeData> | Edge)[]) => {
+    const nodeIdsToRemove = new Set(elementsToRemove.filter((el: Node<DemoNodeData> | Edge) => 'position' in el).map((el: Node<DemoNodeData> | Edge) => el.id));
+    const edgeIdsToRemove = new Set(elementsToRemove.filter((el: Node<DemoNodeData> | Edge) => 'source' in el).map((el: Node<DemoNodeData> | Edge) => el.id));
 
     if (nodeIdsToRemove.size > 0) {
-      setNodes((nds) => nds.filter((node) => !nodeIdsToRemove.has(node.id)));
+      setNodes((nds: Node<DemoNodeData>[]) => nds.filter((node: Node<DemoNodeData>) => !nodeIdsToRemove.has(node.id)));
       // If a node is removed, also remove its details from the panel
       if (detailsNode && nodeIdsToRemove.has(detailsNode.id)) {
         setDetailsNode(null);
       }
     }
     if (edgeIdsToRemove.size > 0) {
-      setEdges((eds) => eds.filter((edge) => !edgeIdsToRemove.has(edge.id)));
+      setEdges((eds: Edge[]) => eds.filter((edge: Edge) => !edgeIdsToRemove.has(edge.id)));
     }
   }, [setNodes, setEdges, detailsNode]);
 
@@ -537,8 +573,8 @@ export const GraphPage: React.FC = () => {
     reactFlowInstance.fitView({ padding: 0.2, duration: 500 });
   }, [reactFlowInstance]);
 
-  const sourceNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.source) : null;
-  const targetNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.target) : null;
+  const sourceNodeForModal = editingEdge ? nodes.find((n: Node<DemoNodeData>) => n.id === editingEdge.source) : null;
+  const targetNodeForModal = editingEdge ? nodes.find((n: Node<DemoNodeData>) => n.id === editingEdge.target) : null;
   
   const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
   const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
@@ -562,6 +598,9 @@ export const GraphPage: React.FC = () => {
               break;
             case 'open':
               handleUploadAreaClick();
+              break;
+            case 'loadBrujesJson':
+              handleLoadBrujesJson();
               break;
             case 'save':
               // Implementar guardado
