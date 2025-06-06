@@ -18,7 +18,7 @@ declare -A SERVICES_TO_CHECK=(
   ["Backend API (FastAPI)"]="http://localhost:8000/docs"
   ["RedisGraph (Puerto TCP)"]="localhost:6379" # Format: host:port for TCP check
 )
-# Nombres de contenedores para logs (deben coincidir con docker-compose.yml)
+# Nombres de contenedores para logs (deben coincidir con docker-compose.yml y las claves de SERVICES_TO_CHECK)
 declare -A CONTAINER_NAMES=(
   ["Frontend (React App)"]="nodex_frontend_dev"
   ["Backend API (FastAPI)"]="nodex_backend_dev"
@@ -37,7 +37,6 @@ log_error() { echo -e "${RED}❌ $1${NC}"; }
 cleanup_ports() {
   log_info "Verificando y liberando puertos necesarios..."
   for port in "${PORTS_TO_CLEAN[@]}"; do
-    # Busca el ID del contenedor que está usando el puerto
     container_id=$(docker ps -q --filter "publish=${port}")
     
     if [ -n "$container_id" ]; then
@@ -130,6 +129,55 @@ handle_git_changes() {
   fi
 }
 
+check_service_health() {
+  local service_name="$1"
+  local endpoint="$2"
+  local retries_left=$MAX_RETRIES
+
+  log_info "🩺 Verificando salud de '$service_name' en '$endpoint'..."
+
+  while [ $retries_left -gt 0 ]; do
+    if [[ "$endpoint" == http* ]]; then
+      # HTTP check
+      # Use || true to prevent script exit if curl fails before getting a response (e.g., host not found yet)
+      # Set a timeout for curl slightly less than RETRY_INTERVAL to prevent overlap
+      local curl_timeout=$((RETRY_INTERVAL > 1 ? RETRY_INTERVAL - 1 : 1))
+      http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time "$curl_timeout" "$endpoint" || true)
+      # Check if http_code is a number and is a success code (2xx or 3xx)
+      if [[ "$http_code" =~ ^[0-9]+$ && "$http_code" -ge 200 && "$http_code" -lt 400 ]]; then
+        log_success "💚 '$service_name' está saludable (HTTP $http_code)."
+        return 0 # Success
+      else
+        log_warning "💛 '$service_name' aún no está listo (Respuesta: $http_code). Reintentando... ($retries_left reintentos restantes)"
+      fi
+    else
+      # TCP check (host:port)
+      local host="${endpoint%:*}"
+      local port="${endpoint##*:}"
+      if nc -z -w 1 "$host" "$port"; then # -w 1 for 1 second timeout
+        log_success "💚 '$service_name' (puerto $port) está respondiendo."
+        return 0 # Success
+      else
+        log_warning "💛 '$service_name' (puerto $port) aún no responde. Reintentando... ($retries_left reintentos restantes)"
+      fi
+    fi
+
+    retries_left=$((retries_left - 1))
+    if [ $retries_left -gt 0 ]; then
+      sleep $RETRY_INTERVAL
+    fi
+  done
+
+  log_error "💔 '$service_name' no pudo iniciarse después de $MAX_RETRIES reintentos."
+  # Show logs for the failed service if its container name is configured
+  if [[ -n "${CONTAINER_NAMES[$service_name]}" ]]; then
+    log_warning "Últimos logs para ${CONTAINER_NAMES[$service_name]}:"
+    docker compose logs --tail=30 "${CONTAINER_NAMES[$service_name]}" || true # || true if logs command fails
+  else
+    log_warning "No se encontró un nombre de contenedor configurado para '$service_name' para mostrar logs."
+  fi
+  return 1 # Failure
+}
 
 # --- Lógica Principal ---
 echo -e "${CYAN}🚀 Iniciando script de pruebas integrado Nodex...${NC}"
@@ -159,6 +207,24 @@ else
 fi
 echo ""
 
+# 4. Verificación de Salud de Servicios
+log_info "🔎 Realizando verificaciones de salud de los servicios..."
+all_services_healthy=true # Initialize to true
+
+for service_name in "${!SERVICES_TO_CHECK[@]}"; do
+  endpoint="${SERVICES_TO_CHECK[$service_name]}"
+  if ! check_service_health "$service_name" "$endpoint"; then
+    all_services_healthy=false
+    # Continues to check all services to provide a full report
+  fi
+done
+
+if $all_services_healthy; then
+  log_success "👍 Todos los servicios están saludables."
+else
+  log_error "👎 Uno o más servicios fallaron la verificación de salud."
+fi
+echo ""
 
 
 end_time=$(date +%s)
