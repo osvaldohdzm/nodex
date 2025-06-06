@@ -88,7 +88,6 @@ export const GraphPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
 
-  const memoizedNodeTypes = useMemo(() => nodeTypesDefinition, []);
   const defaultEdgeStyle = useMemo(() => ({ stroke: 'var(--edge-default-color)', strokeWidth: 1.5, transition: 'all 0.2s ease' }), []);
   const connectionLineStyle = useMemo(() => ({ stroke: 'var(--accent-main)', strokeWidth: 2 }), []);
 
@@ -184,25 +183,53 @@ export const GraphPage: React.FC = () => {
 
   const loadInitialGraph = useCallback(async (showFitView = true) => {
     console.log("loadInitialGraph: Iniciando carga...");
+    if (isLoading) {
+      console.log("loadInitialGraph: Ya hay una carga en progreso, ignorando llamada.");
+      return;
+    }
     setIsLoading(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        console.warn("loadInitialGraph: No hay token, saltando carga.");
-        setIsLoading(false); setNodes([]); setEdges([]); return;
-      }
-      const response = await fetch(config.api.endpoints.graphData, { headers: { 'Authorization': `Bearer ${token}` } });
-      if (!response.ok) {
-        console.error(`loadInitialGraph: Error en respuesta del API - ${response.status} ${response.statusText}`);
-        throw new Error(`Failed to fetch graph data: ${response.statusText}`);
-      }
-      
-      const apiData = await response.json() as JsonData; // data.nodes debería ser Node<DemoNodeData>[] del backend
-      console.log("loadInitialGraph: Datos recibidos del API:", apiData);
-      
-      if (apiData.nodes && Array.isArray(apiData.nodes) && apiData.edges && Array.isArray(apiData.edges)) {
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 segundo
+
+    while (retryCount < maxRetries) {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          console.warn("loadInitialGraph: No hay token, saltando carga.");
+          setNodes([]); setEdges([]);
+          return;
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
+
+        const response = await fetch(config.api.endpoints.graphData, {
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ detail: 'Error desconocido del servidor' }));
+          throw new Error(`Error en respuesta del API (${response.status}): ${errorData.detail || response.statusText}`);
+        }
+        
+        const apiData = await response.json() as JsonData;
+        console.log("loadInitialGraph: Datos recibidos del API:", apiData);
+        
+        if (!apiData || !Array.isArray(apiData.nodes) || !Array.isArray(apiData.edges)) {
+          throw new Error("Datos del API no tienen la estructura esperada (nodes/edges arrays)");
+        }
+
         // Mapeo cuidadoso para asegurar que cada nodo se ajuste a Node<DemoNodeData>
-        const initialNodes: Node<DemoNodeData>[] = apiData.nodes.map((nFromApi: any) => {
+        const initialNodes = apiData.nodes.map((nFromApi: any): Node<DemoNodeData> | null => {
+          if (!nFromApi || typeof nFromApi !== 'object') {
+            console.warn("loadInitialGraph: Nodo inválido en datos del API:", nFromApi);
+            return null;
+          }
+
           // Validar y construir el objeto 'data' (DemoNodeData)
           const nodeData: DemoNodeData = {
             name: nFromApi.data?.name || "Sin Nombre",
@@ -216,76 +243,145 @@ export const GraphPage: React.FC = () => {
             location: nFromApi.data?.location,
             onImageUpload: nFromApi.type === 'person' ? handleImageUploadForNode : undefined,
           };
-          return {
-            id: String(nFromApi.id),
-            type: nFromApi.type,
-            position: nFromApi.position || { x: Math.random() * 400, y: Math.random() * 400 }, // Fallback position
+
+          const node: Node<DemoNodeData> = {
+            id: String(nFromApi.id || Math.random().toString(36).substr(2, 9)),
+            type: nFromApi.type || 'UnknownNode',
+            position: nFromApi.position || { x: Math.random() * 400, y: Math.random() * 400 },
             data: nodeData,
             className: 'node-appear-static',
-            // ...otras propiedades de Node si el backend las envía (width, height, selected, etc.)
           };
-        });
+          return node;
+        }).filter((node): node is Node<DemoNodeData> => node !== null);
 
-        const initialEdges: Edge[] = apiData.edges.map((e: any) => ({
-          id: String(e.id),
-          source: String(e.source),
-          target: String(e.target),
-          label: e.label,
-          type: e.type || 'smoothstep',
-          className: 'edge-appear-static',
-          markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-          style: e.style || defaultEdgeStyle,
-        }));
+        const initialEdges = apiData.edges.map((e: any): Edge | null => {
+          if (!e || typeof e !== 'object' || !e.source || !e.target) {
+            console.warn("loadInitialGraph: Arista inválida en datos del API:", e);
+            return null;
+          }
+
+          const edge: Edge = {
+            id: String(e.id || `edge-${e.source}-${e.target}-${Date.now()}`),
+            source: String(e.source),
+            target: String(e.target),
+            label: e.label || '',
+            type: e.type || 'smoothstep',
+            className: 'edge-appear-static',
+            markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+            style: e.style || defaultEdgeStyle,
+          };
+          return edge;
+        }).filter((edge): edge is Edge => edge !== null);
         
-        console.log("loadInitialGraph: Nodos procesados para setNodes:", initialNodes);
-        console.log("loadInitialGraph: Aristas procesadas para setEdges:", initialEdges);
+        console.log("loadInitialGraph: Nodos procesados:", initialNodes.length);
+        console.log("loadInitialGraph: Aristas procesadas:", initialEdges.length);
 
         setNodes(initialNodes);
         setEdges(initialEdges);
 
         if (showFitView && initialNodes.length > 0) {
-          setTimeout(() => {
+          // Usar requestAnimationFrame para asegurar que el DOM esté listo
+          requestAnimationFrame(() => {
             console.log("loadInitialGraph: Ejecutando fitView");
             reactFlowInstance.fitView({ padding: 0.2, duration: 0 });
-          }, 100); // Aumentar un poco el delay para asegurar que el DOM esté listo
+          });
         } else if (initialNodes.length === 0) {
-            console.log("loadInitialGraph: No hay nodos para fitView.");
+          console.log("loadInitialGraph: No hay nodos para fitView.");
         }
-      } else {
-        console.warn("loadInitialGraph: Datos del API no tienen la estructura esperada (nodes/edges arrays).", apiData);
-        setNodes([]); setEdges([]);
-      }
-    } catch (error) {
-      console.error("loadInitialGraph: Error cargando datos iniciales del grafo:", error);
-      setNodes([]); setEdges([]); // Limpiar en caso de error
-    }
-    finally { setIsLoading(false); console.log("loadInitialGraph: Carga finalizada."); }
-  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, defaultEdgeStyle]); // defaultEdgeStyle es dependencia
 
-  useEffect(() => { loadInitialGraph(); }, [loadInitialGraph]); // Cargar al montar
+        // Si llegamos aquí, la carga fue exitosa
+        break;
+
+      } catch (error: any) {
+        retryCount++;
+        console.error(`loadInitialGraph: Intento ${retryCount}/${maxRetries} fallido:`, error);
+        
+        if (error.name === 'AbortError') {
+          console.error("loadInitialGraph: Timeout al cargar datos");
+          break; // No reintentar en caso de timeout
+        }
+
+        if (retryCount < maxRetries) {
+          console.log(`loadInitialGraph: Reintentando en ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        } else {
+          console.error("loadInitialGraph: Máximo de reintentos alcanzado");
+          setNodes([]); setEdges([]); // Limpiar en caso de error final
+          alert("Error al cargar el grafo. Por favor, recarga la página.");
+        }
+      }
+    }
+    setIsLoading(false);
+    console.log("loadInitialGraph: Carga finalizada.");
+  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, defaultEdgeStyle, isLoading]);
+
+  // Usar useEffect con cleanup para evitar llamadas múltiples
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      if (mounted) {
+        console.log("GraphPage: Montado, llamando a loadInitialGraph por primera vez.");
+        await loadInitialGraph();
+      }
+    };
+    loadData();
+    return () => { mounted = false; };
+  }, []); // Array de dependencias vacío para ejecutar solo al montar
 
   const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
     console.log(`uploadJsonToBackend: Subiendo ${originalFileName}, modo: ${mode}`);
+    if (isLoading) {
+      console.log("uploadJsonToBackend: Ya hay una operación en progreso, ignorando llamada.");
+      return;
+    }
+
     const token = localStorage.getItem('access_token');
-    if (!token) { alert("Error de autenticación."); return; }
+    if (!token) {
+      alert("Error de autenticación. Por favor, inicia sesión nuevamente.");
+      return;
+    }
+
     setIsLoading(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos timeout para upload
+
     try {
       const response = await fetch(config.api.endpoints.loadJson, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ jsonData: graphData, mode }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Error desconocido del servidor' }));
-        throw new Error(`Fallo al enviar JSON al backend: ${errorData.detail || response.statusText}`);
+        throw new Error(`Fallo al enviar JSON al backend (${response.status}): ${errorData.detail || response.statusText}`);
       }
+
+      const result = await response.json();
+      console.log("uploadJsonToBackend: Respuesta del servidor:", result);
+
       alert(`Archivo "${originalFileName}" procesado por el backend (${mode}). El grafo se refrescará.`);
       await loadInitialGraph(true); // Refrescar el grafo
       setFileName('');
+
     } catch (error: any) {
+      clearTimeout(timeoutId);
       console.error(`uploadJsonToBackend: Error en modo ${mode}:`, error);
-      alert(`Fallo al ${mode} datos JSON en backend: ${error.message}`);
+      
+      if (error.name === 'AbortError') {
+        alert("La operación tardó demasiado. Por favor, intenta nuevamente.");
+      } else {
+        alert(`Fallo al ${mode} datos JSON en backend: ${error.message}`);
+      }
+    } finally {
+      setIsLoading(false);
     }
-    finally { setIsLoading(false); }
   };
 
   const handleFileDrop = useCallback(async (event: DragEvent<HTMLDivElement>) => {
@@ -417,14 +513,14 @@ export const GraphPage: React.FC = () => {
         <Panel defaultSize={isDetailPanelVisible ? 70 : 100} minSize={30} order={1} className="relative rounded-md overflow-hidden">
           <div className="graph-viewport-wrapper" onDrop={handleFileDrop} onDragOver={handleDragOver}>
             <ReactFlow
-              nodes={nodes} // 'nodes' ya es Node<DemoNodeData>[]
+              nodes={nodes}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               onEdgeClick={onEdgeClick}
-              nodeTypes={memoizedNodeTypes}
+              nodeTypes={nodeTypesDefinition}
               fitView={false} minZoom={0.1} maxZoom={3}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               proOptions={{ hideAttribution: true }}
