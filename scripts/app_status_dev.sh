@@ -25,7 +25,7 @@ declare -A SERVICES_TO_CHECK=(
 )
 
 # Segundos de espera entre cada actualización
-WAIT_INTERVAL=3
+WAIT_INTERVAL=5
 
 # --- Funciones de Ayuda ---
 log_info() { echo -e "${CYAN}ℹ️ $1${NC}"; }

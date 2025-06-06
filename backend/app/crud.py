@@ -70,196 +70,162 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
     if not redis_graph:
         raise HTTPException(status_code=503, detail="Database not connected")
 
-    print(f"process_and_store_json: mode={mode}, data keys={list(data.keys())}")
+    print(f"--- Iniciando process_and_store_json | Modo: {mode} ---")
 
     if mode == "overwrite":
         try:
-            redis_graph.query("MATCH (n) DETACH DELETE n")
-            print("Graph cleared for overwrite.")
+            # Usamos DEL para borrar el grafo, es más efectivo que DELETE n
+            redis_graph.delete()
+            print("INFO: Grafo anterior borrado para modo 'overwrite'.")
+            # Volvemos a crear los índices ya que el grafo fue borrado
+            await create_indices_if_needed()
         except redis.exceptions.ResponseError as e:
-            print(f"Note: Could not delete graph contents (may be empty): {e}")
-    
+            print(f"AVISO: No se pudo borrar el grafo (probablemente estaba vacío): {e}")
+
     nodes_to_create = data.get("nodes", [])
     edges_to_create = data.get("edges", [])
 
-    print(f"process_and_store_json: Found {len(nodes_to_create)} nodes and {len(edges_to_create)} edges in payload.")
+    print(f"INFO: Se procesarán {len(nodes_to_create)} nodos y {len(edges_to_create)} aristas.")
 
-    if isinstance(nodes_to_create, list):
-        for node_data_from_frontend in nodes_to_create:
-            node_frontend_id = node_data_from_frontend.get("id")
-            label = node_data_from_frontend.get("type", "UnknownNode")
-            if not label or not label.strip(): label = "UnknownNode"
-            
-            position_from_frontend = node_data_from_frontend.get("position", {}) 
-            props_from_frontend_data_field = node_data_from_frontend.get("data", {})
-            if not isinstance(props_from_frontend_data_field, dict):
-                props_from_frontend_data_field = {}
+    # --- LÓGICA DE NODOS MEJORADA ---
+    for node_data in nodes_to_create:
+        frontend_id = node_data.get("id")
+        label = node_data.get("type", "UnknownNode")
+        if not label or not isinstance(label, str) or not label.strip():
+            label = "UnknownNode"
+        
+        position = node_data.get("position", {})
+        props_data = node_data.get("data", {})
 
-            cypher_props = {'frontend_id': node_frontend_id}
-            
-            # Manejar posición
-            if isinstance(position_from_frontend, dict):
-                pos_x = position_from_frontend.get('x')
-                pos_y = position_from_frontend.get('y')
-                if isinstance(pos_x, (int, float)):
-                    cypher_props['x'] = pos_x
-                if isinstance(pos_y, (int, float)):
-                    cypher_props['y'] = pos_y
-            
-            # Propiedades permitidas y cómo serializarlas
-            # (Excluye 'onImageUpload' y 'position' ya que se maneja arriba)
-            serializable_data_keys = [
-                "name", "typeDetails", "status", "title", "location", "icon", "imageUrl"
-            ]
-            json_string_data_keys = ["rawJsonData", "details"]
+        if not frontend_id or not isinstance(props_data, dict):
+            print(f"ERROR: Saltando nodo inválido (sin ID o 'data' no es un dict): {node_data}")
+            continue
 
-            for key in serializable_data_keys:
-                value = props_from_frontend_data_field.get(key)
-                if value is not None:
-                    if isinstance(value, (str, int, float, bool)):
-                        if isinstance(value, str) and not value.strip(): # No guardar strings vacíos
-                            continue
-                        cypher_props[key] = value
-                    else: # Si no es un tipo primitivo simple, intentar serializar como JSON
-                        try:
-                            cypher_props[key] = json.dumps(value)
-                        except (TypeError, ValueError):
-                            print(f"Warning: Could not serialize simple property '{key}' for node {node_frontend_id}. Skipping.")
-            
-            for key in json_string_data_keys:
-                value = props_from_frontend_data_field.get(key)
-                if value is not None:
-                    try:
-                        serialized_value = json.dumps(value)
-                        # No guardar si el valor es un objeto o lista vacía después de serializar
-                        if serialized_value != "{}" and serialized_value != "[]":
-                             cypher_props[key] = serialized_value
-                    except (TypeError, ValueError) as json_err:
-                        print(f"Warning: Could not serialize JSON property '{key}' for node {node_frontend_id}: {json_err}")
-            
-            cypher_props = {k: v for k, v in cypher_props.items() if v is not None} # Limpiar Nones finales
+        # Construir propiedades para Cypher de forma segura
+        cypher_props = {'frontend_id': frontend_id}
 
-            query = f"CREATE (n:{label} $props)"
-            try:
-                print(f"Attempting to create node: {label} with props: {cypher_props}")
-                redis_graph.query(query, {'props': cypher_props})
-                print(f"Successfully created node: {node_frontend_id}")
-            except Exception as e:
-                print(f"CRITICAL ERROR creating node {node_frontend_id} ({label}): {e}\nProps sent: {cypher_props}\n{traceback.format_exc()}")
-                # Si falla aquí, el nodo no se crea, y get_all_graph_data devolverá vacío para este nodo.
+        # Manejar posición
+        if isinstance(position, dict):
+            cypher_props['x'] = position.get('x', 0.0)
+            cypher_props['y'] = position.get('y', 0.0)
 
-    # ... (Lógica de aristas - sin cambios importantes, pero revisa si las aristas tienen 'data' complejo)
-    if isinstance(edges_to_create, list):
-        for edge_data in edges_to_create:
-            source_frontend_id = edge_data.get("source")
-            target_frontend_id = edge_data.get("target")
-            relation_type = edge_data.get("label", "RELATED_TO")
-            if not relation_type or not relation_type.strip(): relation_type = "RELATED_TO"
-            
-            sanitized_relation_type = "".join(c if c.isalnum() else "_" for c in str(relation_type)).upper()
-            if not sanitized_relation_type or sanitized_relation_type[0].isdigit():
-                sanitized_relation_type = f"REL_{sanitized_relation_type}"
-            if not sanitized_relation_type: sanitized_relation_type = "RELATED_TO"
+        # Iterar sobre las propiedades del campo 'data' del frontend
+        for key, value in props_data.items():
+            if value is None:
+                continue
 
-            edge_props_from_rf = edge_data.get("data", {})
-            if not isinstance(edge_props_from_rf, dict): edge_props_from_rf = {}
-            
-            cypher_edge_props = {}
-            for key, value in edge_props_from_rf.items():
-                if isinstance(value, (str, int, float, bool)):
-                    if isinstance(value, str) and not value.strip():
-                        continue
-                    cypher_edge_props[key] = value
-            
-            query_params = {'source_id': source_frontend_id, 'target_id': target_frontend_id}
-            props_cypher_string = ""
-            if cypher_edge_props:
-                props_list = []
-                for k, v_prop in cypher_edge_props.items():
-                    param_name = f"edge_prop_{k}"
-                    props_list.append(f"{k}: ${param_name}")
-                    query_params[param_name] = v_prop
-                props_cypher_string = "{" + ", ".join(props_list) + "}"
+            # Serializar objetos/listas a string JSON
+            if isinstance(value, (dict, list)):
+                try:
+                    # No guardar objetos/listas vacías
+                    if not value: continue
+                    cypher_props[key] = json.dumps(value)
+                except (TypeError, ValueError) as e:
+                    print(f"AVISO: No se pudo serializar la propiedad '{key}' para el nodo {frontend_id}. Error: {e}. Saltando propiedad.")
+            # Guardar tipos primitivos directamente
+            elif isinstance(value, (str, int, float, bool)):
+                 # No guardar strings vacíos
+                if isinstance(value, str) and not value.strip(): continue
+                cypher_props[key] = value
 
-            query = f"""
-            MATCH (a {{frontend_id: $source_id}}), (b {{frontend_id: $target_id}})
-            CREATE (a)-[r:{sanitized_relation_type} {props_cypher_string}]->(b)
-            RETURN id(r)
-            """
-            try:
-                print(f"Creating edge: {source_frontend_id} -[{sanitized_relation_type} {props_cypher_string}]-> {target_frontend_id} with params: {query_params}")
-                redis_graph.query(query, query_params)
-            except Exception as e:
-                print(f"Error creating edge from {source_frontend_id} to {target_frontend_id}: {e}\n{traceback.format_exc()}")
+        query = f"CREATE (n:{label} $props)"
+        try:
+            print(f" -> Creando nodo: Label='{label}', ID='{frontend_id}'")
+            redis_graph.query(query, {'props': cypher_props})
+        except Exception as e:
+            print(f"ERROR CRÍTICO al crear el nodo {frontend_id} ({label}): {e}")
+            print(f"    Props problemáticas: {cypher_props}")
+            # traceback.print_exc() # Descomentar para un debug más profundo
+
+    # --- LÓGICA DE ARISTAS (sin cambios mayores, pero con mejor logging) ---
+    for edge_data in edges_to_create:
+        source_id = edge_data.get("source")
+        target_id = edge_data.get("target")
+        label = edge_data.get("label") or "RELATED_TO"
+        
+        # Sanitizar label para Cypher
+        sanitized_label = "".join(c for c in label if c.isalnum() or c == '_').upper()
+        if not sanitized_label or sanitized_label[0].isdigit():
+            sanitized_label = f"REL_{sanitized_label}"
+
+        if not source_id or not target_id:
+            print(f"ERROR: Saltando arista inválida (source/target ID faltante): {edge_data}")
+            continue
+
+        query = """
+        MATCH (a {frontend_id: $source_id}), (b {frontend_id: $target_id})
+        CREATE (a)-[r:%s]->(b)
+        """ % sanitized_label  # Usamos % para el label que no puede ser un parámetro
+
+        try:
+            print(f" -> Creando arista: ({source_id})-[{sanitized_label}]->({target_id})")
+            redis_graph.query(query, {'source_id': source_id, 'target_id': target_id})
+        except Exception as e:
+            print(f"ERROR CRÍTICO al crear la arista de {source_id} a {target_id}: {e}")
+
+    print("--- Finalizado process_and_store_json ---")
 
 
 async def get_all_graph_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     if not redis_graph:
-        print("Warning: get_all_graph_data called but DB not connected. Returning empty.")
+        print("AVISO: get_all_graph_data llamado pero la BD no está conectada. Devolviendo vacío.")
         return [], []
 
-    nodes_query = "MATCH (n) RETURN n.frontend_id AS frontend_id, labels(n) AS labels, properties(n) AS props"
-    edges_query = "MATCH (s)-[r]->(t) RETURN s.frontend_id AS source_frontend_id, t.frontend_id AS target_frontend_id, type(r) AS type, properties(r) AS props, id(r) as rel_id"
-    
-    frontend_nodes: List[Dict[str, Any]] = []
-    frontend_edges: List[Dict[str, Any]] = []
+    nodes_query = "MATCH (n) RETURN n"
+    edges_query = "MATCH (s)-[r]->(t) RETURN s.frontend_id AS source, t.frontend_id AS target, type(r) AS label, id(r) as rel_id"
 
     try:
         nodes_result = redis_graph.query(nodes_query)
+        edges_result = redis_graph.query(edges_query)
+
+        frontend_nodes = []
         if nodes_result and nodes_result.result_set:
-            for row_data in nodes_result.result_set:
-                frontend_id, labels, props_from_db = row_data
-                
-                if not frontend_id: # Si un nodo no tiene frontend_id, no podemos usarlo consistentemente
-                    print(f"Warning: Node with internal_id {row_data[0]} missing frontend_id. Skipping.")
+            for row in nodes_result.result_set:
+                node = row[0] # El objeto nodo completo
+                props = node.properties
+
+                if 'frontend_id' not in props:
                     continue
 
-                current_node_data_props = dict(props_from_db)
-                pos_x = current_node_data_props.pop("x", 0.0)
-                pos_y = current_node_data_props.pop("y", 0.0)
-                try: pos_x = float(pos_x)
-                except: pos_x = 0.0
-                try: pos_y = float(pos_y)
-                except: pos_y = 0.0
-                node_position = {"x": pos_x, "y": pos_y}
-
-                for json_key in ['rawJsonData', 'details']:
-                    if json_key in current_node_data_props and isinstance(current_node_data_props[json_key], str):
+                # Prepara el objeto 'data' para el frontend
+                data_for_frontend = {}
+                for key, value in props.items():
+                    if key in ['x', 'y', 'frontend_id']:
+                        continue
+                    # Intenta deserializar strings que parecen JSON
+                    if isinstance(value, str) and value.startswith(('[', '{')):
                         try:
-                            current_node_data_props[json_key] = json.loads(current_node_data_props[json_key])
+                            data_for_frontend[key] = json.loads(value)
                         except json.JSONDecodeError:
-                             pass 
+                            data_for_frontend[key] = value # Si falla, déjalo como string
+                    else:
+                        data_for_frontend[key] = value
                 
-                current_node_data_props.pop('frontend_id', None) # Ya lo tenemos en el 'id' principal
+                frontend_nodes.append({
+                    "id": props['frontend_id'],
+                    "type": node.label,
+                    "position": {"x": float(props.get('x', 0)), "y": float(props.get('y', 0))},
+                    "data": data_for_frontend
+                })
 
-                node_for_frontend = {
-                    "id": frontend_id, 
-                    "type": labels[0] if labels else "UnknownNode",
-                    "position": node_position,
-                    "data": current_node_data_props 
-                }
-                frontend_nodes.append(node_for_frontend)
-
-        edges_result = redis_graph.query(edges_query)
+        frontend_edges = []
         if edges_result and edges_result.result_set:
-            for row_data in edges_result.result_set:
-                source_frontend_id, target_frontend_id, rel_type, props, rel_id = row_data
-                
-                if source_frontend_id and target_frontend_id: # Asegurar que ambos extremos existen
-                    frontend_edges.append({
-                        "id": f"edge_{rel_id}_{source_frontend_id}_{target_frontend_id}",
-                        "source": source_frontend_id, 
-                        "target": target_frontend_id, 
-                        "label": rel_type,
-                        "data": props,
-                        "style": {'stroke': 'var(--edge-default-color)', 'strokeWidth': 1.5},
-                        "markerEnd": {'type': 'arrowclosed', 'color': 'var(--edge-default-color)'}
-                    })
+            for source_id, target_id, label, rel_id in edges_result.result_set:
+                frontend_edges.append({
+                    "id": f"edge-{rel_id}",
+                    "source": source_id,
+                    "target": target_id,
+                    "label": label,
+                    "type": "smoothstep",
+                    "markerEnd": {"type": "arrowclosed", "color": "var(--edge-default-color)"},
+                })
         
         print(f"get_all_graph_data: Devolviendo {len(frontend_nodes)} nodos y {len(frontend_edges)} aristas.")
+        return frontend_nodes, frontend_edges
 
     except Exception as e:
-        print(f"Error querying graph data: {e}\n{traceback.format_exc()}")
+        print(f"ERROR CRÍTICO al consultar datos del grafo: {e}")
+        traceback.print_exc()
         return [], []
         
     return frontend_nodes, frontend_edges

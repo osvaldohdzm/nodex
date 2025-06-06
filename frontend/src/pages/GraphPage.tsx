@@ -27,12 +27,9 @@ import ReactFlow, {
   type OnConnect,
   type OnNodesChange,
   type OnEdgesChange,
-  type NodeMouseHandler, // Mantener la importación del tipo
   type EdgeMouseHandler,
   type NodeProps,
   type NodeTypes,
-  applyNodeChanges,
-  applyEdgeChanges,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
@@ -47,6 +44,7 @@ import PersonNodeComponent from '../components/graph/PersonNode';
 import CompanyNodeComponent from '../components/graph/CompanyNode';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 import RelationshipModal from '../components/modals/RelationshipModal';
+import UploadConfirmModal from '../components/modals/UploadConfirmModal';
 import TopMenuBar, {
   FileMenuAction,
   EditMenuAction,
@@ -58,7 +56,7 @@ import TopMenuBar, {
 
 import { JsonData, DemoNodeData } from '../types/graph';
 import { processJsonToSinglePersonNode } from '../utils/jsonProcessor';
-import { deepSearchInObject, flattenObject, formatKeyForDisplay, normalizeValueToSentenceCase } from '../utils/dataUtils';
+import { flattenObject, formatKeyForDisplay, normalizeValueToSentenceCase } from '../utils/dataUtils';
 import { resizeAndCropImage } from '../utils/imageUtils';
 import config from '../config';
 
@@ -76,31 +74,73 @@ export const GraphPage: React.FC = () => {
   const [edges, setEdges, onEdgesChangeReactFlow] = useEdgesState<Edge[]>([]);
 
   const [fileName, setFileName] = useState<string>('');
-  const [jsonLoadConfig, setJsonLoadConfig] = useState<{ mode: 'merge' | 'overwrite'; trigger: string } | null>(null);
-
   const [isRelationshipModalOpen, setIsRelationshipModalOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<{ file: File; trigger: 'brujes' | 'dragdrop' } | null>(null);
   const [pendingConnection, setPendingConnection] = useState<Connection | null>(null);
   const [editingEdge, setEditingEdge] = useState<Edge | null>(null);
 
   const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(false);
-
-  const [isLoading, setIsLoadingState] = useState(true); // Estado para UI de carga
+  
+  const [isLoading, setIsLoadingState] = useState(true);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
+  
+  const setIsLoading = useCallback((loading: boolean) => {
+    isLoadingBackendOp.current = loading;
+    setIsLoadingState(loading);
+  }, []);
 
   const memoizedNodeTypes = useMemo(() => nodeTypesDefinition, []);
   const defaultEdgeStyle = useMemo(() => ({ stroke: 'var(--edge-default-color)', strokeWidth: 1.5, transition: 'all 0.2s ease' }), []);
   const connectionLineStyle = useMemo(() => ({ stroke: 'var(--accent-main)', strokeWidth: 2 }), []);
 
-  const setIsLoading = useCallback((loading: boolean) => {
-    isLoadingBackendOp.current = loading;
-    setIsLoadingState(loading);
-  }, [setIsLoadingState]);
+  // --- HANDLERS UNIFICADOS Y CORREGIDOS ---
 
-  // CORRECCIÓN: Quitar el genérico de useCallback si NodeMouseHandler no se resuelve como genérico
-  // y tipar los parámetros del callback explícitamente.
+  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
+    if (editingEdge) {
+      // Actualizar arista existente
+      setEdges(eds =>
+        eds.map(edge =>
+          edge.id === editingEdge.id
+            ? {
+                ...edge,
+                label,
+                markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
+              }
+            : edge
+        )
+      );
+    } else if (pendingConnection) {
+      // **CORRECCIÓN DE TIPO**: Asegurarse de que source y target no son null
+      if (!pendingConnection.source || !pendingConnection.target) return;
+      
+      // Crear nueva arista
+      const newEdge: Edge = {
+        id: `edge-${pendingConnection.source}-${pendingConnection.target}-${Date.now()}`,
+        source: pendingConnection.source,
+        target: pendingConnection.target,
+        label,
+        type: 'smoothstep',
+        markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
+      };
+      setEdges(eds => addEdge(newEdge, eds));
+    }
+    // Cerrar y limpiar estados
+    setPendingConnection(null);
+    setEditingEdge(null);
+    setIsRelationshipModalOpen(false);
+  }, [editingEdge, pendingConnection, setEdges]);
+  
+  const handleDeleteEdge = useCallback((edgeId: string) => {
+    setEdges(eds => eds.filter(e => e.id !== edgeId));
+    setIsRelationshipModalOpen(false);
+    setEditingEdge(null);
+  }, [setEdges]);
+
+  // --- RESTO DE LOS HOOKS Y FUNCIONES ---
+
   const onNodeClick = useCallback(
-    (event: ReactMouseEvent, node: Node<DemoNodeData>) => { // Tipado explícito
+    (event: ReactMouseEvent, node: Node<DemoNodeData>) => {
       if (node.data?.rawJsonData) {
         setDetailsNode(node);
         setIsDetailPanelVisible(true);
@@ -135,37 +175,18 @@ export const GraphPage: React.FC = () => {
     (changes: EdgeChange[]) => onEdgesChangeReactFlow(changes),
     [onEdgesChangeReactFlow]
   );
-
+  
   const handleCloseDetailPanel = useCallback(() => {
     setDetailsNode(null); setIsDetailPanelVisible(false);
   }, []);
 
   const onConnect: OnConnect = useCallback((params) => {
-    if (!params.source || !params.target || params.source === params.target) return;
-    const newEdge: Edge = {
-      id: `edge-${params.source}-${params.target}-${Date.now()}`,
-      source: params.source, target: params.target, type: 'smoothstep', style: defaultEdgeStyle,
-      markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-    };
-    setEdges(eds => addEdge(newEdge, eds));
-    const sourceNodeInstance = nodes.find(n => n.id === params.source);
-    const targetNodeInstance = nodes.find(n => n.id === params.target);
-    if (sourceNodeInstance?.type === 'person' && targetNodeInstance?.type === 'person') {
-      setEditingEdge(newEdge); setIsRelationshipModalOpen(true);
-    }
-  }, [nodes, setEdges, defaultEdgeStyle]);
-
-  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
-    if (editingEdge) {
-      const finalEdge: Edge = {
-        ...editingEdge, label,
-        markerEnd: isDirected ? { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' } : undefined,
-        style: defaultEdgeStyle,
-      };
-      setEdges(eds => eds.map(edge => (edge.id === editingEdge.id ? finalEdge : edge)));
-    }
-    setEditingEdge(null); setIsRelationshipModalOpen(false);
-  }, [editingEdge, setEdges, defaultEdgeStyle]);
+    // Cuando se completa una conexión, no creamos la arista inmediatamente.
+    // Guardamos la conexión pendiente y abrimos el modal.
+    setPendingConnection(params);
+    setEditingEdge(null); // Aseguramos que no estamos editando
+    setIsRelationshipModalOpen(true);
+  }, []);
 
   const handleImageUploadForNode = useCallback(async (nodeId: string, file: File) => {
     if (uploadedImageUrls[nodeId]) URL.revokeObjectURL(uploadedImageUrls[nodeId]);
@@ -273,7 +294,6 @@ export const GraphPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
     console.log(`uploadJsonToBackend: Subiendo ${originalFileName}, modo: ${mode}`);
     if (isLoadingBackendOp.current) {
@@ -303,38 +323,21 @@ export const GraphPage: React.FC = () => {
     }
   };
 
-  const handleFileDrop = useCallback(async (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault(); event.stopPropagation();
+  const handleFileDrop = useCallback((event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     const file = event.dataTransfer.files?.[0];
     if (file && file.type === 'application/json') {
-      const currentFileName = file.name; setFileName(currentFileName);
-      try {
-        const text = await file.text(); const parsedJson = JSON.parse(text) as any;
-        console.log("handleFileDrop: JSON parseado, preguntando modo...");
-        const userChoiceIsMerge = window.confirm(`"${currentFileName}" detectado.\nOK para AGREGAR, Cancelar para SOBRESCRIBIR.`);
-        const mode = userChoiceIsMerge ? 'merge' : 'overwrite';
-        console.log(`handleFileDrop: Modo seleccionado: ${mode}`);
-        const { node: newNode } = processJsonToSinglePersonNode(parsedJson, nodes);
-        if (newNode) {
-          console.log("handleFileDrop: Nodo procesado, llamando a uploadJsonToBackend:", newNode);
-          await uploadJsonToBackend({ nodes: [newNode], edges: [] }, mode, currentFileName);
-        } else { 
-          alert("No se pudo procesar el JSON para crear un nodo de persona."); 
-          console.warn("handleFileDrop: processJsonToSinglePersonNode devolvió null");
-          setFileName(''); 
-        }
-      } catch (error) { alert('JSON inválido o error al procesar.'); setFileName(''); }
-    } else alert('Arrastra un archivo JSON válido.');
-  }, [nodes, uploadJsonToBackend]); // uploadJsonToBackend es una dependencia
+      setPendingFile({ file, trigger: 'dragdrop' });
+    } else if (file) {
+      alert('Por favor, arrastra un archivo JSON válido.');
+    }
+  }, []);
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => { event.preventDefault(); event.stopPropagation(); }, []);
 
   const handleLoadBrujesJson = useCallback(() => {
     console.log("handleLoadBrujesJson: Abriendo diálogo de archivo...");
-    const userChoiceIsMerge = window.confirm("Modo de carga (Brujes JSON):\nOK para AGREGAR, Cancelar para SOBRESCRIBIR.");
-    const mode = userChoiceIsMerge ? 'merge' : 'overwrite';
-    console.log(`handleLoadBrujesJson: Modo seleccionado: ${mode}`);
-    setJsonLoadConfig({ mode, trigger: 'brujes' });
     fileInputRef.current?.click();
   }, []);
 
@@ -342,32 +345,47 @@ export const GraphPage: React.FC = () => {
     const file = event.target.files?.[0];
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (file) {
-      const currentFileName = file.name; setFileName(currentFileName);
-      try {
-        const text = await file.text(); const parsedJson = JSON.parse(text) as any;
-        if (jsonLoadConfig?.trigger === 'brujes') {
-          console.log(`handleFileSelected: Procesando archivo Brujes: ${currentFileName}, modo: ${jsonLoadConfig.mode}`);
-          const { node: newNodeFromProcessor } = processJsonToSinglePersonNode(parsedJson, nodes);
-          if (newNodeFromProcessor) {
-            const nodeWithUploadData: Node<DemoNodeData> = {
-              ...newNodeFromProcessor,
-              data: { ...newNodeFromProcessor.data, onImageUpload: newNodeFromProcessor.type === 'person' ? handleImageUploadForNode : undefined }
-            };
-            console.log("handleFileSelected: Nodo procesado, llamando a uploadJsonToBackend:", nodeWithUploadData);
-            await uploadJsonToBackend({ nodes: [nodeWithUploadData], edges: [] }, jsonLoadConfig.mode, currentFileName);
-          } else { 
-            alert("No se pudo procesar el JSON para crear un nodo."); 
-            console.warn("handleFileSelected: processJsonToSinglePersonNode devolvió null");
-            setFileName(''); 
-          }
-          setJsonLoadConfig(null);
+      setPendingFile({ file, trigger: 'brujes' });
+    }
+  }; 
+
+  const handleUploadConfirm = async (mode: 'merge' | 'overwrite') => {
+    if (!pendingFile) return;
+
+    const { file, trigger } = pendingFile;
+    const currentFileName = file.name;
+    setFileName(currentFileName);
+    setPendingFile(null);
+
+    try {
+      const text = await file.text();
+      const parsedJson = JSON.parse(text) as any;
+
+      if (trigger === 'brujes' || trigger === 'dragdrop') {
+        console.log(`Procesando archivo: ${currentFileName}, modo: ${mode}`);
+        const { node: newNodeFromProcessor } = processJsonToSinglePersonNode(parsedJson, nodes);
+
+        if (newNodeFromProcessor) {
+          const nodeToSend = JSON.parse(JSON.stringify(newNodeFromProcessor));
+          if (nodeToSend.data.onImageUpload) delete nodeToSend.data.onImageUpload;
+          
+          console.log("Nodo limpio para enviar a backend:", nodeToSend);
+          await uploadJsonToBackend({ nodes: [nodeToSend], edges: [] }, mode, currentFileName);
+        } else { 
+          throw new Error("No se pudo procesar el JSON para crear un nodo de persona.");
         }
-      } catch (error) { alert('JSON inválido o error.'); setFileName(''); if (jsonLoadConfig) setJsonLoadConfig(null); }
-    } else if (jsonLoadConfig) setJsonLoadConfig(null);
-  };
+      }
+    } catch (error) {
+      console.error("Error al procesar el archivo seleccionado:", error);
+      alert(error instanceof Error ? error.message : 'Error al procesar el archivo');
+      setFileName('');
+    }
+  }; 
 
   const onEdgeClick: EdgeMouseHandler = useCallback((_event, edge) => {
-    setEditingEdge(edge); setPendingConnection(null); setIsRelationshipModalOpen(true);
+    setEditingEdge(edge); 
+    setPendingConnection(null); 
+    setIsRelationshipModalOpen(true);
   }, []);
 
   const handleExportPDF = async () => {
@@ -392,8 +410,8 @@ export const GraphPage: React.FC = () => {
   const handleZoomOut = useCallback(() => reactFlowInstance.zoomOut({ duration: 300 }), [reactFlowInstance]);
   const handleFitView = useCallback(() => reactFlowInstance.fitView({ padding: 0.2, duration: 500 }), [reactFlowInstance]);
 
-  const sourceNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.source) : null;
-  const targetNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.target) : null;
+  const sourceNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.source) : pendingConnection ? nodes.find(n => n.id === pendingConnection.source) : null;
+  const targetNodeForModal = editingEdge ? nodes.find(n => n.id === editingEdge.target) : pendingConnection ? nodes.find(n => n.id === pendingConnection.target) : null;
   const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
   const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
 
@@ -419,7 +437,7 @@ export const GraphPage: React.FC = () => {
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
   let mainContent;
-  if (isLoading) { // CORREGIDO: Usar la variable de estado 'isLoading'
+  if (isLoading) {
     mainContent = <div className="flex items-center justify-center h-full w-full text-text-secondary">Cargando datos del grafo...</div>;
   } else if (nodes.length === 0) {
     mainContent = (
@@ -462,7 +480,7 @@ export const GraphPage: React.FC = () => {
           onFileMenuSelect={handleFileMenuAction}
           onEditMenuSelect={handleEditMenuAction}
           onViewMenuSelect={handleViewMenuAction}
-          isGraphEmpty={nodes.length === 0 && !isLoading} // CORREGIDO: Usar la variable de estado 'isLoading'
+          isGraphEmpty={nodes.length === 0 && !isLoading}
         />
       </header>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -520,13 +538,27 @@ export const GraphPage: React.FC = () => {
             </>
           )}
         </PanelGroup>
+
         <RelationshipModal
           isOpen={isRelationshipModalOpen}
-          onClose={() => { setIsRelationshipModalOpen(false); setPendingConnection(null); setEditingEdge(null); }}
-          onSubmit={handleCreateOrUpdateRelationship}
-          sourceNodeName={sourceNodeNameForModal} targetNodeName={targetNodeNameForModal}
-          initialLabel={editingEdge?.label as string | undefined}
+          onClose={() => {
+            setIsRelationshipModalOpen(false);
+            setEditingEdge(null);
+            setPendingConnection(null);
+          }}
+          sourceNodeName={sourceNodeNameForModal}
+          targetNodeName={targetNodeNameForModal}
+          initialLabel={(editingEdge?.label as string) || ''}
           initialIsDirected={editingEdge ? editingEdge.markerEnd !== undefined : true}
+          onSubmit={handleCreateOrUpdateRelationship}
+          onDelete={editingEdge ? handleDeleteEdge.bind(null, editingEdge.id) : undefined}
+        />
+        
+        <UploadConfirmModal
+          isOpen={!!pendingFile}
+          fileName={pendingFile?.file.name || ''}
+          onConfirm={handleUploadConfirm}
+          onCancel={() => setPendingFile(null)}
         />
       </main>
     </div>
