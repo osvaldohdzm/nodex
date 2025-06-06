@@ -11,6 +11,7 @@ export interface DemoNodeData {
   rawJsonData?: any; // To store the complete JSON data for the person
   imageUrl?: string; // For profile image
   onImageUpload?: (nodeId: string, file: File) => void; // For image upload functionality
+  onDelete?: (nodeId: string) => void; // Nuevo callback para eliminar
   isHighlighted?: boolean; // For highlighting nodes
 }
 

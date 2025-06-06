@@ -108,7 +108,8 @@ export const extractPersonInfo = (jsonData: any): { name: string; curp: string; 
 export const processJsonToSinglePersonNode = (
   jsonData: any,
   existingNodes: Node<DemoNodeData>[],
-  onImageUpload?: (nodeId: string, file: File) => void
+  onImageUpload?: (nodeId: string, file: File) => void,
+  onDelete?: (nodeId: string) => void
 ): { node: Node<DemoNodeData> | null } => {
   const personInfo = extractPersonInfo(jsonData);
 
@@ -152,6 +153,7 @@ export const processJsonToSinglePersonNode = (
       },
       rawJsonData: jsonData, // El JSON completo para el modal de detalles
       onImageUpload: onImageUpload, // <-- FIX: Asignar la función de callback
+      onDelete: onDelete, // ASIGNAR onDelete
     },
   };
 

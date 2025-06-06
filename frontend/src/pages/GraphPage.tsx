@@ -45,6 +45,7 @@ import CompanyNodeComponent from '../components/graph/CompanyNode';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 import RelationshipModal from '../components/modals/RelationshipModal';
 import UploadConfirmModal from '../components/modals/UploadConfirmModal';
+import DeleteConfirmModal from '../components/modals/DeleteConfirmModal';
 import TopMenuBar, {
   FileMenuAction,
   EditMenuAction,
@@ -84,6 +85,8 @@ export const GraphPage: React.FC = () => {
   
   const [isLoading, setIsLoadingState] = useState(true);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
+  
+  const [nodeToDelete, setNodeToDelete] = useState<Node<DemoNodeData> | null>(null);
   
   const setIsLoading = useCallback((loading: boolean) => {
     isLoadingBackendOp.current = loading;
@@ -206,6 +209,46 @@ export const GraphPage: React.FC = () => {
 
   useEffect(() => () => Object.values(uploadedImageUrls).forEach(URL.revokeObjectURL), [uploadedImageUrls]);
 
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    const node = reactFlowInstance.getNode(nodeId);
+    if (node) {
+      setNodeToDelete(node);
+    }
+  }, [reactFlowInstance]);
+
+  const confirmDeleteNode = useCallback(async () => {
+    if (!nodeToDelete) return;
+    
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert("Error de autenticación. No se puede eliminar el nodo.");
+      setNodeToDelete(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(config.api.endpoints.deleteNode(nodeToDelete.id), {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Error desconocido del servidor."}));
+        throw new Error(`Fallo al eliminar el nodo (${response.status}): ${errorData.detail}`);
+      }
+
+      // Eliminar el nodo y sus aristas del estado del frontend
+      reactFlowInstance.deleteElements({ nodes: [nodeToDelete] });
+      alert(`Expediente de "${nodeToDelete.data.name}" eliminado.`);
+
+    } catch (error: any) {
+      console.error("Error al eliminar el nodo:", error);
+      alert(error.message);
+    } finally {
+      setNodeToDelete(null); // Cerrar el modal
+    }
+  }, [nodeToDelete, reactFlowInstance]);
+
   const loadInitialGraph = useCallback(async (showFitView = true) => {
     if (isLoadingBackendOp.current) {
       console.log("loadInitialGraph: Operación de backend en progreso, ignorando carga inicial.");
@@ -248,6 +291,7 @@ export const GraphPage: React.FC = () => {
             details: nFromApi.data?.details,
             location: nFromApi.data?.location,
             onImageUpload: nFromApi.type === 'person' ? handleImageUploadForNode : undefined,
+            onDelete: nFromApi.type === 'person' ? handleDeleteNode : undefined,
           };
           return {
             id: String(nFromApi.id || Math.random().toString(36).substr(2, 9)),
@@ -282,7 +326,7 @@ export const GraphPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, defaultEdgeStyle, setIsLoading]);
+  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, handleDeleteNode, defaultEdgeStyle, setIsLoading]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -364,16 +408,17 @@ export const GraphPage: React.FC = () => {
       if (trigger === 'brujes' || trigger === 'dragdrop') {
         console.log(`Procesando archivo: ${currentFileName}, modo: ${mode}`);
         
-        // <-- FIX: Pasar la función de callback al procesador de nodos.
         const { node: newNodeFromProcessor } = processJsonToSinglePersonNode(
             parsedJson, 
             nodes, 
-            handleImageUploadForNode
+            handleImageUploadForNode,
+            handleDeleteNode
         );
 
         if (newNodeFromProcessor) {
           const nodeToSend = JSON.parse(JSON.stringify(newNodeFromProcessor));
           if (nodeToSend.data.onImageUpload) delete nodeToSend.data.onImageUpload;
+          if (nodeToSend.data.onDelete) delete nodeToSend.data.onDelete;
           
           console.log("Nodo limpio para enviar a backend:", nodeToSend);
           await uploadJsonToBackend({ nodes: [nodeToSend], edges: [] }, mode, currentFileName);
@@ -572,6 +617,13 @@ export const GraphPage: React.FC = () => {
             </>
           )}
         </PanelGroup>
+
+        <DeleteConfirmModal
+          isOpen={!!nodeToDelete}
+          onCancel={() => setNodeToDelete(null)}
+          onConfirm={confirmDeleteNode}
+          nodeName={nodeToDelete?.data?.name || ''}
+        />
 
         <RelationshipModal
           isOpen={isRelationshipModalOpen}

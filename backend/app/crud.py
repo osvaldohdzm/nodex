@@ -194,3 +194,28 @@ async def get_all_graph_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any
         print(f"ERROR CRÍTICO al consultar datos del grafo: {e}")
         traceback.print_exc()
         return [], []
+
+# --- NUEVA FUNCIÓN PARA ELIMINAR UN NODO ---
+async def delete_node_by_id(node_id: str):
+    """Elimina un nodo y sus relaciones por su frontend_id."""
+    if not redis_graph:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    try:
+        # Usar DETACH DELETE para eliminar el nodo y todas las relaciones asociadas
+        query = "MATCH (n {frontend_id: $node_id}) DETACH DELETE n"
+        result = redis_graph.query(query, {'node_id': node_id})
+        
+        nodes_deleted = result.nodes_deleted
+        print(f"INFO: delete_node_by_id('{node_id}') -> {nodes_deleted} nodo(s) eliminado(s).")
+        
+        if nodes_deleted == 0:
+            # Esto no es necesariamente un error, podría haber sido eliminado por otro proceso.
+            # Devolvemos False para indicar que no se encontró nada que borrar.
+            return False
+        return True
+        
+    except Exception as e:
+        print(f"ERROR CRÍTICO al eliminar el nodo {node_id}: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al eliminar el nodo de la base de datos: {e}")

@@ -8,6 +8,7 @@ export const config = {
       login: `${API_BASE_URL}/token`,
       graphData: `${API_BASE_URL}/graph-data/`,
       loadJson: `${API_BASE_URL}/graph/load-json`,
+      deleteNode: (nodeId: string) => `${API_BASE_URL}/graph/node/${nodeId}`,
     },
   },
   // Add other configuration as needed

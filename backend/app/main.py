@@ -129,6 +129,27 @@ async def get_node_details(
         raise HTTPException(status_code=404, detail="Node not found")
     return details
 
+# --- NUEVO ENDPOINT PARA ELIMINAR UN NODO ---
+@app.delete("/graph/node/{node_id}")
+async def delete_node_from_graph(
+    node_id: str,
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    try:
+        success = await crud.delete_node_by_id(node_id)
+        if not success:
+            # No se lanza un 404 para no romper el flujo si el nodo ya fue eliminado
+            return JSONResponse(status_code=200, content={"message": f"Node with ID '{node_id}' not found or already deleted."})
+        return {"message": f"Node with ID '{node_id}' and its relationships deleted successfully."}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error deleting node: {e}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error deleting node: {str(e)}"
+        )
+
 # 4. Static Files and SPA Catch-all (Define these LAST)
 # In the final production Docker image (docker/Dockerfile),
 # backend code is in /app/backend/ and built frontend is in /app/frontend/static/
