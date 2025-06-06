@@ -117,8 +117,6 @@ if echo "$merge_output" | grep -q '<<<<<<<'; then
   echo "❌ Conflictos detectados entre '$DEVELOP_BRANCH' y '$feature_branch'. Abortando integración."
   exit 1
 fi
-  git reset --hard HEAD # Deshacer merge de prueba
-fi
 
 # 7. Merge final con mensaje personalizado
 merge_msg="Merge feature: $feature_branch
