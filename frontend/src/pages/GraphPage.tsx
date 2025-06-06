@@ -11,12 +11,7 @@ import React, {
   type MouseEvent as ReactMouseEvent,
   type FC,
   type PropsWithChildren
-} from 'react'; 
-
-type JsonData = {
-  nodes: any[];
-  edges: any[];
-};
+} from 'react';
 import ReactFlow, {
   Controls,
   Background,
@@ -34,21 +29,20 @@ import ReactFlow, {
   type OnConnect,
   type OnNodesChange,
   type OnEdgesChange,
-  type NodeMouseHandler, // Mantener la importación del tipo
+  type NodeMouseHandler,
   type EdgeMouseHandler,
   type NodeProps,
   type NodeTypes,
   applyNodeChanges,
   applyEdgeChanges,
 } from 'reactflow';
-import 'reactflow/dist/style.css';
-import '../styles/globals.css';
-import '../styles/GraphPage.css';
-
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { UploadCloud, X } from 'lucide-react';
+import 'reactflow/dist/style.css';
+import '../styles/globals.css';
+import '../styles/GraphPage.css';
 
 import PersonNodeComponent from '../components/graph/PersonNode';
 import CompanyNodeComponent from '../components/graph/CompanyNode';
@@ -415,7 +409,7 @@ export const GraphPage: FC = () => {
     mainContent = (
       <div className="placeholder-message">
         <UploadCloud size={64} className="mx-auto mb-6 text-text-secondary" />
-        <p className="mb-2">Arrastra JSON (Formato Brujes) o usa "Archivo" → "Cargar JSON".</p>
+        <p className="mb-2">Arrastra JSON (Formato Brujes) o usa "Archivo" para "Cargar JSON".</p>
         {fileName && <p className="text-accent-main mt-2">Procesando: {fileName}</p>}
       </div>
     );
