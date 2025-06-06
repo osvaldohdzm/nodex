@@ -17,6 +17,10 @@ docker-compose -f "$ROOT_DIR/docker-compose.yml" up -d --build --force-recreate
 echo "Building the Nodex application image manually..."
 docker build -t nodex-single -f "$ROOT_DIR/docker/Dockerfile" "$ROOT_DIR"
 
+# Eliminar contenedor previo si existe para evitar conflictos
+echo "Removing existing nodex-single container if it exists..."
+docker rm -f nodex-single 2>/dev/null || true
+
 echo "Running the Nodex container..."
 docker run -d \
   --name nodex-single \
