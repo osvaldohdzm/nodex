@@ -99,10 +99,9 @@ export const GraphPage: FC = () => {
   }, [setIsLoadingState]);
 
   const onNodeClick = useCallback(
-    (event: ReactMouseEvent, node: Node<DemoNodeData, string | undefined>) => {
-      const typedNode = node as Node<DemoNodeData>;
-      if (typedNode.data?.rawJsonData) {
-        setDetailsNode(typedNode);
+    (event: ReactMouseEvent, node: Node<DemoNodeData>) => {
+      if (node.data?.rawJsonData) {
+        setDetailsNode(node);
         setIsDetailPanelVisible(true);
       } else {
         setDetailsNode(null);
@@ -381,13 +380,13 @@ export const GraphPage: FC = () => {
   const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
   const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
 
-  const handleFileMenuAction = useCallback((action: FileMenuActionType): void => {
+  const handleFileMenuAction = useCallback((action: FileMenuActionType) => {
     if (action === FileMenuAction.LOAD_BRUJES_JSON) handleLoadBrujesJson();
     else if (action === FileMenuAction.EXPORT_PDF) handleExportPDF();
     else console.log("Acción Archivo no implementada:", action);
   }, [handleLoadBrujesJson, handleExportPDF]);
 
-  const handleEditMenuAction = useCallback((action: EditMenuActionType): void => {
+  const handleEditMenuAction = useCallback((action: EditMenuActionType) => {
     console.log("Acción Edición no implementada:", action);
     if (action === EditMenuAction.SELECT_ALL) {
       setNodes(nds => nds.map(n => ({ ...n, selected: true })));
@@ -395,21 +394,21 @@ export const GraphPage: FC = () => {
     }
   }, [setNodes, setEdges]);
 
-  const handleViewMenuAction = useCallback((action: ViewMenuActionType): void => {
+  const handleViewMenuAction = useCallback((action: ViewMenuActionType) => {
     if (action === ViewMenuAction.ZOOM_IN) handleZoomIn();
     else if (action === ViewMenuAction.ZOOM_OUT) handleZoomOut();
     else if (action === ViewMenuAction.FIT_VIEW) handleFitView();
     else console.log("Acción Vista no implementada:", action);
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
-  let mainContent;
+  let mainContent: React.ReactNode;
   if (isLoading) {
     mainContent = <div className="flex items-center justify-center h-full w-full text-text-secondary">Cargando datos del grafo...</div>;
   } else if (nodes.length === 0) {
     mainContent = (
       <div className="placeholder-message">
         <UploadCloud size={64} className="mx-auto mb-6 text-text-secondary" />
-        <p className="mb-2">Arrastra JSON (Formato Brujes) o usa "Archivo" para "Cargar JSON".</p>
+        <p className="mb-2">Arrastra JSON (Formato Brujes) o usa "Archivo" → "Cargar JSON".</p>
         {fileName && <p className="text-accent-main mt-2">Procesando: {fileName}</p>}
       </div>
     );
@@ -424,7 +423,9 @@ export const GraphPage: FC = () => {
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         nodeTypes={memoizedNodeTypes}
-        fitView={false} minZoom={0.1} maxZoom={3}
+        fitView={false}
+        minZoom={0.1}
+        maxZoom={3}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         proOptions={{ hideAttribution: true }}
         className="graph-viewport"

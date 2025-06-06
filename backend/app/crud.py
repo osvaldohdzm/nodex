@@ -81,7 +81,6 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
 
     if mode == "overwrite":
         try:
-            # redisgraph.query es síncrono
             redis_graph.query("MATCH (n) DETACH DELETE n")
             print("Graph cleared for overwrite.")
         except redis.exceptions.ResponseError as e:
@@ -91,6 +90,12 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
     edges_to_create = data.get("edges", [])
 
     print(f"process_and_store_json: Found {len(nodes_to_create)} nodes and {len(edges_to_create)} edges in payload.")
+
+    # Lista de propiedades que SÍ queremos guardar en RedisGraph
+    ALLOWED_NODE_PROPERTIES = {
+        'name', 'typeDetails', 'status', 'title', 'location', 'icon', 'imageUrl',
+        'rawJsonData', 'details', 'frontend_id'
+    }
 
     if isinstance(nodes_to_create, list):
         for node_data in nodes_to_create:
@@ -104,31 +109,56 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
                 print(f"Warning: Node data for {node_frontend_id} is not a dict, it's {type(props_from_rf)}. Skipping data props.")
                 props_from_rf = {}
 
-            cypher_props = {'frontend_id': node_frontend_id} # frontend_id es crucial
+            # Inicializar con frontend_id que es crucial
+            cypher_props = {'frontend_id': node_frontend_id}
             
-            # Iterar sobre las propiedades de 'data' del nodo del frontend
-            for key, value in props_from_rf.items():
-                if isinstance(value, (str, int, float, bool)):
-                    cypher_props[key] = value
-                elif key == 'rawJsonData' and value is not None:
-                    try:
-                        cypher_props['rawJsonData'] = json.dumps(value) # Guardar como string JSON
-                    except (TypeError, ValueError) as json_err:
-                        print(f"Warning: Could not serialize rawJsonData for node {node_frontend_id}: {json_err}")
-                        cypher_props['rawJsonData'] = "{}" # Fallback a JSON vacío
-                elif isinstance(value, dict) or isinstance(value, list):
-                    try:
-                        cypher_props[key] = json.dumps(value)
-                    except (TypeError, ValueError):
-                        print(f"Warning: Could not serialize property '{key}' for node {node_frontend_id}")
+            # Iterar solo sobre las propiedades permitidas
+            for key in ALLOWED_NODE_PROPERTIES:
+                if key == 'frontend_id':  # Ya lo añadimos arriba
+                    continue
+                    
+                value = props_from_rf.get(key)
+                if value is None:
+                    continue  # Skip None values
+                    
+                try:
+                    if isinstance(value, (str, int, float, bool)):
+                        cypher_props[key] = value
+                    elif isinstance(value, (dict, list)):
+                        # Intentar serializar objetos complejos a JSON
+                        try:
+                            cypher_props[key] = json.dumps(value)
+                        except (TypeError, ValueError) as json_err:
+                            print(f"Warning: Could not serialize property '{key}' for node {node_frontend_id}: {json_err}")
+                            continue  # Skip this property
+                    else:
+                        print(f"Warning: Property '{key}' for node {node_frontend_id} has unsupported type {type(value)}. Skipping.")
+                        continue
+                except Exception as e:
+                    print(f"Error processing property '{key}' for node {node_frontend_id}: {e}")
+                    continue
+
+            # Eliminar propiedades con valor None
+            cypher_props = {k: v for k, v in cypher_props.items() if v is not None}
 
             query = f"CREATE (n:{label} $props)"
             try:
-                # redisgraph.query es síncrono
                 print(f"Creating node: {label} with props: {cypher_props}")
                 redis_graph.query(query, {'props': cypher_props})
+            except redis.exceptions.ResponseError as e:
+                if "unhandled type" in str(e).lower():
+                    print(f"Error: RedisGraph rejected properties for node {node_frontend_id}: {e}")
+                    # Intentar crear el nodo con solo las propiedades básicas
+                    basic_props = {'frontend_id': node_frontend_id}
+                    try:
+                        redis_graph.query(query, {'props': basic_props})
+                        print(f"Created node {node_frontend_id} with basic properties only")
+                    except Exception as basic_e:
+                        print(f"Failed to create node {node_frontend_id} even with basic properties: {basic_e}")
+                else:
+                    print(f"Error creating node {node_frontend_id} ({label}): {e}\n{traceback.format_exc()}")
             except Exception as e:
-                print(f"Error creating node {node_frontend_id} ({label}): {e}\n{traceback.format_exc()}")
+                print(f"Unexpected error creating node {node_frontend_id} ({label}): {e}\n{traceback.format_exc()}")
 
     if isinstance(edges_to_create, list):
         for edge_data in edges_to_create:
