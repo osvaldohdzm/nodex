@@ -33,9 +33,7 @@ echo "- 🛠️  Backend API:     http://localhost:8000"
 echo "- 🧠 Neo4j Browser:    http://localhost:7474"
 echo "  (Usuario: neo4j | Contraseña: yourStrongPassword)"
 
-echo
-echo "⏱️ Esperando unos segundos para que los servicios estén listos..."
-sleep 5
+
 
 echo "🧪 Ejecutando tests dentro del contenedor..."
 docker exec nodex-single bash -c "cd /app && npm test"
