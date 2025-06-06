@@ -3,74 +3,46 @@ import logging
 # Silenciar el warning específico de passlib sobre la versión de bcrypt
 logging.getLogger('passlib').setLevel(logging.ERROR)
 
-from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
+from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import json
 from typing import Any, Dict, List
 from datetime import timedelta
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import os
+import traceback
 
 from . import crud, models, auth
 
 app = FastAPI(title="SIVG Backend")
 
-# Mount the frontend static files
-frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "static")
-app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
-
-# Serve index.html for the root path
-@app.get("/")
-async def read_root():
-    return FileResponse(os.path.join(frontend_dir, "index.html"))
-
-# Serve index.html for all frontend routes
-@app.get("/{path:path}")
-async def serve_frontend(path: str):
-    if path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API endpoint not found")
-    return FileResponse(os.path.join(frontend_dir, "index.html"))
-
-# Configuración CORS (permitir peticiones desde el frontend)
-origins = [
-    "http://localhost:4545",
-    "http://localhost:8000",
-    "http://192.168.0.4:4545",
-    "http://192.168.0.4:8000",
-    "http://127.0.0.1:4545",
-    "http://127.0.0.1:8000",
-    "https://localhost:4545",
-    "https://192.168.0.4:4545",
-    "https://127.0.0.1:4545"
-]
+# CORS Middleware - Allow all origins in development
+origins = ["*"]  # Allow all origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"]
+    allow_credentials=True,  # Keep this True to allow cookies/auth headers
+    allow_methods=["*"],     # Allow all methods
+    allow_headers=["*"],     # Allow all headers
+    expose_headers=["*"]     # Expose all headers
 )
 
+# 2. Event Handlers
 @app.on_event("startup")
 async def startup_event():
     await crud.init_db_connection()
-    await crud.create_indices_if_needed()
+    auth.init_fake_users_db()  # Initialize fake users after DB connection
+    await crud.create_indices_if_needed()  # Create indices after DB and users are set
 
 @app.on_event("shutdown")
 async def shutdown_event():
     await crud.close_db_connection()
 
-# Comentar temporalmente el manejador OPTIONS explícito
-# @app.options("/token")
-# async def options_token():
-#     return JSONResponse(status_code=200, content={"message": "CORS preflight successful"})
-
+# 3. API Routes (Define ALL of these BEFORE static files/catch-all)
 @app.post("/token", response_model=models.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = auth.authenticate_user(auth.fake_users_db, form_data.username, form_data.password)
@@ -114,10 +86,9 @@ async def upload_json_file(
         print(f"Error processing JSON: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing JSON data: {str(e)}")
 
-# Graph endpoints
 class GraphLoadPayload(BaseModel):
-    jsonData: Dict[str, Any]  # This will contain {"nodes": [], "edges": []} or other raw JSON
-    mode: str  # 'overwrite' or 'merge'
+    jsonData: Dict[str, Any]
+    mode: str
 
 @app.post("/graph/load-json")
 async def load_json_to_graph(
@@ -130,7 +101,6 @@ async def load_json_to_graph(
     except HTTPException as he:
         raise he
     except Exception as e:
-        import traceback
         print(f"Error processing/loading JSON: {e}\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
@@ -139,9 +109,8 @@ async def load_json_to_graph(
 
 @app.get("/graph-data/")
 async def get_graph_data(
-    current_user: models.User = Depends(auth.get_current_active_user) # Proteger endpoint
+    current_user: models.User = Depends(auth.get_current_active_user)
 ):
-    # Llama a una función en crud.py para obtener nodos y relaciones
     nodes, relationships = await crud.get_all_graph_data()
     return {"nodes": nodes, "edges": relationships}
 
@@ -155,5 +124,49 @@ async def get_node_details(
         raise HTTPException(status_code=404, detail="Node not found")
     return details
 
-# Inicializar la base de datos de usuarios falsos (para PoC)
-auth.init_fake_users_db()
+# 4. Static Files and SPA Catch-all (Define these LAST)
+# In the final production Docker image (docker/Dockerfile),
+# backend code is in /app/backend/ and built frontend is in /app/frontend/static/
+# So, an absolute path is most reliable here for the production image context.
+BUILT_FRONTEND_DIR = "/app/frontend/static"
+
+# Check if the directory for the built frontend exists.
+# This check ensures these routes are only active if the frontend has been built and placed here.
+if os.path.exists(BUILT_FRONTEND_DIR) and os.path.isdir(BUILT_FRONTEND_DIR):
+    print(f"INFO:     Serving static frontend files from {BUILT_FRONTEND_DIR}")
+    
+    # Serve assets from the 'static' subfolder of the build (e.g., /static/css, /static/js)
+    # Create React App typically puts its assets here.
+    # Adjust if your build structure is different.
+    if os.path.exists(os.path.join(BUILT_FRONTEND_DIR, "static")):
+        app.mount(
+            "/static",
+            StaticFiles(directory=os.path.join(BUILT_FRONTEND_DIR, "static")),
+            name="frontend_static_assets"
+        )
+    else:
+        print(f"WARNING:  No 'static' subfolder found in {BUILT_FRONTEND_DIR}. Check your frontend build output.")
+
+    # Serve root files like index.html, favicon.ico, manifest.json, etc.
+    # This catch-all MUST be the last route defined.
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        # Check if the request seems to be for an API endpoint that wasn't matched
+        if full_path.startswith(("token", "users/me", "graph/", "node-details/", "upload-json/")):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+            
+        index_path = os.path.join(BUILT_FRONTEND_DIR, "index.html")
+        file_path = os.path.join(BUILT_FRONTEND_DIR, full_path)
+
+        # If the requested path is a file that exists in the build directory, serve it.
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Otherwise, serve index.html for SPA routing.
+        elif os.path.exists(index_path):
+            return FileResponse(index_path)
+        else:
+            # This should ideally not be reached if BUILT_FRONTEND_DIR and index.html exist.
+            print(f"ERROR:    index.html not found at {index_path} for SPA path: {full_path}")
+            raise HTTPException(status_code=404, detail="Frontend application not found.")
+else:
+    print(f"INFO:     Static file serving for frontend is SKIPPED (directory {BUILT_FRONTEND_DIR} not found). Assumed dev environment where frontend is served separately.")

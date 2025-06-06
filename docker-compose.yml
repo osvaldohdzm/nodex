@@ -59,9 +59,8 @@ services:
 
 networks:
   sivg-net:
-    # Corrige el warning: "a network with name sivg-net exists but was not created by compose"
-    # Le dice a Compose que use la red que ya existe en lugar de intentar crearla.
-    external: true
+    # Let Docker Compose manage the network
+    # Remove external: true to allow Compose to create and manage the network
 
 volumes:
   redis_data_dev: 
