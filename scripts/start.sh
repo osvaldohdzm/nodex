@@ -4,24 +4,16 @@ set -e
 # Obtener la ruta absoluta del proyecto
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo "Stopping and removing any existing Docker containers..."
+echo "Deteniendo y eliminando servicios Docker Compose y contenedores huérfanos..."
 docker-compose -f "$ROOT_DIR/docker-compose.yml" down --remove-orphans
 
-# Optional cleanup step (uncomment with caution):
-# echo "Pruning unused Docker data..."
-# docker system prune -a --volumes
+echo "Eliminando todos los contenedores con 'nodex' en el nombre para evitar conflictos..."
+docker ps -a --filter "name=nodex" --format "{{.ID}}" | xargs -r docker rm -f
 
-echo "Rebuilding and starting services with Docker Compose..."
-docker-compose -f "$ROOT_DIR/docker-compose.yml" up -d --build --force-recreate
-
-echo "Building the Nodex application image manually..."
+echo "Construyendo la imagen Nodex manualmente..."
 docker build -t nodex-single -f "$ROOT_DIR/docker/Dockerfile" "$ROOT_DIR"
 
-# Eliminar contenedor previo si existe para evitar conflictos
-echo "Removing existing nodex-single container if it exists..."
-docker rm -f nodex-single 2>/dev/null || true
-
-echo "Running the Nodex container..."
+echo "Ejecutando el contenedor nodex-single..."
 docker run -d \
   --name nodex-single \
   -p 4545:4545 \
@@ -35,19 +27,20 @@ docker run -d \
   -e ACCESS_TOKEN_EXPIRE_MINUTES=30 \
   nodex-single
 
-echo "✅ Nodex is now running in a single container!"
+echo "✅ Nodex está corriendo en un solo contenedor!"
 echo "- 🌐 Frontend:        http://localhost:4545"
 echo "- 🛠️  Backend API:     http://localhost:8000"
 echo "- 🧠 Neo4j Browser:    http://localhost:7474"
-echo "  (Username: neo4j | Password: yourStrongPassword)"
+echo "  (Usuario: neo4j | Contraseña: yourStrongPassword)"
 
 echo
-echo "⏱️ Waiting a few seconds for services to be ready..."
+echo "⏱️ Esperando unos segundos para que los servicios estén listos..."
 sleep 5
 
-echo "🧪 Running tests inside the container..."
+echo "🧪 Ejecutando tests dentro del contenedor..."
 docker exec nodex-single bash -c "cd /app && npm test"
-# o si usas Python: docker exec nodex-single bash -c "cd /app && pytest"
+# Si usas Python en lugar de Node.js:
+# docker exec nodex-single bash -c "cd /app && pytest"
 
 echo
-echo "✅ Tests completed."
+echo "✅ Tests completados."
