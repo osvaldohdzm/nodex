@@ -117,5 +117,6 @@ echo "🎉 Proceso completado los cambios de la prueba han sido guardados. Tus p
 # 9. Ejecutar prueba
 echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
 # Asegúrate que start.sh sea ejecutable (chmod +x ./scripts/start.sh)
-./scripts/start.sh
+#./scripts/start.sh
+ ./build-single-container.sh
 # --- Fin del Script test.sh ---

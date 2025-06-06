@@ -30,7 +30,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 import TopMenuBar from '../components/layout/TopMenuBar';
-import { deepSearchInObject, flattenObject } from '../utils/dataUtils';
+import { deepSearchInObject, flattenObject, formatKeyForDisplay, normalizeValueToSentenceCase } from '../utils/dataUtils';
 
 const nodeTypes = {
   person: PersonNode,
@@ -620,12 +620,49 @@ export const GraphPage: React.FC = () => {
                   </button>
                 </div>
                 <div className="flex-grow overflow-auto p-3 space-y-2">
-                  {Object.entries(flattenObject(detailsNode.data.rawJsonData)).map(([key, value]) => (
-                    <div key={key} className="detail-item text-xs p-2 bg-input-bg rounded-sm break-words">
-                      <span className="font-semibold text-accent-cyan-darker">{key}: </span>
-                      <span className="text-text-primary">{String(value)}</span>
-                    </div>
-                  ))}
+                  {Object.entries(flattenObject(detailsNode.data.rawJsonData))
+                    .map(([key, value]) => {
+                      // Keys to completely exclude (the final part of the key)
+                      const finalKeyPart = key.includes(' -> ') ? key.substring(key.lastIndexOf(' -> ') + 4) : key;
+                      const excludedLeafKeys = [
+                        'status', '_id', '$oid', 'docProbatorio', 
+                        'claveEntidadRegistro', 'claveMunicipioRegistro',
+                      ];
+
+                      if (excludedLeafKeys.includes(finalKeyPart)) {
+                        return null;
+                      }
+
+                      // Exclude specific path patterns
+                      if (key.includes('data -> codigo') || key.includes('data -> mensaje')) {
+                        // Make sure we're not excluding something we want
+                        if (!key.includes('registros[0] -> datosDocProbatorio ->')) {
+                          return null;
+                        }
+                      }
+                      
+                      // Don't show if value is an empty object
+                      if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+                        return null;
+                      }
+                      // Don't show if value is null, undefined or empty string
+                      if (value === null || value === undefined || String(value).trim() === '') {
+                        return null;
+                      }
+
+                      const displayKey = formatKeyForDisplay(key);
+                      const displayValue = normalizeValueToSentenceCase(String(value));
+
+                      return (
+                        <div key={key} className="detail-item text-xs p-2 bg-input-bg rounded-sm break-words">
+                          <span className="font-semibold text-accent-cyan-darker">{displayKey}: </span>
+                          <span className="text-text-primary">{displayValue}</span>
+                        </div>
+                      );
+                    })
+                    // Filter out nulls from exclusions
+                    .filter(Boolean)
+                  }
                 </div>
               </div>
             </Panel>

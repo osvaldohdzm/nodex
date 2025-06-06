@@ -94,7 +94,7 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
         onClick={handleProfileAreaClick}
         title={data.onImageUpload ? "Cambiar imagen de perfil" : data.name}
       >
-        <div className="w-24 h-24 relative">
+        <div className="w-24 h-24 relative flex items-center justify-center">
           <img
             src={data.imageUrl}
             alt={data.name}

@@ -42,3 +42,31 @@ export const flattenObject = (obj: any, parentKey: string = '', result: Record<s
   }
   return result;
 };
+
+export const formatKeyForDisplay = (key: string): string => {
+  // Extract the last part of the key if it comes with a path (e.g. "curp_online -> data -> curp" -> "curp")
+  const finalKey = key.includes(' -> ') ? key.substring(key.lastIndexOf(' -> ') + 4) : key;
+
+  // Convert camelCase or snake_case to Title Case
+  let result = finalKey
+    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/([a-z])([A-Z])/g, '$1 $2'); // Insert space before uppercase in camelCase
+
+  // Capitalize first letter of each word
+  return result
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+export const normalizeValueToSentenceCase = (value: string): string => {
+  if (typeof value !== 'string' || value.length === 0) {
+    return value;
+  }
+  // If the value is all uppercase and short (like an acronym), or a CURP/RFC, don't change it
+  if ((value === value.toUpperCase() && value.length <= 5) || /^[A-Z0-9]{10,}$/.test(value)) {
+    return value;
+  }
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+};
