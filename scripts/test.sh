@@ -158,30 +158,4 @@ fi
 echo ""
 
 
-end_time=$(date +%s)
-duration=$((end_time - start_time))
-
-# 5. Resumen Final
-echo -e "${CYAN}-----------------------------------------------------${NC}"
-if $all_services_healthy; then
-  log_success "🎉 ¡Entorno de desarrollo Nodex listo y saludable en ${duration}s!"
-  echo ""
-  echo -e "${YELLOW}--- URLs ---${NC}"
-  echo -e "🌐 Frontend (con recarga en caliente): ${GREEN}http://localhost:4545${NC} (o http://192.168.0.4:4545)"
-  echo -e "⚙️  Backend API (con recarga automática): ${GREEN}http://localhost:8000/docs${NC} (o http://192.168.0.4:8000/docs)"
-  echo -e "💾 RedisGraph: ${GREEN}localhost:6379${NC}"
-  echo ""
-  echo -e "${YELLOW}--- Comandos Útiles ---${NC}"
-  echo -e "   Para ver los logs de todos los servicios:"
-  echo -e "   👉 ${CYAN}docker compose logs -f${NC}"
-  echo ""
-  echo -e "   Para detener el entorno cuando termines:"
-  echo -e "   👉 ${CYAN}docker compose down${NC}"
-else
-  log_error "💥 Uno o más servicios no están saludables después de ${duration}s."
-  log_warning "Revisa los logs detallados arriba o ejecuta 'docker compose logs -f [nombre_servicio]'."
-  echo -e "${CYAN}-----------------------------------------------------${NC}"
-  exit 1
-fi
-echo -e "${CYAN}-----------------------------------------------------${NC}"
 exit 0
