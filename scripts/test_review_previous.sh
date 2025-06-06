@@ -48,12 +48,18 @@ selected_commit_desc=$(echo "${commits[$((selection-1))]}" | cut -d' ' -f2-)
 
 # Guardar estado actual
 echo ""
-echo "💾 Guardando HEAD actual en un commit temporal de respaldo..."
-git add -A
-backup_msg="⏳ backup antes de explorar commit $selected_commit_hash"
-git commit -m "$backup_msg"
+echo "💾 Guardando HEAD actual..."
+if [[ -n "$(git status --porcelain)" ]]; then
+  git add -A
+  backup_msg="⏳ backup antes de explorar commit $selected_commit_hash"
+  git commit -m "$backup_msg"
+  echo "📝 Commit de respaldo creado."
+fi
 
 backup_ref=$(git rev-parse HEAD)
+backup_tag="backup-before-review-$(date +%s)"
+git tag "$backup_tag" "$backup_ref"
+echo "🏷️ Tag temporal de respaldo creado: $backup_tag -> $backup_ref"
 
 # Checkout del commit seleccionado (detached HEAD)
 echo ""
