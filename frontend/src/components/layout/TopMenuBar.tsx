@@ -31,9 +31,9 @@ export const ViewMenuAction = {
   FIT_VIEW: 'fitView', // Renombrado de resetView para claridad
 } as const;
 
-type FileMenuActionType = typeof FileMenuAction[keyof typeof FileMenuAction];
-type EditMenuActionType = typeof EditMenuAction[keyof typeof EditMenuAction];
-type ViewMenuActionType = typeof ViewMenuAction[keyof typeof ViewMenuAction];
+export type FileMenuActionType = typeof FileMenuAction[keyof typeof FileMenuAction];
+export type EditMenuActionType = typeof EditMenuAction[keyof typeof EditMenuAction];
+export type ViewMenuActionType = typeof ViewMenuAction[keyof typeof ViewMenuAction];
 
 interface TopMenuBarProps {
   onFileMenuSelect: (action: FileMenuActionType) => void;
