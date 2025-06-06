@@ -22,4 +22,4 @@ export interface JsonData {
 
 // Re-export types for convenience
 export type { Node, Edge };
-export type { DemoNodeData as NodeData }; 
+export type { DemoNodeData as NodeData };
