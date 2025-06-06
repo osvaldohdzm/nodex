@@ -9,8 +9,8 @@ import React, {
   type DragEvent,
   type ChangeEvent,
   type MouseEvent as ReactMouseEvent,
-  type FC,
-  type PropsWithChildren
+  // type FC, // No es necesario si usas React.FC
+  // type PropsWithChildren // No es necesario para GraphPage directamente
 } from 'react';
 import ReactFlow, {
   Controls,
@@ -36,13 +36,14 @@ import ReactFlow, {
   applyNodeChanges,
   applyEdgeChanges,
 } from 'reactflow';
+import 'reactflow/dist/style.css';
+import '../styles/globals.css';
+import '../styles/GraphPage.css';
+
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { UploadCloud, X } from 'lucide-react';
-import 'reactflow/dist/style.css';
-import '../styles/globals.css';
-import '../styles/GraphPage.css';
 
 import PersonNodeComponent from '../components/graph/PersonNode';
 import CompanyNodeComponent from '../components/graph/CompanyNode';
@@ -68,7 +69,7 @@ const nodeTypesDefinition: NodeTypes = {
   company: CompanyNodeComponent as ComponentType<NodeProps<DemoNodeData>>,
 };
 
-export const GraphPage: FC = () => {
+export const GraphPage: React.FC = () => { // React.FC es suficiente
   const reactFlowInstance = useReactFlow<DemoNodeData>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isLoadingBackendOp = useRef(false);
@@ -86,7 +87,7 @@ export const GraphPage: FC = () => {
   const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(false);
 
-  const [isLoading, setIsLoadingState] = useState(true);
+  const [isLoading, setIsLoadingState] = useState(true); // Estado para UI de carga
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
 
   const memoizedNodeTypes = useMemo(() => nodeTypesDefinition, []);
@@ -98,6 +99,8 @@ export const GraphPage: FC = () => {
     setIsLoadingState(loading);
   }, [setIsLoadingState]);
 
+  // CORRECCIÓN: Quitar el genérico de useCallback si NodeMouseHandler no se resuelve como genérico
+  // y tipar los parámetros del callback explícitamente.
   const onNodeClick = useCallback(
     (event: ReactMouseEvent, node: Node<DemoNodeData>) => {
       if (node.data?.rawJsonData) {
@@ -154,7 +157,7 @@ export const GraphPage: FC = () => {
     }
   }, [nodes, setEdges, defaultEdgeStyle]);
 
-  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean): void => {
+  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
     if (editingEdge) {
       const finalEdge: Edge = {
         ...editingEdge, label,
@@ -166,7 +169,7 @@ export const GraphPage: FC = () => {
     setEditingEdge(null); setIsRelationshipModalOpen(false);
   }, [editingEdge, setEdges, defaultEdgeStyle]);
 
-  const handleImageUploadForNode = useCallback(async (nodeId: string, file: File): Promise<void> => {
+  const handleImageUploadForNode = useCallback(async (nodeId: string, file: File) => {
     if (uploadedImageUrls[nodeId]) URL.revokeObjectURL(uploadedImageUrls[nodeId]);
     try {
       const resizedBlob = await resizeAndCropImage(file, { maxWidth: 128, maxHeight: 128, quality: 0.85 });
@@ -184,7 +187,7 @@ export const GraphPage: FC = () => {
 
   useEffect(() => () => Object.values(uploadedImageUrls).forEach(URL.revokeObjectURL), [uploadedImageUrls]);
 
-  const loadInitialGraph = useCallback(async (showFitView = true): Promise<void> => {
+  const loadInitialGraph = useCallback(async (showFitView = true) => {
     if (isLoadingBackendOp.current) {
       console.log("loadInitialGraph: Operación de backend en progreso, ignorando carga inicial.");
       return;
@@ -264,16 +267,16 @@ export const GraphPage: FC = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
-    if (token) {
+    if (token && !isLoadingBackendOp.current) {
         loadInitialGraph();
-    } else {
+    } else if (!token) {
         setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
-  const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string): Promise<void> => {
+  const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
     console.log(`uploadJsonToBackend: Subiendo ${originalFileName}, modo: ${mode}`);
     if (isLoadingBackendOp.current) {
       console.log("uploadJsonToBackend: Operación de backend en progreso, ignorando.");
@@ -302,27 +305,37 @@ export const GraphPage: FC = () => {
     }
   };
 
-  const handleFileDrop = useCallback(async (event: DragEvent) => {
+  const handleFileDrop = useCallback(async (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault(); event.stopPropagation();
     const file = event.dataTransfer.files?.[0];
     if (file && file.type === 'application/json') {
       const currentFileName = file.name; setFileName(currentFileName);
       try {
         const text = await file.text(); const parsedJson = JSON.parse(text) as any;
+        console.log("handleFileDrop: JSON parseado, preguntando modo...");
         const userChoiceIsMerge = window.confirm(`"${currentFileName}" detectado.\nOK para AGREGAR, Cancelar para SOBRESCRIBIR.`);
         const mode = userChoiceIsMerge ? 'merge' : 'overwrite';
+        console.log(`handleFileDrop: Modo seleccionado: ${mode}`);
         const { node: newNode } = processJsonToSinglePersonNode(parsedJson, nodes);
-        if (newNode) await uploadJsonToBackend({ nodes: [newNode], edges: [] }, mode, currentFileName);
-        else { alert("No se pudo procesar el JSON."); setFileName(''); }
+        if (newNode) {
+          console.log("handleFileDrop: Nodo procesado, llamando a uploadJsonToBackend:", newNode);
+          await uploadJsonToBackend({ nodes: [newNode], edges: [] }, mode, currentFileName);
+        } else { 
+          alert("No se pudo procesar el JSON para crear un nodo de persona."); 
+          console.warn("handleFileDrop: processJsonToSinglePersonNode devolvió null");
+          setFileName(''); 
+        }
       } catch (error) { alert('JSON inválido o error al procesar.'); setFileName(''); }
     } else alert('Arrastra un archivo JSON válido.');
   }, [nodes, uploadJsonToBackend]);
 
-  const handleDragOver = useCallback((event: DragEvent) => { event.preventDefault(); event.stopPropagation(); }, []);
+  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => { event.preventDefault(); event.stopPropagation(); }, []);
 
   const handleLoadBrujesJson = useCallback(() => {
+    console.log("handleLoadBrujesJson: Abriendo diálogo de archivo...");
     const userChoiceIsMerge = window.confirm("Modo de carga (Brujes JSON):\nOK para AGREGAR, Cancelar para SOBRESCRIBIR.");
     const mode = userChoiceIsMerge ? 'merge' : 'overwrite';
+    console.log(`handleLoadBrujesJson: Modo seleccionado: ${mode}`);
     setJsonLoadConfig({ mode, trigger: 'brujes' });
     fileInputRef.current?.click();
   }, []);
@@ -335,25 +348,31 @@ export const GraphPage: FC = () => {
       try {
         const text = await file.text(); const parsedJson = JSON.parse(text) as any;
         if (jsonLoadConfig?.trigger === 'brujes') {
+          console.log(`handleFileSelected: Procesando archivo Brujes: ${currentFileName}, modo: ${jsonLoadConfig.mode}`);
           const { node: newNodeFromProcessor } = processJsonToSinglePersonNode(parsedJson, nodes);
           if (newNodeFromProcessor) {
             const nodeWithUploadData: Node<DemoNodeData> = {
               ...newNodeFromProcessor,
               data: { ...newNodeFromProcessor.data, onImageUpload: newNodeFromProcessor.type === 'person' ? handleImageUploadForNode : undefined }
             };
+            console.log("handleFileSelected: Nodo procesado, llamando a uploadJsonToBackend:", nodeWithUploadData);
             await uploadJsonToBackend({ nodes: [nodeWithUploadData], edges: [] }, jsonLoadConfig.mode, currentFileName);
-          } else { alert("No se pudo procesar el JSON."); setFileName(''); }
+          } else { 
+            alert("No se pudo procesar el JSON para crear un nodo."); 
+            console.warn("handleFileSelected: processJsonToSinglePersonNode devolvió null");
+            setFileName(''); 
+          }
           setJsonLoadConfig(null);
         }
       } catch (error) { alert('JSON inválido o error.'); setFileName(''); if (jsonLoadConfig) setJsonLoadConfig(null); }
     } else if (jsonLoadConfig) setJsonLoadConfig(null);
   };
 
-  const onEdgeClick: EdgeMouseHandler = useCallback((_event: ReactMouseEvent, edge: Edge) => {
+  const onEdgeClick: EdgeMouseHandler = useCallback((_event, edge) => {
     setEditingEdge(edge); setPendingConnection(null); setIsRelationshipModalOpen(true);
   }, []);
 
-  const handleExportPDF = async (): Promise<void> => {
+  const handleExportPDF = async () => {
     if (nodes.length === 0) { alert("No hay contenido para exportar."); return; }
     const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
     if (!viewportElement) { alert('Error: Viewport no encontrado.'); return; }
@@ -401,8 +420,8 @@ export const GraphPage: FC = () => {
     else console.log("Acción Vista no implementada:", action);
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
-  let mainContent: React.ReactNode;
-  if (isLoading) {
+  let mainContent;
+  if (isLoading) { // CORREGIDO: Usar la variable de estado 'isLoading'
     mainContent = <div className="flex items-center justify-center h-full w-full text-text-secondary">Cargando datos del grafo...</div>;
   } else if (nodes.length === 0) {
     mainContent = (
@@ -423,9 +442,7 @@ export const GraphPage: FC = () => {
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         nodeTypes={memoizedNodeTypes}
-        fitView={false}
-        minZoom={0.1}
-        maxZoom={3}
+        fitView={false} minZoom={0.1} maxZoom={3}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         proOptions={{ hideAttribution: true }}
         className="graph-viewport"
@@ -447,7 +464,7 @@ export const GraphPage: FC = () => {
           onFileMenuSelect={handleFileMenuAction}
           onEditMenuSelect={handleEditMenuAction}
           onViewMenuSelect={handleViewMenuAction}
-          isGraphEmpty={nodes.length === 0 && !isLoading}
+          isGraphEmpty={nodes.length === 0 && !isLoading} // CORREGIDO: Usar la variable de estado 'isLoading'
         />
       </header>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -518,7 +535,7 @@ export const GraphPage: FC = () => {
   );
 };
 
-const GraphPageWithProvider: FC<PropsWithChildren> = () => (
+const GraphPageWithProvider: React.FC = () => ( // React.FC es suficiente
   <ReactFlowProvider>
     <GraphPage />
   </ReactFlowProvider>
