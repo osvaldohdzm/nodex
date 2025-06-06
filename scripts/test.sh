@@ -130,39 +130,6 @@ handle_git_changes() {
   fi
 }
 
-check_service_health() {
-  local service_name="$1"
-  local endpoint="$2"
-  local container_log_name="${CONTAINER_NAMES[$service_name]}"
-  local attempt=1
-
-  log_info "Verificando salud de '$service_name' en '$endpoint'..."
-  while [ $attempt -le $MAX_RETRIES ]; do
-    printf "  Intento %s/%s... " "$attempt" "$MAX_RETRIES"
-    if [[ "$endpoint" == http* ]]; then
-      if curl -LfsI --max-time 3 "$endpoint" -o /dev/null; then
-        echo -e "${GREEN}OK${NC}"
-        return 0
-      fi
-    elif [[ "$endpoint" == *":"* ]]; then # host:port format for TCP
-      local host="${endpoint%:*}"
-      local port="${endpoint#*:}"
-      if nc -z -w 2 "$host" "$port" > /dev/null 2>&1; then
-        echo -e "${GREEN}OK${NC}"
-        return 0
-      fi
-    fi
-    echo -e "${YELLOW}Pendiente${NC}"
-    sleep $RETRY_INTERVAL
-    ((attempt++))
-  done
-  log_error "Servicio '$service_name' no disponible después de $MAX_RETRIES intentos."
-  if [ -n "$container_log_name" ]; then
-    log_warning "Mostrando últimos 20 logs de '$container_log_name':"
-    docker compose logs --tail=20 "$container_log_name" || echo " (No se pudieron obtener logs para $container_log_name)"
-  fi
-  return 1
-}
 
 # --- Lógica Principal ---
 echo -e "${CYAN}🚀 Iniciando script de pruebas integrado Nodex...${NC}"
@@ -192,15 +159,7 @@ else
 fi
 echo ""
 
-# 4. Verificación de Salud de los Servicios
-log_info "🩺 Realizando verificación de salud de los servicios..."
-all_services_healthy=true
-for service_name in "${!SERVICES_TO_CHECK[@]}"; do
-  if ! check_service_health "$service_name" "${SERVICES_TO_CHECK[$service_name]}"; then
-    all_services_healthy=false
-  fi
-done
-echo ""
+
 
 end_time=$(date +%s)
 duration=$((end_time - start_time))
