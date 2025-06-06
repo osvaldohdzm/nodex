@@ -6,15 +6,24 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # Sin color
 
+set -euo pipefail
 
-set -euo pipefail # -e: exit on error, -u: treat unset variables as error, -o pipefail: exit status of last command in pipe
+# Definición de funciones para logs
+log_info() {
+  echo -e "${CYAN}[INFO] $*${NC}"
+}
 
+log_success() {
+  echo -e "${GREEN}[SUCCESS] $*${NC}"
+}
+
+log_error() {
+  echo -e "${RED}[ERROR] $*${NC}"
+}
 
 # --- MAIN ---
 echo -e "${CYAN}🚀 Iniciando script de pruebas integrado Nodex...${NC}"
 start_time=$(date +%s)
-
-
 
 # --- Docker Compose ---
 log_info "🐳 Iniciando entorno Docker Compose..."
