@@ -19,7 +19,7 @@ declare -A DEV_CONTAINERS=(
 # Endpoints a verificar y sus contenedores asociados para logs
 # Formato: "Nombre del Servicio para Mostrar"="endpoint_o_puerto;nombre_del_contenedor_para_logs"
 declare -A SERVICES_TO_CHECK=(
-  ["Frontend (React App)"]="http://localhost:4545;nodex_frontend_dev"
+  ["Frontend (React App)"]="http://localhost:4545;nodex_frontend_dev"  # <<< CHANGED TO HTTP
   ["Backend API (FastAPI)"]="http://localhost:8000/docs;nodex_backend_dev"
   ["RedisGraph (Puerto TCP)"]="localhost:6379;my-redisgraph-dev" # host:port para TCP
 )
