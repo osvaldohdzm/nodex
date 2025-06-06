@@ -27,11 +27,10 @@
         "utils/*"
       ]
     },
-    "typeRoots": ["./node_modules/@types", "./src/types"] // Added ./src/types for custom type definitions
+    // "typeRoots": ["./node_modules/@types"] // Comentado temporalmente para probar resolución de tipos
   },
   "include": [
-    "src", // Standard include
-    "src/types" // Include custom types directory if you create one (e.g., src/types/custom.d.ts)
+    "src"
   ],
-  "exclude": ["node_modules"] // Standard exclude
+  "exclude": ["node_modules"]
 }
