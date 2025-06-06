@@ -10,3 +10,5 @@ __pycache__/
 code_context*
 >>>>>>> feature/menu
 *.pyc
+*.pyc
+__pycache__/
