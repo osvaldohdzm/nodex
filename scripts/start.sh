@@ -1,44 +1,35 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Obtener la ruta absoluta del proyecto
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Nombre del contenedor que quieres crear/usar
+CONTAINER_NAME="nodex_all_in_one"
 
-echo "Deteniendo y eliminando servicios Docker Compose y contenedores huérfanos..."
-docker-compose -f "$ROOT_DIR/docker-compose.yml" down --remove-orphans
+# Nombre de la imagen que construiste
+IMAGE_NAME="nodex-all-in-one:latest"
 
-echo "Eliminando todos los contenedores con 'nodex' en el nombre para evitar conflictos..."
-docker ps -a --filter "name=nodex" --format "{{.ID}}" | xargs -r docker rm -f
+echo "🛑 Deteniendo y borrando cualquier contenedor previo con el mismo nombre..."
+if [ "$(docker ps -aq -f name=^/${CONTAINER_NAME}$)" ]; then
+  docker rm -f $CONTAINER_NAME
+  echo "✔️ Contenedor anterior \"$CONTAINER_NAME\" eliminado."
+else
+  echo "ℹ️ No había ningún contenedor \"$CONTAINER_NAME\" corriendo."
+fi
 
-echo "Construyendo la imagen Nodex manualmente..."
-docker build -t nodex-single -f "$ROOT_DIR/docker/Dockerfile" "$ROOT_DIR"
-
-echo "Ejecutando el contenedor nodex-single..."
+echo ""
+echo "🚀 Ejecutando el contenedor \"$CONTAINER_NAME\" en 0.0.0.0..."
 docker run -d \
-  --name nodex-single \
-  -p 4545:4545 \
-  -p 8000:8000 \
-  -p 7474:7474 \
-  -p 7687:7687 \
-  -e NEO4J_USER=neo4j \
-  -e NEO4J_PASSWORD=yourStrongPassword \
-  -e JWT_SECRET_KEY=your_jwt_secret_key \
-  -e ALGORITHM=HS256 \
-  -e ACCESS_TOKEN_EXPIRE_MINUTES=30 \
-  nodex-single
+  --name $CONTAINER_NAME \
+  -p 7474:7474 \    # Neo4j HTTP
+  -p 7687:7687 \    # Neo4j BOLT
+  -p 8000:8000 \    # Backend (Uvicorn/FastAPI por ejemplo)
+  -p 4545:4545 \    # Frontend (React Dev Server)
+  $IMAGE_NAME
 
-echo "✅ Nodex está corriendo en un solo contenedor!"
-echo "- 🌐 Frontend:        http://localhost:4545"
-echo "- 🛠️  Backend API:     http://localhost:8000"
-echo "- 🧠 Neo4j Browser:    http://localhost:7474"
-echo "  (Usuario: neo4j | Contraseña: yourStrongPassword)"
+# Podemos verificar el estado
+echo ""
+echo "🔍 Estado del contenedor recién levantado:"
+docker ps --filter "name=$CONTAINER_NAME"
 
-
-
-echo "🧪 Ejecutando tests dentro del contenedor..."
-docker exec nodex-single bash -c "cd /app && npm test"
-# Si usas Python en lugar de Node.js:
-# docker exec nodex-single bash -c "cd /app && pytest"
-
-echo
-echo "✅ Tests completados."
+echo ""
+echo "📕 Para ver los logs en vivo, corre:"
+echo "   docker logs -f $CONTAINER_NAME"
