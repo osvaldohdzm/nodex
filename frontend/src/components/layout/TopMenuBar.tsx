@@ -109,7 +109,7 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
   ], [onViewMenuSelect, isGraphEmpty]);
 
   return (
-    <div className="relative flex items-center w-full px-4 bg-bg-secondary/70 backdrop-blur-sm border-b border-border-primary h-11 shadow-lg z-20 flex-shrink-0">
+    <div className="w-full h-full flex items-center justify-between px-4 bg-bg-secondary border-b border-border-primary">
       <div className="flex items-center gap-2 mr-6">
         <Database size={18} className="text-accent-main" />
         <span className="font-bold text-lg text-text-primary tracking-wider font-mono">NODEX</span>

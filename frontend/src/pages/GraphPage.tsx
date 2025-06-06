@@ -187,146 +187,135 @@ export const GraphPage: React.FC = () => {
       console.log("loadInitialGraph: Ya hay una carga en progreso, ignorando llamada.");
       return;
     }
-    setIsLoading(true);
-    let retryCount = 0;
-    const maxRetries = 3;
-    const retryDelay = 1000; // 1 segundo
 
-    while (retryCount < maxRetries) {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          console.warn("loadInitialGraph: No hay token, saltando carga.");
-          setNodes([]); setEdges([]);
-          return;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos timeout
-
-        const response = await fetch(config.api.endpoints.graphData, {
-          headers: { 'Authorization': `Bearer ${token}` },
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ detail: 'Error desconocido del servidor' }));
-          throw new Error(`Error en respuesta del API (${response.status}): ${errorData.detail || response.statusText}`);
-        }
-        
-        const apiData = await response.json() as JsonData;
-        console.log("loadInitialGraph: Datos recibidos del API:", apiData);
-        
-        if (!apiData || !Array.isArray(apiData.nodes) || !Array.isArray(apiData.edges)) {
-          throw new Error("Datos del API no tienen la estructura esperada (nodes/edges arrays)");
-        }
-
-        // Mapeo cuidadoso para asegurar que cada nodo se ajuste a Node<DemoNodeData>
-        const initialNodes = apiData.nodes.map((nFromApi: any): Node<DemoNodeData> | null => {
-          if (!nFromApi || typeof nFromApi !== 'object') {
-            console.warn("loadInitialGraph: Nodo inválido en datos del API:", nFromApi);
-            return null;
-          }
-
-          // Validar y construir el objeto 'data' (DemoNodeData)
-          const nodeData: DemoNodeData = {
-            name: nFromApi.data?.name || "Sin Nombre",
-            typeDetails: nFromApi.data?.typeDetails || "Sin Detalles",
-            status: nFromApi.data?.status || "normal",
-            rawJsonData: nFromApi.data?.rawJsonData || {},
-            imageUrl: nFromApi.data?.imageUrl,
-            title: nFromApi.data?.title,
-            icon: nFromApi.data?.icon,
-            details: nFromApi.data?.details,
-            location: nFromApi.data?.location,
-            onImageUpload: nFromApi.type === 'person' ? handleImageUploadForNode : undefined,
-          };
-
-          const node: Node<DemoNodeData> = {
-            id: String(nFromApi.id || Math.random().toString(36).substr(2, 9)),
-            type: nFromApi.type || 'UnknownNode',
-            position: nFromApi.position || { x: Math.random() * 400, y: Math.random() * 400 },
-            data: nodeData,
-            className: 'node-appear-static',
-          };
-          return node;
-        }).filter((node): node is Node<DemoNodeData> => node !== null);
-
-        const initialEdges = apiData.edges.map((e: any): Edge | null => {
-          if (!e || typeof e !== 'object' || !e.source || !e.target) {
-            console.warn("loadInitialGraph: Arista inválida en datos del API:", e);
-            return null;
-          }
-
-          const edge: Edge = {
-            id: String(e.id || `edge-${e.source}-${e.target}-${Date.now()}`),
-            source: String(e.source),
-            target: String(e.target),
-            label: e.label || '',
-            type: e.type || 'smoothstep',
-            className: 'edge-appear-static',
-            markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
-            style: e.style || defaultEdgeStyle,
-          };
-          return edge;
-        }).filter((edge): edge is Edge => edge !== null);
-        
-        console.log("loadInitialGraph: Nodos procesados:", initialNodes.length);
-        console.log("loadInitialGraph: Aristas procesadas:", initialEdges.length);
-
-        setNodes(initialNodes);
-        setEdges(initialEdges);
-
-        if (showFitView && initialNodes.length > 0) {
-          // Usar requestAnimationFrame para asegurar que el DOM esté listo
-          requestAnimationFrame(() => {
-            console.log("loadInitialGraph: Ejecutando fitView");
-            reactFlowInstance.fitView({ padding: 0.2, duration: 0 });
-          });
-        } else if (initialNodes.length === 0) {
-          console.log("loadInitialGraph: No hay nodos para fitView.");
-        }
-
-        // Si llegamos aquí, la carga fue exitosa
-        break;
-
-      } catch (error: any) {
-        retryCount++;
-        console.error(`loadInitialGraph: Intento ${retryCount}/${maxRetries} fallido:`, error);
-        
-        if (error.name === 'AbortError') {
-          console.error("loadInitialGraph: Timeout al cargar datos");
-          break; // No reintentar en caso de timeout
-        }
-
-        if (retryCount < maxRetries) {
-          console.log(`loadInitialGraph: Reintentando en ${retryDelay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
-        } else {
-          console.error("loadInitialGraph: Máximo de reintentos alcanzado");
-          setNodes([]); setEdges([]); // Limpiar en caso de error final
-          alert("Error al cargar el grafo. Por favor, recarga la página.");
-        }
+    let response: Response | null = null;
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.warn("loadInitialGraph: No hay token, saltando carga.");
+        setNodes([]); 
+        setEdges([]);
+        return;
       }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      response = await fetch(config.api.endpoints.graphData, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Error desconocido del servidor' }));
+        throw new Error(`Error en respuesta del API (${response.status}): ${errorData.detail || response.statusText}`);
+      }
+      
+      const apiData = await response.json() as JsonData;
+      console.log("loadInitialGraph: Datos recibidos del API:", apiData);
+      
+      if (!apiData?.nodes || !apiData?.edges || !Array.isArray(apiData.nodes) || !Array.isArray(apiData.edges)) {
+        throw new Error("Datos del API no tienen la estructura esperada (nodes/edges arrays)");
+      }
+
+      // Mapeo cuidadoso para asegurar que cada nodo se ajuste a Node<DemoNodeData>
+      const initialNodes = apiData.nodes.map((nFromApi: any): Node<DemoNodeData> | null => {
+        if (!nFromApi || typeof nFromApi !== 'object') {
+          console.warn("loadInitialGraph: Nodo inválido en datos del API:", nFromApi);
+          return null;
+        }
+
+        // Validar y construir el objeto 'data' (DemoNodeData)
+        const nodeData: DemoNodeData = {
+          name: nFromApi.data?.name || "Sin Nombre",
+          typeDetails: nFromApi.data?.typeDetails || "Sin Detalles",
+          status: nFromApi.data?.status || "normal",
+          rawJsonData: nFromApi.data?.rawJsonData || {},
+          imageUrl: nFromApi.data?.imageUrl,
+          title: nFromApi.data?.title,
+          icon: nFromApi.data?.icon,
+          details: nFromApi.data?.details,
+          location: nFromApi.data?.location,
+          onImageUpload: nFromApi.type === 'person' ? handleImageUploadForNode : undefined,
+        };
+
+        const node: Node<DemoNodeData> = {
+          id: String(nFromApi.id || Math.random().toString(36).substr(2, 9)),
+          type: nFromApi.type || 'UnknownNode',
+          position: nFromApi.position || { x: Math.random() * 400, y: Math.random() * 400 },
+          data: nodeData,
+          className: 'node-appear-static',
+        };
+        return node;
+      }).filter((node): node is Node<DemoNodeData> => node !== null);
+
+      const initialEdges = apiData.edges.map((e: any): Edge | null => {
+        if (!e || typeof e !== 'object' || !e.source || !e.target) {
+          console.warn("loadInitialGraph: Arista inválida en datos del API:", e);
+          return null;
+        }
+
+        const edge: Edge = {
+          id: String(e.id || `edge-${e.source}-${e.target}-${Date.now()}`),
+          source: String(e.source),
+          target: String(e.target),
+          label: e.label || '',
+          type: e.type || 'smoothstep',
+          className: 'edge-appear-static',
+          markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+          style: e.style || defaultEdgeStyle,
+        };
+        return edge;
+      }).filter((edge): edge is Edge => edge !== null);
+      
+      console.log("loadInitialGraph: Nodos procesados:", initialNodes.length);
+      console.log("loadInitialGraph: Aristas procesadas:", initialEdges.length);
+
+      setNodes(initialNodes);
+      setEdges(initialEdges);
+
+      if (showFitView && initialNodes.length > 0) {
+        requestAnimationFrame(() => {
+          console.log("loadInitialGraph: Ejecutando fitView");
+          reactFlowInstance.fitView({ padding: 0.2, duration: 0 });
+        });
+      } else if (initialNodes.length === 0) {
+        console.log("loadInitialGraph: No hay nodos para fitView.");
+      }
+
+      // Si llegamos aquí, la carga fue exitosa
+    } catch (error: any) {
+      console.error("loadInitialGraph: Error:", error);
+      setNodes([]); 
+      setEdges([]);
+      alert("Error al cargar el grafo. Por favor, recarga la página.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    console.log("loadInitialGraph: Carga finalizada.");
   }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, defaultEdgeStyle, isLoading]);
 
-  // Usar useEffect con cleanup para evitar llamadas múltiples
+  // Usar useEffect con cleanup y una referencia para evitar múltiples llamadas
   useEffect(() => {
     let mounted = true;
+    let initialLoadAttempted = false;
+
     const loadData = async () => {
-      if (mounted) {
+      if (mounted && !initialLoadAttempted) {
         console.log("GraphPage: Montado, llamando a loadInitialGraph por primera vez.");
+        initialLoadAttempted = true;
         await loadInitialGraph();
       }
     };
+
     loadData();
-    return () => { mounted = false; };
-  }, []); // Array de dependencias vacío para ejecutar solo al montar
+    return () => { 
+      mounted = false;
+      initialLoadAttempted = false;
+    };
+  }, [loadInitialGraph]); // Añadido loadInitialGraph como dependencia
 
   const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
     console.log(`uploadJsonToBackend: Subiendo ${originalFileName}, modo: ${mode}`);
@@ -502,101 +491,105 @@ export const GraphPage: React.FC = () => {
 
   return (
     <div className="graph-page-container">
-      <TopMenuBar
-        onFileMenuSelect={handleFileMenuAction}
-        onEditMenuSelect={handleEditMenuAction}
-        onViewMenuSelect={handleViewMenuAction}
-        isGraphEmpty={nodes.length === 0}
-      />
-      <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileSelected} />
-      <PanelGroup direction="horizontal" className="flex-grow min-h-0 p-2 gap-2">
-        <Panel defaultSize={isDetailPanelVisible ? 70 : 100} minSize={30} order={1} className="relative rounded-md overflow-hidden">
-          <div className="graph-viewport-wrapper" onDrop={handleFileDrop} onDragOver={handleDragOver}>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onNodeClick={onNodeClick}
-              onEdgeClick={onEdgeClick}
-              nodeTypes={nodeTypesDefinition}
-              fitView={false} minZoom={0.1} maxZoom={3}
-              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-              proOptions={{ hideAttribution: true }}
-              className="graph-viewport"
-              connectionLineComponent={CustomConnectionLine}
-              connectionLineStyle={connectionLineStyle}
-              deleteKeyCode={['Backspace', 'Delete']}
-              isValidConnection={isValidConnection}
-            >
-              <Background />
-              <Controls className="!left-auto !right-4 !bottom-4 !m-0 transform-none" />
-              {nodes.length === 0 && !isLoading && (
-                <div className="placeholder-message">
-                  <UploadCloud size={64} className="mx-auto mb-6 text-text-secondary" />
-                  <p className="mb-2">Arrastra JSON (Formato Brujes) o usa &quot;Archivo&quot; &rarr; &quot;Cargar JSON&quot;.</p>
-                  {fileName && <p className="text-accent-main mt-2">Procesando: {fileName}</p>}
+      <header className="h-11 w-full bg-bg-secondary border-b border-border-primary flex-shrink-0">
+        <TopMenuBar
+          onFileMenuSelect={handleFileMenuAction}
+          onEditMenuSelect={handleEditMenuAction}
+          onViewMenuSelect={handleViewMenuAction}
+          isGraphEmpty={nodes.length === 0}
+        />
+      </header>
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleFileSelected} />
+        <PanelGroup direction="horizontal" className="flex-grow min-h-0 p-2 gap-2">
+          <Panel defaultSize={isDetailPanelVisible ? 70 : 100} minSize={30} order={1} className="relative rounded-md overflow-hidden">
+            <div className="graph-viewport-wrapper" onDrop={handleFileDrop} onDragOver={handleDragOver}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                onEdgeClick={onEdgeClick}
+                nodeTypes={nodeTypesDefinition}
+                fitView={false} minZoom={0.1} maxZoom={3}
+                defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                proOptions={{ hideAttribution: true }}
+                className="graph-viewport"
+                connectionLineComponent={CustomConnectionLine}
+                connectionLineStyle={connectionLineStyle}
+                deleteKeyCode={['Backspace', 'Delete']}
+                isValidConnection={isValidConnection}
+              >
+                <Background />
+                <Controls className="!left-auto !right-4 !bottom-4 !m-0 transform-none" />
+                {nodes.length === 0 && !isLoading && (
+                  <div className="placeholder-message">
+                    <UploadCloud size={64} className="mx-auto mb-6 text-text-secondary" />
+                    <p className="mb-2">Arrastra JSON (Formato Brujes) o usa &quot;Archivo&quot; &rarr; &quot;Cargar JSON&quot;.</p>
+                    {fileName && <p className="text-accent-main mt-2">Procesando: {fileName}</p>}
+                  </div>
+                )}
+              </ReactFlow>
+            </div>
+          </Panel>
+          {isDetailPanelVisible && detailsNode && (
+            <>
+              <PanelResizeHandle className="w-2 bg-border-primary hover:bg-accent-main focus:outline-none focus:ring-1 focus:ring-accent-main transition-colors flex items-center justify-center group">
+                <div className="w-[2px] h-10 bg-bg-tertiary rounded-full group-hover:bg-accent-main transition-colors"></div>
+              </PanelResizeHandle>
+              <Panel defaultSize={30} minSize={20} maxSize={50} order={2} id="details-panel-resizable" className="rounded-md overflow-hidden">
+                <div className="bg-bg-secondary h-full flex flex-col border-l-2 border-accent-main">
+                  <div className="p-4 border-b-2 border-border-primary flex justify-between items-center flex-shrink-0">
+                    <h3 className="text-lg font-bold text-text-primary font-mono tracking-wider truncate" title={detailsNode.data.name}>
+                      // DATA LOG: {detailsNode.data.name}
+                    </h3>
+                    <button onClick={handleCloseDetailPanel} className="text-text-secondary hover:text-accent-danger transition-colors p-1 rounded-sm hover:bg-bg-tertiary" aria-label="Cerrar panel">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="flex-grow overflow-auto p-4 font-mono text-xs space-y-3 scrollbar-thin scrollbar-thumb-border-secondary scrollbar-track-bg-tertiary">
+                    {Object.entries(detailsNode.data.rawJsonData || {}).map(([sectionKey, sectionValue]) => {
+                      if (!sectionValue || typeof sectionValue !== 'object' || Object.keys(sectionValue).length === 0) return null;
+                      const flatSection = flattenObject(sectionValue);
+                      if (Object.keys(flatSection).length === 0) return null;
+                      return (
+                        <details key={sectionKey} className="group" open>
+                          <summary className="cursor-pointer list-none flex items-center gap-2 text-accent-main hover:brightness-125 transition-all mb-1">
+                            <span className="text-accent-warn">$</span>
+                            <span className="uppercase font-bold tracking-widest">{formatKeyForDisplay(sectionKey)}</span>
+                            <div className="flex-grow border-b border-dashed border-border-secondary/50"></div>
+                          </summary>
+                          <div className="pl-4 pt-2 space-y-1.5">
+                            {Object.entries(flatSection).map(([key, value]) => {
+                              if (value === null || value === undefined || String(value).trim() === '') return null;
+                              return (
+                                <div key={key} className="grid grid-cols-3 gap-2 items-start">
+                                  <span className="text-text-secondary truncate pr-1 col-span-1">{formatKeyForDisplay(key)}:</span>
+                                  <span className="text-text-primary col-span-2 break-words">{normalizeValueToSentenceCase(String(value))}</span>
+                                </div>
+                              );
+                            }).filter(Boolean)}
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
-            </ReactFlow>
-          </div>
-        </Panel>
-        {isDetailPanelVisible && detailsNode && (
-          <>
-            <PanelResizeHandle className="w-2 bg-border-primary hover:bg-accent-main focus:outline-none focus:ring-1 focus:ring-accent-main transition-colors flex items-center justify-center group">
-              <div className="w-[2px] h-10 bg-bg-tertiary rounded-full group-hover:bg-accent-main transition-colors"></div>
-            </PanelResizeHandle>
-            <Panel defaultSize={30} minSize={20} maxSize={50} order={2} id="details-panel-resizable" className="rounded-md overflow-hidden">
-              <div className="bg-bg-secondary h-full flex flex-col border-l-2 border-accent-main">
-                <div className="p-4 border-b-2 border-border-primary flex justify-between items-center flex-shrink-0">
-                  <h3 className="text-lg font-bold text-text-primary font-mono tracking-wider truncate" title={detailsNode.data.name}>
-                    // DATA LOG: {detailsNode.data.name}
-                  </h3>
-                  <button onClick={handleCloseDetailPanel} className="text-text-secondary hover:text-accent-danger transition-colors p-1 rounded-sm hover:bg-bg-tertiary" aria-label="Cerrar panel">
-                    <X size={20} />
-                  </button>
-                </div>
-                <div className="flex-grow overflow-auto p-4 font-mono text-xs space-y-3 scrollbar-thin scrollbar-thumb-border-secondary scrollbar-track-bg-tertiary">
-                  {Object.entries(detailsNode.data.rawJsonData || {}).map(([sectionKey, sectionValue]) => {
-                    if (!sectionValue || typeof sectionValue !== 'object' || Object.keys(sectionValue).length === 0) return null;
-                    const flatSection = flattenObject(sectionValue);
-                    if (Object.keys(flatSection).length === 0) return null;
-                    return (
-                      <details key={sectionKey} className="group" open>
-                        <summary className="cursor-pointer list-none flex items-center gap-2 text-accent-main hover:brightness-125 transition-all mb-1">
-                          <span className="text-accent-warn">$</span>
-                          <span className="uppercase font-bold tracking-widest">{formatKeyForDisplay(sectionKey)}</span>
-                          <div className="flex-grow border-b border-dashed border-border-secondary/50"></div>
-                        </summary>
-                        <div className="pl-4 pt-2 space-y-1.5">
-                          {Object.entries(flatSection).map(([key, value]) => {
-                            if (value === null || value === undefined || String(value).trim() === '') return null;
-                            return (
-                              <div key={key} className="grid grid-cols-3 gap-2 items-start">
-                                <span className="text-text-secondary truncate pr-1 col-span-1">{formatKeyForDisplay(key)}:</span>
-                                <span className="text-text-primary col-span-2 break-words">{normalizeValueToSentenceCase(String(value))}</span>
-                              </div>
-                            );
-                          }).filter(Boolean)}
-                        </div>
-                      </details>
-                    );
-                  })}
-                </div>
-              </div>
-            </Panel>
-          </>
-        )}
-      </PanelGroup>
-      <RelationshipModal
-        isOpen={isRelationshipModalOpen}
-        onClose={() => { setIsRelationshipModalOpen(false); setPendingConnection(null); setEditingEdge(null); }}
-        onSubmit={handleCreateOrUpdateRelationship}
-        sourceNodeName={sourceNodeNameForModal} targetNodeName={targetNodeNameForModal}
-        initialLabel={editingEdge?.label as string | undefined}
-        initialIsDirected={editingEdge ? editingEdge.markerEnd !== undefined : true}
-      />
+              </Panel>
+            </>
+          )}
+        </PanelGroup>
+        <RelationshipModal
+          isOpen={isRelationshipModalOpen}
+          onClose={() => { setIsRelationshipModalOpen(false); setPendingConnection(null); setEditingEdge(null); }}
+          onSubmit={handleCreateOrUpdateRelationship}
+          sourceNodeName={sourceNodeNameForModal} targetNodeName={targetNodeNameForModal}
+          initialLabel={editingEdge?.label as string | undefined}
+          initialIsDirected={editingEdge ? editingEdge.markerEnd !== undefined : true}
+        />
+      </main>
     </div>
   );
 };
