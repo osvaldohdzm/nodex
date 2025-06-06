@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# Verifica que exista .gitignore con __pycache__ y *.pyc
+if ! grep -q '__pycache__/' .gitignore 2>/dev/null; then
+  echo "__pycache__/" >> .gitignore
+fi
+if ! grep -q '*.pyc' .gitignore 2>/dev/null; then
+  echo "*.pyc" >> .gitignore
+fi
+
 current_branch=$(git branch --show-current)
 
 if [[ -z "$current_branch" ]]; then
@@ -46,9 +54,21 @@ while read -r branch; do
     continue
   fi
 
+  echo "🧹 Limpiando archivos temporales (.pyc, __pycache__) antes de cambiar de rama..."
+  # Intenta borrar sin sudo; si falla, intenta con sudo
+  if ! find . -type f -name '*.pyc' -exec rm -f {} + 2>/dev/null; then
+    sudo find . -type f -name '*.pyc' -exec rm -f {} +
+  fi
+  if ! find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null; then
+    sudo find . -type d -name '__pycache__' -exec rm -rf {} +
+  fi
+
   echo "🔄 Cambiando a '$branch_name' para sincronizar con '$remote_name'..."
-  git switch "$branch_name" >/dev/null
-  git pull --ff-only
+  if git switch "$branch_name" >/dev/null; then
+    git pull --ff-only
+  else
+    echo "⚠️ No se pudo cambiar a la rama '$branch_name'."
+  fi
 done < <(git branch --format='%(refname:short)')
 
 git switch "$current_branch" >/dev/null
