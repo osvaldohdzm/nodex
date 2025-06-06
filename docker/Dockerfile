@@ -22,12 +22,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install --no-cache-dir -r ./backend/requirements.txt
 
 FROM node:18-alpine AS frontend-builder
-WORKDIR /app/frontend
+WORKDIR /app
 
-COPY frontend/package*.json ./
-
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+COPY frontend/package.json frontend/package-lock.json* frontend/yarn.lock* ./
+RUN npm install --frozen-lockfile
 
 COPY frontend/ ./
 
@@ -48,7 +46,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install --no-cache-dir -r ./backend/requirements.txt
 
 COPY backend/ ./backend/
-COPY --from=frontend-builder /app/frontend/build ./frontend/static/
+COPY --from=frontend-builder /app/build ./frontend/static/
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Expose both backend and frontend ports

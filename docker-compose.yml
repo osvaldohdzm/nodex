@@ -1,0 +1,67 @@
+# docker-compose.yml (CORREGIDO)
+# La directiva 'version' es obsoleta y se ha eliminado.
+
+services:
+  # Servicio de Backend (FastAPI) con recarga automática
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.dev.backend
+    container_name: nodex_backend_dev
+    volumes:
+      # Monta tu código de backend directamente en el contenedor.
+      # Cualquier cambio que hagas en tu editor se refleja al instante.
+      - ./backend:/code
+    ports:
+      - "8000:8000"
+    networks:
+      - sivg-net
+    environment:
+      # Asegúrate que el backend pueda hablar con Redis
+      - REDIS_HOST=redisgraph
+      - REDIS_PORT=6379
+    # El comando para iniciar el servidor de desarrollo de FastAPI con recarga automática
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Servicio de Frontend (React) con Hot Module Replacement (HMR)
+  frontend:
+    image: node:18-alpine
+    container_name: nodex_frontend_dev
+    working_dir: /app
+    volumes:
+      # Monta el código del frontend y los node_modules para persistencia y velocidad
+      - ./frontend:/app
+      - /app/node_modules # Previene que el node_modules local sobreescriba el del contenedor
+    ports:
+      # Expone el puerto del servidor de desarrollo de React
+      - "4545:4545"
+    networks:
+      - sivg-net
+    environment:
+      - PORT=4545
+      - BROWSER=none
+      # Permite la recarga en caliente (HMR) incluso dentro de Docker
+      - WDS_SOCKET_PORT=4545
+      - CHOKIDAR_USEPOLLING=true # Mejora la detección de cambios en algunos sistemas
+    # Instala dependencias si no existen y luego inicia el dev server
+    command: sh -c "npm install && npm start"
+
+  # Servicio de RedisGraph (para desarrollo)
+  redisgraph:
+    image: redislabs/redisgraph:latest
+    container_name: my-redisgraph-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - sivg-net
+
+networks:
+  sivg-net:
+    # Corrige el warning: "a network with name sivg-net exists but was not created by compose"
+    # Le dice a Compose que use la red que ya existe en lugar de intentar crearla.
+    external: true
+
+volumes:
+  redis_data_dev: 

@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://192.168.0.4:4545';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://192.168.0.4:8000';
 
 export const config = {
   api: {

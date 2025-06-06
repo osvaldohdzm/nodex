@@ -14,7 +14,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="login-page-container">
       <AnimatedBackground /> {/* Now uncommented */}
-      <div className="flex items-center justify-center h-screen">
+      <div className="login"> {/* Esta clase de styles.css centra el formulario */}
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       </div>
     </div>

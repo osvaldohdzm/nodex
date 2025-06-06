@@ -1,4 +1,26 @@
 #!/bin/bash
+set -euo pipefail
+
+# --- Configuración de Producción ---
+PROD_IMAGE_NAME="nodex-all-in-one:latest"
+PROD_CONTAINER_NAME="nodex_prod_instance"
+
+echo "--- Iniciando Proceso de Build para Producción ---"
+
+# 1. Construir la imagen de la aplicación Nodex para producción
+echo "🔨 Construyendo imagen Docker de producción '$PROD_IMAGE_NAME' desde docker/Dockerfile..."
+# Usamos --no-cache para asegurar un build limpio, puedes quitarlo si prefieres usar el cache
+docker build -f docker/Dockerfile -t "$PROD_IMAGE_NAME" .
+echo "✔️ Imagen de producción '$PROD_IMAGE_NAME' construida exitosamente."
+echo ""
+echo "--- Pasos Siguientes ---"
+echo "La imagen está lista para ser subida a un registro (Docker Hub, ECR, etc.) o para ser ejecutada."
+echo "Ejemplo para correrla localmente (requiere una red y Redis corriendo por separado):"
+echo "   docker run -d --name $PROD_CONTAINER_NAME -p 8000:8000 -p 4545:4545 --network sivg-net $PROD_IMAGE_NAME"
+echo ""
+echo "O puedes usar un docker-compose.prod.yml para un despliegue completo." 
+
+#!/bin/bash
 set -e
 
 # Función para liberar un puerto (contenedor Docker o proceso externo)

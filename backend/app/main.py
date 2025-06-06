@@ -38,8 +38,14 @@ async def serve_frontend(path: str):
 # Configuración CORS (permitir peticiones desde el frontend)
 origins = [
     "http://localhost:4545",
+    "http://localhost:8000",
     "http://192.168.0.4:4545",
-    "http://127.0.0.1:4545"
+    "http://192.168.0.4:8000",
+    "http://127.0.0.1:4545",
+    "http://127.0.0.1:8000",
+    "https://localhost:4545",
+    "https://192.168.0.4:4545",
+    "https://127.0.0.1:4545"
 ]
 
 app.add_middleware(
@@ -48,6 +54,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 @app.on_event("startup")

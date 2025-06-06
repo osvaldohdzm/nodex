@@ -1,0 +1,13 @@
+# docker/Dockerfile.dev.backend
+
+FROM python:3.10-slim
+
+WORKDIR /code
+
+# Copia solo el archivo de requerimientos e instálalos.
+# Esto se cachea y solo se re-ejecuta si requirements.txt cambia.
+COPY ./backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# El código fuente se montará usando un volumen desde docker-compose.yml.
+# El comando para iniciar el servidor también se especifica en docker-compose.yml. 
