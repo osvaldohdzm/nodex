@@ -2,35 +2,41 @@ import os
 import json
 from typing import Dict, Any, Tuple, List
 import redis
-from redisgraph import Graph, Node as RGNode, Edge as RGEdge
 from fastapi import HTTPException
 
 # Configuration from environment variables
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)  # Add if your Redis needs auth
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
 REDISGRAPH_GRAPH_NAME = os.getenv("REDISGRAPH_GRAPH_NAME", "sivg_graph")
 
 redis_conn = None
-redis_graph = None
+redis_graph = None  # This will be a redis.graph.Graph object
 
 async def init_db_connection():
     global redis_conn, redis_graph
     try:
         redis_conn = redis.Redis(
-            host=REDIS_HOST, 
-            port=REDIS_PORT, 
-            password=REDIS_PASSWORD, 
-            decode_responses=False
+            host=REDIS_HOST,
+            port=REDIS_PORT,
+            password=REDIS_PASSWORD,
+            decode_responses=False  # Important for RedisGraph to work correctly with redis-py
         )
-        redis_conn.ping()  # Verify connection
+        redis_conn.ping()
         print(f"Successfully connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
-        redis_graph = Graph(REDISGRAPH_GRAPH_NAME, redis_conn)
+        # Get the Graph object from redis-py connection
+        redis_graph = redis_conn.graph(REDISGRAPH_GRAPH_NAME)
     except redis.exceptions.ConnectionError as e:
         print(f"Failed to connect to Redis: {e}")
         raise HTTPException(
-            status_code=503, 
+            status_code=503,
             detail=f"Could not connect to Redis: {e}"
+        )
+    except Exception as e:  # Catch general issues with getting graph object
+        print(f"Failed to initialize RedisGraph object: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not initialize RedisGraph: {e}"
         )
 
 async def close_db_connection():
@@ -154,6 +160,7 @@ async def get_all_graph_data() -> Tuple[List[Dict], List[Dict]]:
 
     query = "MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n, r, m"
     try:
+        # With redis-py, query result is a QueryResult object
         result = await redis_graph.query(query)
     except Exception as e:
         print(f"Error querying graph data: {e}")
@@ -162,70 +169,87 @@ async def get_all_graph_data() -> Tuple[List[Dict], List[Dict]]:
     processed_nodes = {}
     processed_edges = []
 
+    # result_set in redis-py is a list of lists
     if result and result.result_set:
-        for row in result.result_set:
+        for row_data in result.result_set:
+            # row_data is a list where each element is a node or relationship
+            # Example: [redisgraph.Node, redisgraph.Edge, redisgraph.Node]
+            # Or [redisgraph.Node, None, None] if no outgoing relationships
+            
             n_rg_node, r_rg_rel, m_rg_node = None, None, None
             
-            if len(row) > 0 and row[0] is not None:
-                n_rg_node = row[0]
-            if len(row) > 1 and row[1] is not None:
-                r_rg_rel = row[1]
-            if len(row) > 2 and row[2] is not None:
-                m_rg_node = row[2]
+            if len(row_data) > 0 and row_data[0] is not None:
+                n_rg_node = row_data[0]  # This is a redisgraph.Node object
+            if len(row_data) > 1 and row_data[1] is not None:
+                r_rg_rel = row_data[1]  # This is a redisgraph.Edge object
+            if len(row_data) > 2 and row_data[2] is not None:
+                m_rg_node = row_data[2]  # This is a redisgraph.Node object
 
             nodes_in_row = []
-            if n_rg_node:
-                nodes_in_row.append(n_rg_node)
-            if m_rg_node:
-                nodes_in_row.append(m_rg_node)
+            if n_rg_node: nodes_in_row.append(n_rg_node)
+            if m_rg_node: nodes_in_row.append(m_rg_node)
 
             for rg_node_obj in nodes_in_row:
-                node_frontend_id = rg_node_obj.properties.get(
-                    b'frontend_id',
-                    str(rg_node_obj.id).encode()
-                ).decode('utf-8')
+                # Properties in redis-py are already decoded if decode_responses=True in Redis()
+                # but we keep it False for RedisGraph, so decode here
+                node_frontend_id = rg_node_obj.properties.get(b'frontend_id', str(rg_node_obj.id).encode()).decode('utf-8')
                 
                 if node_frontend_id not in processed_nodes:
                     node_properties_decoded = {}
-                    for k_bytes, v_bytes in rg_node_obj.properties.items():
+                    for k_bytes, v_val in rg_node_obj.properties.items():
                         k_str = k_bytes.decode('utf-8')
-                        if isinstance(v_bytes, bytes):
-                            v_str = v_bytes.decode('utf-8')
+                        # v_val can be bytes, int, float, bool
+                        if isinstance(v_val, bytes):
+                            v_decoded = v_val.decode('utf-8')
                             if k_str == 'rawJsonData':
                                 try:
-                                    v_str = json.loads(v_str)
+                                    v_decoded = json.loads(v_decoded)
                                 except json.JSONDecodeError:
-                                    pass
-                            node_properties_decoded[k_str] = v_str
+                                    pass  # Keep as string if not valid JSON
+                            node_properties_decoded[k_str] = v_decoded
                         else:
-                            node_properties_decoded[k_str] = v_bytes
+                            node_properties_decoded[k_str] = v_val
                     
                     rf_data_payload = {
                         k: v for k, v in node_properties_decoded.items()
-                        if k != 'frontend_id'
+                        if k != 'frontend_id' 
                     }
+                    
+                    # Labels in redis-py are a list of strings
+                    node_label = rg_node_obj.labels[0] if rg_node_obj.labels else "Unknown"
 
                     processed_nodes[node_frontend_id] = {
                         "id": node_frontend_id,
-                        "type": rg_node_obj.label.decode('utf-8') if rg_node_obj.label else "Unknown",
+                        "type": node_label,
                         "data": rf_data_payload,
                     }
             
             if r_rg_rel:
-                source_node_query = await redis_graph.query(
-                    f"MATCH (s) WHERE id(s) = {r_rg_rel.source_id} RETURN s.frontend_id"
-                )
-                target_node_query = await redis_graph.query(
-                    f"MATCH (t) WHERE id(t) = {r_rg_rel.dest_id} RETURN t.frontend_id"
-                )
+                # Get frontend_ids of source and target nodes from the relationship
+                source_node_internal_id = r_rg_rel.source_id
+                target_node_internal_id = r_rg_rel.dest_id
 
                 source_frontend_id = None
-                if source_node_query.result_set and source_node_query.result_set[0][0]:
-                    source_frontend_id = source_node_query.result_set[0][0].decode('utf-8')
-                
                 target_frontend_id = None
-                if target_node_query.result_set and target_node_query.result_set[0][0]:
-                    target_frontend_id = target_node_query.result_set[0][0].decode('utf-8')
+
+                # Look in already processed nodes (more efficient)
+                for fid, node_info in processed_nodes.items():
+                    # We can't directly compare internal ID with frontend_id
+                    # We need a way to map internal ID to frontend_id if not in props
+                    # For now, we assume source and target nodes are already in processed_nodes
+                    # and their frontend_ids are known
+                    pass
+
+                # If not found, make a query (less efficient)
+                if not source_frontend_id:
+                    source_node_q_result = await redis_graph.query(f"MATCH (s) WHERE id(s) = {source_node_internal_id} RETURN s.frontend_id")
+                    if source_node_q_result.result_set and source_node_q_result.result_set[0][0]:
+                        source_frontend_id = source_node_q_result.result_set[0][0].decode('utf-8')
+                
+                if not target_frontend_id:
+                    target_node_q_result = await redis_graph.query(f"MATCH (t) WHERE id(t) = {target_node_internal_id} RETURN t.frontend_id")
+                    if target_node_q_result.result_set and target_node_q_result.result_set[0][0]:
+                        target_frontend_id = target_node_q_result.result_set[0][0].decode('utf-8')
 
                 if source_frontend_id and target_frontend_id:
                     edge_frontend_id_prop = r_rg_rel.properties.get(b'frontend_id')
@@ -236,12 +260,12 @@ async def get_all_graph_data() -> Tuple[List[Dict], List[Dict]]:
                     )
 
                     edge_properties_decoded = {}
-                    for k_bytes, v_bytes in r_rg_rel.properties.items():
+                    for k_bytes, v_val in r_rg_rel.properties.items():
                         k_str = k_bytes.decode('utf-8')
                         edge_properties_decoded[k_str] = (
-                            v_bytes.decode('utf-8')
-                            if isinstance(v_bytes, bytes)
-                            else v_bytes
+                            v_val.decode('utf-8')
+                            if isinstance(v_val, bytes)
+                            else v_val
                         )
                     
                     rf_edge_data_payload = {
@@ -253,14 +277,14 @@ async def get_all_graph_data() -> Tuple[List[Dict], List[Dict]]:
                         "id": edge_frontend_id,
                         "source": source_frontend_id,
                         "target": target_frontend_id,
-                        "label": r_rg_rel.relation.decode('utf-8'),
+                        "label": r_rg_rel.relation,  # Already string with redis-py
                         "data": rf_edge_data_payload if rf_edge_data_payload else None,
                         "style": {
                             'stroke': 'var(--edge-default-color)',
                             'strokeWidth': 2
                         },
                         "markerEnd": {
-                            'type': 'arrowclosed',
+                            'type': 'arrowclosed',  # React Flow uses 'arrowclosed'
                             'color': 'var(--edge-default-color)'
                         }
                     }
@@ -278,24 +302,24 @@ async def get_node_properties(node_frontend_id: str) -> Dict:
         result = await redis_graph.query(query, {'fid': node_frontend_id})
     except Exception as e:
         print(f"Error fetching node properties for {node_frontend_id}: {e}")
-        return None
+        return None  # Return None instead of raising exception here
 
     if result and result.result_set and result.result_set[0] and result.result_set[0][0]:
-        rg_node_obj = result.result_set[0][0]
+        rg_node_obj = result.result_set[0][0]  # This is a redisgraph.Node object
         
         properties_decoded = {}
-        for k_bytes, v_bytes in rg_node_obj.properties.items():
+        for k_bytes, v_val in rg_node_obj.properties.items():
             k_str = k_bytes.decode('utf-8')
-            v_val = v_bytes.decode('utf-8') if isinstance(v_bytes, bytes) else v_bytes
-            if k_str == 'rawJsonData' and isinstance(v_val, str):
+            v_decoded = v_val.decode('utf-8') if isinstance(v_val, bytes) else v_val
+            if k_str == 'rawJsonData' and isinstance(v_decoded, str):
                 try:
-                    v_val = json.loads(v_val)
+                    v_decoded = json.loads(v_decoded)
                 except json.JSONDecodeError:
-                    pass
-            properties_decoded[k_str] = v_val
+                    pass  # Keep as string if not valid JSON
+            properties_decoded[k_str] = v_decoded
         
         return {
             "properties": properties_decoded,
-            "labels": [rg_node_obj.label.decode('utf-8') if rg_node_obj.label else "Unknown"]
+            "labels": rg_node_obj.labels  # Already a list of strings with redis-py
         }
     return None
