@@ -110,12 +110,13 @@ last_commit_msg=$(git log -1 --pretty=format:%s "$feature_branch")
 
 # 6. Merge de prueba para detectar conflictos
 echo "🔎 Probando merge para detectar conflictos..."
-if ! git merge --no-commit --no-ff "$feature_branch"; then
-  echo "❌ Conflictos detectados durante merge de prueba. Abortando."
-  git merge --abort
-  echo "Por favor resuelve los conflictos en '$DEVELOP_BRANCH' manualmente y vuelve a ejecutar este script."
+merge_base=$(git merge-base "$DEVELOP_BRANCH" "$feature_branch")
+merge_output=$(git merge-tree "$merge_base" "$DEVELOP_BRANCH" "$feature_branch")
+
+if echo "$merge_output" | grep -q '<<<<<<<'; then
+  echo "❌ Conflictos detectados entre '$DEVELOP_BRANCH' y '$feature_branch'. Abortando integración."
   exit 1
-else
+fi
   git reset --hard HEAD # Deshacer merge de prueba
 fi
 
