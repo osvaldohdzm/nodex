@@ -68,8 +68,9 @@ const nodeTypesDefinition: NodeTypes = {
 };
 
 export const GraphPage: React.FC = () => {
-  const reactFlowInstance = useReactFlow<DemoNodeData>(); // Genérico para el tipo de DATOS del nodo
+  const reactFlowInstance = useReactFlow<DemoNodeData>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const isLoadingRef = useRef(false); // Usar ref para evitar problemas de closure
 
   // CORRECCIÓN IMPORTANTE: El genérico para useNodesState es el TIPO DE DATOS del nodo.
   const [nodes, setNodes, onNodesChangeReactFlow] = useNodesState<DemoNodeData>([]);
@@ -183,14 +184,16 @@ export const GraphPage: React.FC = () => {
 
   const loadInitialGraph = useCallback(async (showFitView = true) => {
     console.log("loadInitialGraph: Iniciando carga...");
-    if (isLoading) {
+    if (isLoadingRef.current) {
       console.log("loadInitialGraph: Ya hay una carga en progreso, ignorando llamada.");
       return;
     }
 
     let response: Response | null = null;
     try {
+      isLoadingRef.current = true;
       setIsLoading(true);
+
       const token = localStorage.getItem('access_token');
       if (!token) {
         console.warn("loadInitialGraph: No hay token, saltando carga.");
@@ -210,6 +213,12 @@ export const GraphPage: React.FC = () => {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        if (response.status === 401) {
+          console.error("loadInitialGraph: Token inválido o expirado");
+          localStorage.removeItem('access_token');
+          window.location.href = '/login';
+          return;
+        }
         const errorData = await response.json().catch(() => ({ detail: 'Error desconocido del servidor' }));
         throw new Error(`Error en respuesta del API (${response.status}): ${errorData.detail || response.statusText}`);
       }
@@ -289,13 +298,21 @@ export const GraphPage: React.FC = () => {
       // Si llegamos aquí, la carga fue exitosa
     } catch (error: any) {
       console.error("loadInitialGraph: Error:", error);
+      if (error.name === 'AbortError') {
+        console.error("loadInitialGraph: Timeout al cargar datos");
+      }
       setNodes([]); 
       setEdges([]);
-      alert("Error al cargar el grafo. Por favor, recarga la página.");
+      if (error.message.includes('401')) {
+        window.location.href = '/login';
+      } else {
+        alert("Error al cargar el grafo. Por favor, recarga la página.");
+      }
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, defaultEdgeStyle, isLoading]);
+  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, defaultEdgeStyle]);
 
   // Usar useEffect con cleanup y una referencia para evitar múltiples llamadas
   useEffect(() => {
@@ -303,19 +320,25 @@ export const GraphPage: React.FC = () => {
     let initialLoadAttempted = false;
 
     const loadData = async () => {
-      if (mounted && !initialLoadAttempted) {
-        console.log("GraphPage: Montado, llamando a loadInitialGraph por primera vez.");
-        initialLoadAttempted = true;
-        await loadInitialGraph();
+      if (!mounted || initialLoadAttempted) return;
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log("GraphPage: No hay token, redirigiendo a login");
+        window.location.href = '/login';
+        return;
       }
+
+      console.log("GraphPage: Montado, llamando a loadInitialGraph por primera vez.");
+      initialLoadAttempted = true;
+      await loadInitialGraph();
     };
 
     loadData();
     return () => { 
       mounted = false;
-      initialLoadAttempted = false;
     };
-  }, [loadInitialGraph]); // Añadido loadInitialGraph como dependencia
+  }, [loadInitialGraph]);
 
   const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
     console.log(`uploadJsonToBackend: Subiendo ${originalFileName}, modo: ${mode}`);
@@ -482,16 +505,17 @@ export const GraphPage: React.FC = () => {
     else console.log("Acción Vista no implementada:", action);
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
-  if (isLoading && nodes.length === 0 && !localStorage.getItem('access_token')) {
-    return <div className="flex items-center justify-center h-screen w-full text-text-secondary">Inicia sesión para cargar el grafo.</div>;
-  }
-  if (isLoading && nodes.length === 0 && localStorage.getItem('access_token')) {
-    return <div className="flex items-center justify-center h-screen w-full text-text-secondary">Cargando datos del grafo...</div>;
+  if (!localStorage.getItem('access_token')) {
+    return (
+      <div className="flex items-center justify-center h-screen w-full text-text-secondary">
+        Redirigiendo a login...
+      </div>
+    );
   }
 
   return (
     <div className="graph-page-container">
-      <header className="h-11 w-full bg-bg-secondary border-b border-border-primary flex-shrink-0">
+      <header className="h-11 w-full bg-bg-secondary border-b border-border-primary flex-shrink-0 z-50">
         <TopMenuBar
           onFileMenuSelect={handleFileMenuAction}
           onEditMenuSelect={handleEditMenuAction}
