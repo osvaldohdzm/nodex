@@ -1,110 +1,223 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronRight, LucideIcon } from 'lucide-react';
+import { LucideIcon, ChevronRight } from 'lucide-react';
 
 export interface MenuItem {
-  label?: string;
+  label?: string;  // Opcional para separadores
   action?: () => void;
-  icon?: LucideIcon;
+  icon?: LucideIcon | React.ComponentType<{ size?: number; className?: string }>;
   disabled?: boolean;
   isSeparator?: boolean;
   shortcut?: string;
   submenu?: MenuItem[];
 }
 
-export interface DropdownMenuProps {
+interface DropdownMenuProps {
   triggerLabel: string;
-  triggerIcon?: LucideIcon;
+  triggerIcon?: LucideIcon | React.ComponentType<{ size?: number; className?: string }>;
   items: MenuItem[];
+  className?: string;
   align?: 'left' | 'right';
 }
 
 const DropdownMenu: React.FC<DropdownMenuProps> = ({
-  triggerLabel, triggerIcon: TriggerIcon, items, align = 'left',
-}: DropdownMenuProps) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false);
+  triggerLabel,
+  triggerIcon: TriggerIcon,
+  items,
+  className = '',
+  align = 'left',
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
   const [activeSubmenu, setActiveSubmenu] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const submenuTimer = useRef<NodeJS.Timeout>();
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const handleTriggerClick = useCallback(() => setIsOpen((prev: boolean) => !prev), []);
-
+  // Cerrar menú al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setActiveSubmenu(null);
       }
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+
+    document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Manejar teclas para navegación
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        setActiveSubmenu(null);
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        // Navegación entre ítems
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const handleItemClick = (item: MenuItem) => {
-    if (item.disabled || item.submenu) return;
-    if (item.action) item.action();
-    setIsOpen(false);
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+    }
+    setIsOpen(!isOpen);
+    setActiveSubmenu(null);
+  };
+
+  const handleItemClick = (item: MenuItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (item.disabled) return;
+    
+    if (item.submenu) {
+      // No hacer nada, manejado por hover
+      return;
+    }
+    
+    if (item.action) {
+      item.action();
+      setIsOpen(false);
+      setActiveSubmenu(null);
+    }
   };
 
   const handleItemMouseEnter = (index: number, hasSubmenu: boolean) => {
-    clearTimeout(submenuTimer.current);
+    if (submenuTimer.current) {
+      clearTimeout(submenuTimer.current);
+    }
+    
     if (hasSubmenu) {
-      submenuTimer.current = setTimeout(() => setActiveSubmenu(index), 150);
+      submenuTimer.current = setTimeout(() => {
+        setActiveSubmenu(index);
+      }, 200);
     } else {
       setActiveSubmenu(null);
     }
   };
 
+  const handleSubmenuMouseLeave = () => {
+    if (submenuTimer.current) {
+      clearTimeout(submenuTimer.current);
+    }
+    submenuTimer.current = setTimeout(() => {
+      setActiveSubmenu(null);
+    }, 200);
+  };
+
   const renderMenuItem = (item: MenuItem, index: number) => {
     if (item.isSeparator) {
-      return <div key={`sep-${index}`} className="h-px my-1 bg-menu-border" />;
+      return (
+        <div 
+          key={`separator-${index}`} 
+          className="h-px my-1 bg-gray-200"
+          role="separator"
+        />
+      );
     }
 
-    const hasSubmenu = !!item.submenu?.length;
-    const isSubmenuActive = activeSubmenu === index;
+    const hasSubmenu = Boolean(item.submenu && item.submenu.length > 0);
+    const isActive = activeSubmenu === index;
 
     return (
-      <div
+      <div 
         key={item.label}
         className="relative"
         onMouseEnter={() => handleItemMouseEnter(index, hasSubmenu)}
-        onMouseLeave={() => clearTimeout(submenuTimer.current)}
+        onMouseLeave={() => {
+          if (submenuTimer.current) clearTimeout(submenuTimer.current);
+        }}
       >
         <button
-          className={`w-full px-3 py-1.5 text-sm text-left flex items-center justify-between gap-4 whitespace-nowrap rounded-sm mx-1
+          className={`w-full px-4 py-2 text-sm text-left flex items-center justify-between gap-3 whitespace-nowrap
             ${item.disabled 
-              ? 'text-menu-text-secondary/40 cursor-not-allowed' 
-              : 'text-menu-text hover:bg-menu-hover-bg hover:text-menu-hover-text transition-colors duration-150'
-            }
-            ${isSubmenuActive ? 'bg-menu-hover-bg text-menu-hover-text' : ''}`}
-          onClick={() => handleItemClick(item)}
+              ? 'text-gray-400 cursor-not-allowed' 
+              : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'}
+            ${isActive ? 'bg-blue-50 text-blue-700' : ''}
+          `}
+          onClick={(e) => handleItemClick(item, e)}
           disabled={item.disabled}
+          role="menuitem"
+          aria-haspopup={hasSubmenu ? 'true' : undefined}
+          aria-expanded={isActive ? 'true' : undefined}
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {item.icon && (
-              <item.icon 
-                size={16} 
-                className={`${item.disabled ? 'opacity-40' : ''} transition-colors duration-150`} 
-              />
+              <span className="text-gray-500 w-5 flex justify-center">
+                <item.icon size={16} className={item.disabled ? 'opacity-50' : ''} />
+              </span>
             )}
             <span>{item.label}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             {item.shortcut && (
-              <span className="text-xs text-menu-text-secondary/70">{item.shortcut}</span>
+              <span className="text-xs text-gray-500 ml-4">
+                {item.shortcut}
+              </span>
             )}
-            {hasSubmenu && <ChevronRight size={16} className="text-menu-text-secondary/70" />}
+            {hasSubmenu && <ChevronRight size={16} className="ml-2 text-gray-500" />}
           </div>
         </button>
 
-        {hasSubmenu && isSubmenuActive && (
+        {hasSubmenu && isActive && item.submenu && (
           <div 
-            className={`absolute top-0 mt-[-5px] 
-              ${align === 'right' ? 'right-full mr-1' : 'left-full ml-1'} 
-              bg-menu-bg rounded-md shadow-lg border border-menu-border py-1 z-10 min-w-[220px]
-              transition-opacity duration-150 ease-in-out`}
+            className={`absolute ${align === 'right' ? 'right-full' : 'left-full'} top-0 mt-0 ml-1 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 min-w-[200px]`}
+            onMouseEnter={() => {
+              if (submenuTimer.current) clearTimeout(submenuTimer.current);
+            }}
+            onMouseLeave={handleSubmenuMouseLeave}
           >
-            {item.submenu?.map((subItem, subIndex) => renderMenuItem(subItem, subIndex))}
+            {item.submenu.map((subItem, subIndex) => (
+              <React.Fragment key={`sub-${index}-${subIndex}`}>
+                {subItem.isSeparator ? (
+                  <div className="h-px my-1 bg-gray-200" role="separator" />
+                ) : (
+                  <button
+                    className={`w-full px-4 py-2 text-sm text-left flex items-center justify-between gap-3 whitespace-nowrap
+                      ${subItem.disabled 
+                        ? 'text-gray-400 cursor-not-allowed' 
+                        : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700'}
+                    `}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!subItem.disabled && subItem.action) {
+                        subItem.action();
+                        setIsOpen(false);
+                        setActiveSubmenu(null);
+                      }
+                    }}
+                    disabled={subItem.disabled}
+                    role="menuitem"
+                  >
+                    <div className="flex items-center gap-3">
+                      {subItem.icon && (
+                        <span className="text-gray-500 w-5 flex justify-center">
+                          <subItem.icon size={16} className={subItem.disabled ? 'opacity-50' : ''} />
+                        </span>
+                      )}
+                      <span>{subItem.label}</span>
+                    </div>
+                    {subItem.shortcut && (
+                      <span className="text-xs text-gray-500">
+                        {subItem.shortcut}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </React.Fragment>
+            ))}
           </div>
         )}
       </div>
@@ -112,32 +225,36 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
   };
 
   return (
-    <div className="relative h-full" ref={menuRef}>
+    <div className={`relative inline-block text-left ${className}`} ref={menuRef}>
       <button
-        className={`flex items-center gap-2 px-3 h-full text-sm font-medium transition-colors duration-150
-          hover:bg-menu-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/50
-          ${isOpen 
-            ? 'bg-menu-active-bg text-menu-active-text' 
-            : 'text-menu-text hover:text-menu-hover-text'
-          }`}
+        ref={triggerRef}
+        className={`flex items-center gap-1 px-3 h-9 text-sm font-medium rounded-md transition-colors
+          hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+          ${isOpen ? 'bg-gray-100 text-gray-900' : 'text-gray-700'}`}
         onClick={handleTriggerClick}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-controls="dropdown-menu"
       >
         {TriggerIcon && (
-          <TriggerIcon 
-            size={16} 
-            className={`transition-colors duration-150 ${
-              isOpen ? 'text-menu-active-text' : 'text-menu-text'
-            }`} 
-          />
+          <span className="text-gray-600">
+            <TriggerIcon size={16} className={isOpen ? 'text-blue-600' : ''} />
+          </span>
         )}
-        <span>{triggerLabel}</span>
+        <span className={isOpen ? 'text-blue-600' : ''}>{triggerLabel}</span>
       </button>
+
       {isOpen && (
         <div 
-          className={`absolute top-full mt-1 bg-menu-bg rounded-md shadow-lg border border-menu-border py-1 z-50 min-w-[240px]
-            ${align === 'right' ? 'right-0' : 'left-0'}
-            transition-all duration-150 ease-in-out transform origin-top
-            ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+          className="fixed bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 min-w-[240px]"
+          style={{
+            top: `${position.top}px`,
+            left: `${position.left}px`,
+          }}
+          role="menu"
+          aria-orientation="vertical"
+          aria-labelledby="menu-button"
+          tabIndex={-1}
         >
           {items.map((item, index) => renderMenuItem(item, index))}
         </div>
