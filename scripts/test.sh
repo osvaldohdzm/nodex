@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+start_time=$(date +%s)
+
+
+
 # --- Colores para la Salida ---
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'

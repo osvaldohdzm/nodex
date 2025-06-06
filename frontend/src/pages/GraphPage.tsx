@@ -27,7 +27,7 @@ import ReactFlow, {
   type OnConnect,
   type OnNodesChange,
   type OnEdgesChange,
-  type NodeMouseHandler,
+  type NodeMouseHandler, // Mantener la importación del tipo
   type EdgeMouseHandler,
   type NodeProps,
   type NodeTypes,
@@ -85,23 +85,23 @@ export const GraphPage: React.FC = () => {
   const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(false);
 
-  const [isLoading, setIsLoadingState] = useState(true); // Estado para UI de carga
+  const [isLoading, setIsLoadingState] = useState(true);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<Record<string, string>>({});
 
   const memoizedNodeTypes = useMemo(() => nodeTypesDefinition, []);
   const defaultEdgeStyle = useMemo(() => ({ stroke: 'var(--edge-default-color)', strokeWidth: 1.5, transition: 'all 0.2s ease' }), []);
   const connectionLineStyle = useMemo(() => ({ stroke: 'var(--accent-main)', strokeWidth: 2 }), []);
 
-  // Wrapper para setIsLoadingState para también actualizar isLoadingBackendOp.current
   const setIsLoading = useCallback((loading: boolean) => {
     isLoadingBackendOp.current = loading;
     setIsLoadingState(loading);
-  }, [setIsLoadingState]); // Dependencia en el setter del estado
+  }, [setIsLoadingState]);
 
   const onNodeClick = useCallback(
-    (event: ReactMouseEvent, node: Node<DemoNodeData>) => {
-      if (node.data?.rawJsonData) {
-        setDetailsNode(node);
+    (event: ReactMouseEvent, node: any) => {
+      const typedNode = node as Node<DemoNodeData>;
+      if (typedNode.data?.rawJsonData) {
+        setDetailsNode(typedNode);
         setIsDetailPanelVisible(true);
       } else {
         setDetailsNode(null);
@@ -197,7 +197,7 @@ export const GraphPage: React.FC = () => {
       if (!token) {
         console.warn("loadInitialGraph: No hay token.");
          setNodes([]); setEdges([]); 
-         setIsLoading(false); // Asegurar que el estado de carga se actualice
+         setIsLoading(false);
          return;
       }
       const response = await fetch(config.api.endpoints.graphData, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -267,7 +267,7 @@ export const GraphPage: React.FC = () => {
     if (token) {
         loadInitialGraph();
     } else {
-        setIsLoading(false); // Actualizado para usar el wrapper
+        setIsLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -282,7 +282,7 @@ export const GraphPage: React.FC = () => {
     const token = localStorage.getItem('access_token');
     if (!token) { alert("Error de autenticación."); return; }
     
-    setIsLoading(true); // Usar el wrapper
+    setIsLoading(true);
 
     try {
       const response = await fetch(config.api.endpoints.loadJson, {
@@ -298,7 +298,7 @@ export const GraphPage: React.FC = () => {
       setFileName('');
     } catch (error: any) { console.error(`uploadJsonToBackend: Error ${mode}:`, error); alert(`Fallo al ${mode} datos: ${error.message}`); }
     finally { 
-      setIsLoading(false); // Usar el wrapper
+      setIsLoading(false);
     }
   };
 
@@ -402,7 +402,7 @@ export const GraphPage: React.FC = () => {
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
   let mainContent;
-  if (isLoading) { // CORREGIDO: Usar la variable de estado 'isLoading'
+  if (isLoading) {
     mainContent = <div className="flex items-center justify-center h-full w-full text-text-secondary">Cargando datos del grafo...</div>;
   } else if (nodes.length === 0) {
     mainContent = (
@@ -445,7 +445,7 @@ export const GraphPage: React.FC = () => {
           onFileMenuSelect={handleFileMenuAction}
           onEditMenuSelect={handleEditMenuAction}
           onViewMenuSelect={handleViewMenuAction}
-          isGraphEmpty={nodes.length === 0 && !isLoading} // CORREGIDO: Usar la variable de estado 'isLoading'
+          isGraphEmpty={nodes.length === 0 && !isLoading}
         />
       </header>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
