@@ -9,7 +9,14 @@ import React, {
   type DragEvent,
   type ChangeEvent,
   type MouseEvent as ReactMouseEvent,
-} from 'react';
+  type FC,
+  type PropsWithChildren
+} from 'react'; 
+
+type JsonData = {
+  nodes: any[];
+  edges: any[];
+};
 import ReactFlow, {
   Controls,
   Background,
@@ -67,7 +74,7 @@ const nodeTypesDefinition: NodeTypes = {
   company: CompanyNodeComponent as ComponentType<NodeProps<DemoNodeData>>,
 };
 
-export const GraphPage: React.FC = () => {
+export const GraphPage: FC = () => {
   const reactFlowInstance = useReactFlow<DemoNodeData>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isLoadingBackendOp = useRef(false);
@@ -98,7 +105,7 @@ export const GraphPage: React.FC = () => {
   }, [setIsLoadingState]);
 
   const onNodeClick = useCallback(
-    (event: ReactMouseEvent, node: any) => {
+    (event: ReactMouseEvent, node: Node<DemoNodeData, string | undefined>) => {
       const typedNode = node as Node<DemoNodeData>;
       if (typedNode.data?.rawJsonData) {
         setDetailsNode(typedNode);
@@ -154,7 +161,7 @@ export const GraphPage: React.FC = () => {
     }
   }, [nodes, setEdges, defaultEdgeStyle]);
 
-  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean) => {
+  const handleCreateOrUpdateRelationship = useCallback((label: string, isDirected: boolean): void => {
     if (editingEdge) {
       const finalEdge: Edge = {
         ...editingEdge, label,
@@ -166,7 +173,7 @@ export const GraphPage: React.FC = () => {
     setEditingEdge(null); setIsRelationshipModalOpen(false);
   }, [editingEdge, setEdges, defaultEdgeStyle]);
 
-  const handleImageUploadForNode = useCallback(async (nodeId: string, file: File) => {
+  const handleImageUploadForNode = useCallback(async (nodeId: string, file: File): Promise<void> => {
     if (uploadedImageUrls[nodeId]) URL.revokeObjectURL(uploadedImageUrls[nodeId]);
     try {
       const resizedBlob = await resizeAndCropImage(file, { maxWidth: 128, maxHeight: 128, quality: 0.85 });
@@ -184,7 +191,7 @@ export const GraphPage: React.FC = () => {
 
   useEffect(() => () => Object.values(uploadedImageUrls).forEach(URL.revokeObjectURL), [uploadedImageUrls]);
 
-  const loadInitialGraph = useCallback(async (showFitView = true) => {
+  const loadInitialGraph = useCallback(async (showFitView = true): Promise<void> => {
     if (isLoadingBackendOp.current) {
       console.log("loadInitialGraph: Operación de backend en progreso, ignorando carga inicial.");
       return;
@@ -273,7 +280,7 @@ export const GraphPage: React.FC = () => {
   }, []);
 
 
-  const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
+  const uploadJsonToBackend = async (graphData: JsonData, mode: 'overwrite' | 'merge', originalFileName: string): Promise<void> => {
     console.log(`uploadJsonToBackend: Subiendo ${originalFileName}, modo: ${mode}`);
     if (isLoadingBackendOp.current) {
       console.log("uploadJsonToBackend: Operación de backend en progreso, ignorando.");
@@ -302,7 +309,7 @@ export const GraphPage: React.FC = () => {
     }
   };
 
-  const handleFileDrop = useCallback(async (event: DragEvent<HTMLDivElement>) => {
+  const handleFileDrop = useCallback(async (event: DragEvent) => {
     event.preventDefault(); event.stopPropagation();
     const file = event.dataTransfer.files?.[0];
     if (file && file.type === 'application/json') {
@@ -318,7 +325,7 @@ export const GraphPage: React.FC = () => {
     } else alert('Arrastra un archivo JSON válido.');
   }, [nodes, uploadJsonToBackend]);
 
-  const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => { event.preventDefault(); event.stopPropagation(); }, []);
+  const handleDragOver = useCallback((event: DragEvent) => { event.preventDefault(); event.stopPropagation(); }, []);
 
   const handleLoadBrujesJson = useCallback(() => {
     const userChoiceIsMerge = window.confirm("Modo de carga (Brujes JSON):\nOK para AGREGAR, Cancelar para SOBRESCRIBIR.");
@@ -349,11 +356,11 @@ export const GraphPage: React.FC = () => {
     } else if (jsonLoadConfig) setJsonLoadConfig(null);
   };
 
-  const onEdgeClick: EdgeMouseHandler = useCallback((_event, edge) => {
+  const onEdgeClick: EdgeMouseHandler = useCallback((_event: ReactMouseEvent, edge: Edge) => {
     setEditingEdge(edge); setPendingConnection(null); setIsRelationshipModalOpen(true);
   }, []);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = async (): Promise<void> => {
     if (nodes.length === 0) { alert("No hay contenido para exportar."); return; }
     const viewportElement = document.querySelector('.react-flow__viewport') as HTMLElement;
     if (!viewportElement) { alert('Error: Viewport no encontrado.'); return; }
@@ -380,13 +387,13 @@ export const GraphPage: React.FC = () => {
   const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
   const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
 
-  const handleFileMenuAction = useCallback((action: FileMenuActionType) => {
+  const handleFileMenuAction = useCallback((action: FileMenuActionType): void => {
     if (action === FileMenuAction.LOAD_BRUJES_JSON) handleLoadBrujesJson();
     else if (action === FileMenuAction.EXPORT_PDF) handleExportPDF();
     else console.log("Acción Archivo no implementada:", action);
   }, [handleLoadBrujesJson, handleExportPDF]);
 
-  const handleEditMenuAction = useCallback((action: EditMenuActionType) => {
+  const handleEditMenuAction = useCallback((action: EditMenuActionType): void => {
     console.log("Acción Edición no implementada:", action);
     if (action === EditMenuAction.SELECT_ALL) {
       setNodes(nds => nds.map(n => ({ ...n, selected: true })));
@@ -394,7 +401,7 @@ export const GraphPage: React.FC = () => {
     }
   }, [setNodes, setEdges]);
 
-  const handleViewMenuAction = useCallback((action: ViewMenuActionType) => {
+  const handleViewMenuAction = useCallback((action: ViewMenuActionType): void => {
     if (action === ViewMenuAction.ZOOM_IN) handleZoomIn();
     else if (action === ViewMenuAction.ZOOM_OUT) handleZoomOut();
     else if (action === ViewMenuAction.FIT_VIEW) handleFitView();
@@ -516,7 +523,7 @@ export const GraphPage: React.FC = () => {
   );
 };
 
-const GraphPageWithProvider: React.FC = () => (
+const GraphPageWithProvider: FC<PropsWithChildren> = () => (
   <ReactFlowProvider>
     <GraphPage />
   </ReactFlowProvider>
