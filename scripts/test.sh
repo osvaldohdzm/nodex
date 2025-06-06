@@ -133,7 +133,6 @@ handle_git_changes
 log_info "🐳 Iniciando entorno Docker Compose..."
 
 log_info "🧹 Deteniendo servicios previos (si existen)..."
-docker builder prune -f
 
 docker compose down --remove-orphans -t 1 || true
 log_success "Entorno limpiado."

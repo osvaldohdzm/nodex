@@ -3,6 +3,7 @@ set -e
 
 echo "🧹 Stopping and removing Nodex-related containers..."
 
+
 # Parar y eliminar todos los contenedores basados en imágenes nodex
 docker ps -a --filter "ancestor=nodex-single" \
              --filter "ancestor=nodex-frontend" \
@@ -18,5 +19,8 @@ echo "🗑️ Removing Nodex-related images..."
 docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" \
   | grep -E 'nodex-(frontend|backend|single)' \
   | awk '{print $2}' | xargs -r docker rmi -f
+
+docker builder prune -f
+
 
 echo "✅ Done. All Nodex containers and images have been removed."
