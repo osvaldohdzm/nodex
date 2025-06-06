@@ -4,11 +4,33 @@
 @tailwind utilities;
 
 :root {
+  /* -- BASES TÁCTICAS -- */
+  --bg-primary: #010409; /* Negro con un matiz azul muy oscuro */
+  --bg-secondary: #0D1117; /* Gris carbón-azulado para paneles */
+  --bg-tertiary: #161B22; /* Capa interactiva para inputs */
+  --border-primary: #21262d; /* Borde sutil */
+  --border-secondary: #30363d; /* Borde más visible */
+
+  /* -- TEXTOS -- */
+  --text-primary: #c9d1d9; /* Blanco suave, no puro */
+  --text-secondary: #8b949e; /* Gris para texto de apoyo */
+
+  /* -- ACENTOS DE MISIÓN-CRÍTICA -- */
+  --accent-main: #22a0f1; /* Azul controlado y profesional */
+  --accent-main-glow: #38bdf8; /* Cian brillante para efectos de glow */
+  --accent-warn: #facc15; /* Amarillo/Ámbar para advertencias */
+  --accent-danger: #f87171; /* Rojo suave para errores */
+
+  /* -- COMPONENTES: GRAFO -- */
+  --node-bg: rgba(13, 17, 23, 0.85); /* Fondo de nodo con ligera transparencia */
+  --node-border: var(--border-secondary);
+  --node-border-selected: var(--accent-main-glow);
+  --node-shadow-selected: 0 0 12px var(--accent-main-glow);
+  --graph-bg: var(--bg-primary);
+  --edge-default-color: var(--border-secondary);
+  --edge-selected-color: var(--accent-main-glow);
+
   /* Consolidated CSS variables */
-  --bg-primary: #001F3F;
-  --bg-secondary: #0A0F1A;
-  --text-primary: #E2E8F0;
-  --text-secondary: #94A3B8;
   --input-bg: #1E293B;
   --input-border: #334155;
   --input-border-hover: #475569;
@@ -33,25 +55,17 @@
   --menu-active-bg: var(--input-bg);
   --menu-active-text: var(--accent-cyan);
 
-  /* Graph colors */
-  --node-bg: var(--bg-secondary);
-  --node-border: var(--accent-cyan-darker);
-  --node-border-selected: var(--accent-cyan);
-  --node-shadow-selected: 0 0 15px var(--accent-cyan);
   --node-text: var(--text-primary);
   --node-text-secondary: var(--text-secondary);
   --node-icon-color: var(--accent-cyan);
 
-  --edge-default-color: #6B7280;
-  --edge-selected-color: var(--accent-cyan);
   --edge-label-color: var(--text-secondary);
-  --graph-bg: var(--bg-primary);
 }
 
 body, #root, .App {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   margin: 0;
   min-height: 100vh;
   display: flex;
@@ -368,4 +382,66 @@ body, #root, .App {
 
 .merge-button:hover:not(:disabled) {
   background: #059669;
+}
+
+/* Global styles */
+@layer components {
+  .frosted-glass {
+    @apply bg-bg-secondary/75 backdrop-blur-md border border-border-primary;
+  }
+
+  .glow-main {
+    box-shadow: 0 0 8px var(--accent-main-glow);
+  }
+
+  .bg-grid {
+    background-image: 
+      linear-gradient(var(--border-primary) 1px, transparent 1px),
+      linear-gradient(to right, var(--border-primary) 1px, transparent 1px);
+    background-size: 2rem 2rem;
+  }
+
+  .chamfer-clip {
+    clip-path: polygon(
+      10px 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      10px 100%,
+      0 calc(100% - 10px),
+      0 10px
+    );
+  }
+}
+
+/* Selection styling */
+::selection {
+  background-color: rgba(34, 160, 241, 0.2); /* accent-main con 20% de opacidad */
+  color: var(--text-primary);
+}
+
+/* Focus styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-accent-main ring-offset-2 ring-offset-bg-primary;
+}
+
+/* Transitions */
+.transition-smooth {
+  transition-property: all;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Typography utilities */
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.tracking-wider {
+  letter-spacing: 0.1em;
+}
+
+.tracking-widest {
+  letter-spacing: 0.2em;
 }

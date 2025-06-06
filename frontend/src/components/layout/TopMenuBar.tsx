@@ -1,79 +1,90 @@
-  import React from 'react';
+import React from 'react';
 import DropdownMenu, { MenuItem } from './DropdownMenu';
-import { 
-  FileText, Edit3, Eye, HelpCircle, Upload, Replace, Layers, Download, 
-  ZoomIn, ZoomOut, Maximize2, User, Plus, FolderOpen, Save, Printer, 
-  Settings, Copy, Scissors, FileSearch, Check, Undo2, Redo2, Moon, Info
-} from 'lucide-react';
+import { FileCode, Edit, Eye, HelpCircle, Database, User, Settings } from 'lucide-react';
 
 interface TopMenuBarProps {
-  onUploadClick: () => void;
-  onOverwrite: () => void;
-  onMerge: () => void;
-  onExportPDF: () => void;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
-  onFitView?: () => void;
-  isFileLoaded: boolean;
-  isGraphEmpty: boolean;
-  fileName?: string;
+  onFileMenuSelect: (action: string) => void;
+  onEditMenuSelect: (action: string) => void;
+  onViewMenuSelect: (action: string) => void;
 }
 
 const TopMenuBar: React.FC<TopMenuBarProps> = ({
-  onUploadClick, onOverwrite, onMerge, onExportPDF, onZoomIn, onZoomOut, onFitView, isFileLoaded, isGraphEmpty, fileName
+  onFileMenuSelect,
+  onEditMenuSelect,
+  onViewMenuSelect,
 }) => {
   const fileMenuItems: MenuItem[] = [
-    { label: 'Nuevo...', icon: Plus, disabled: true, shortcut: 'Ctrl+N' },
-    { label: 'Abrir Archivo...', icon: FolderOpen, action: onUploadClick, shortcut: 'Ctrl+O' },
-    { label: 'Guardar', icon: Save, disabled: true, shortcut: 'Ctrl+S' },
-    { isSeparator: true },
-    { label: 'Exportar como PDF...', action: onExportPDF, icon: Download, disabled: isGraphEmpty, shortcut: 'Ctrl+E' },
-    { isSeparator: true },
-    { label: 'Configuración', icon: Settings, disabled: true },
-  ];
-
-  const dataMenuItems: MenuItem[] = [
-    { label: 'Cargar JSON...', action: onUploadClick, icon: Upload },
-    { label: `Sobrescribir con ${fileName || 'archivo'}`, action: onOverwrite, icon: Replace, disabled: !isFileLoaded },
-    { label: `Agregar desde ${fileName || 'archivo'}`, action: onMerge, icon: Layers, disabled: !isFileLoaded },
+    { label: 'Nuevo Grafo', action: () => onFileMenuSelect('new'), icon: FileCode },
+    { label: 'Abrir...', action: () => onFileMenuSelect('open'), icon: FileCode },
+    { label: 'Guardar', action: () => onFileMenuSelect('save'), icon: FileCode },
+    { label: 'Exportar...', action: () => onFileMenuSelect('export'), icon: FileCode },
   ];
 
   const editMenuItems: MenuItem[] = [
-    { label: 'Deshacer', icon: Undo2, disabled: true, shortcut: 'Ctrl+Z' },
-    { label: 'Rehacer', icon: Redo2, disabled: true, shortcut: 'Ctrl+Shift+Z' },
-    { isSeparator: true },
-    { label: 'Cortar', icon: Scissors, disabled: true, shortcut: 'Ctrl+X' },
-    { label: 'Copiar', icon: Copy, disabled: true, shortcut: 'Ctrl+C' },
-    { label: 'Seleccionar todo', icon: Check, action: () => {}, disabled: isGraphEmpty, shortcut: 'Ctrl+A' },
-    { isSeparator: true },
-    { label: 'Buscar', icon: FileSearch, disabled: true, shortcut: 'Ctrl+F' },
+    { label: 'Deshacer', action: () => onEditMenuSelect('undo'), icon: Edit },
+    { label: 'Rehacer', action: () => onEditMenuSelect('redo'), icon: Edit },
+    { label: 'Copiar', action: () => onEditMenuSelect('copy'), icon: Edit },
+    { label: 'Pegar', action: () => onEditMenuSelect('paste'), icon: Edit },
   ];
 
   const viewMenuItems: MenuItem[] = [
-    { label: 'Ajustar Vista', action: onFitView, icon: Maximize2, disabled: isGraphEmpty, shortcut: 'Ctrl+0' },
-    { label: 'Acercar', action: onZoomIn, icon: ZoomIn, disabled: isGraphEmpty, shortcut: 'Ctrl+Plus' },
-    { label: 'Alejar', action: onZoomOut, icon: ZoomOut, disabled: isGraphEmpty, shortcut: 'Ctrl+-' },
-    { isSeparator: true },
-    { label: 'Modo oscuro', icon: Moon, disabled: true },
-  ];
-
-  const helpMenuItems: MenuItem[] = [
-    { label: 'Documentación', icon: HelpCircle, disabled: true },
-    { label: 'Acerca de Nodex', icon: Info, action: () => alert('Nodex v1.0') },
+    { label: 'Zoom In', action: () => onViewMenuSelect('zoomIn'), icon: Eye },
+    { label: 'Zoom Out', action: () => onViewMenuSelect('zoomOut'), icon: Eye },
+    { label: 'Reset View', action: () => onViewMenuSelect('resetView'), icon: Eye },
   ];
 
   return (
-    <div className="flex items-center w-full px-2 bg-menu-bg border-b border-menu-border h-10 shadow-sm flex-shrink-0">
-       <div className="flex items-center h-full top-menu-bar">
-        <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} triggerIcon={FileText} />
-        <DropdownMenu triggerLabel="Editar" items={editMenuItems} triggerIcon={Edit3} />
-        <DropdownMenu triggerLabel="Datos" items={dataMenuItems} triggerIcon={Layers} />
-        <DropdownMenu triggerLabel="Vista" items={viewMenuItems} triggerIcon={Eye} />
+    <div className="relative flex items-center w-full px-4 bg-bg-secondary/70 backdrop-blur-sm border-b border-border-primary h-11 shadow-lg z-20 flex-shrink-0">
+      {/* Logo y Título */}
+      <div className="flex items-center gap-2 mr-6">
+        <Database size={18} className="text-accent-main" />
+        <span className="font-bold text-lg text-text-primary tracking-wider font-mono">NODEX</span>
       </div>
+
+      {/* Menús Principales */}
+      <div className="flex items-center h-full gap-1 uppercase text-xs tracking-widest font-semibold">
+        <div className="hover:bg-bg-tertiary px-3 py-2 rounded-sm transition-colors">
+          <DropdownMenu 
+            triggerLabel="Archivo" 
+            items={fileMenuItems}
+          />
+        </div>
+        <div className="hover:bg-bg-tertiary px-3 py-2 rounded-sm transition-colors">
+          <DropdownMenu 
+            triggerLabel="Edición" 
+            items={editMenuItems}
+          />
+        </div>
+        <div className="hover:bg-bg-tertiary px-3 py-2 rounded-sm transition-colors">
+          <DropdownMenu 
+            triggerLabel="Visualización" 
+            items={viewMenuItems}
+          />
+        </div>
+      </div>
+
+      {/* Espaciador */}
       <div className="flex-grow" />
-      <div className="flex items-center h-full top-menu-bar">
-        <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} triggerIcon={HelpCircle} align="right" />
-        <div className="ml-2 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-300 transition-colors">
+
+      {/* Acciones de Usuario */}
+      <div className="flex items-center h-full gap-2">
+        <button 
+          className="p-2 rounded-sm hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+          title="Configuración"
+        >
+          <Settings size={16} />
+        </button>
+        <button 
+          className="p-2 rounded-sm hover:bg-bg-tertiary text-text-secondary hover:text-text-primary transition-colors"
+          title="Ayuda"
+        >
+          <HelpCircle size={16} />
+        </button>
+        <div className="w-px h-5 bg-border-secondary mx-2"></div>
+        <div 
+          className="w-8 h-8 rounded-sm bg-bg-tertiary flex items-center justify-center text-text-secondary cursor-pointer hover:bg-accent-main hover:text-bg-primary transition-colors border border-border-secondary"
+          title="Perfil de Usuario"
+        >
           <User size={16} />
         </div>
       </div>

@@ -554,28 +554,51 @@ export const GraphPage: React.FC = () => {
   return (
     <div className="graph-page-container flex flex-col h-full w-full overflow-hidden">
       <TopMenuBar
-        onUploadClick={handleUploadAreaClick}
-        onOverwrite={() => {
-          if (selectedFileContent && fileName) {
-            handleJsonUploaded(selectedFileContent, fileName, 'overwrite');
-          } else {
-            alert("No file selected to overwrite with.");
+        onFileMenuSelect={(action) => {
+          switch (action) {
+            case 'new':
+              // Implementar nueva funcionalidad
+              break;
+            case 'open':
+              handleUploadAreaClick();
+              break;
+            case 'save':
+              // Implementar guardado
+              break;
+            case 'export':
+              handleExportPDF();
+              break;
           }
         }}
-        onMerge={() => {
-          if (selectedFileContent && fileName) {
-            handleJsonUploaded(selectedFileContent, fileName, 'merge');
-          } else {
-            alert("No file selected to merge from.");
+        onEditMenuSelect={(action) => {
+          switch (action) {
+            case 'undo':
+              // Implementar deshacer
+              break;
+            case 'redo':
+              // Implementar rehacer
+              break;
+            case 'copy':
+              // Implementar copiar
+              break;
+            case 'paste':
+              // Implementar pegar
+              break;
           }
         }}
-        onExportPDF={handleExportPDF}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onFitView={handleFitView}
-        isFileLoaded={!!selectedFileContent}
-        isGraphEmpty={nodes.length === 0 && !isLoading}
-        fileName={fileName}
+        onViewMenuSelect={(action) => {
+          switch (action) {
+            case 'zoomIn':
+              handleZoomIn();
+              break;
+            case 'zoomOut':
+              handleZoomOut();
+              break;
+            case 'resetView':
+              handleFitView();
+              break;
+          }
+        }}
       />
       
       <input 
@@ -654,63 +677,47 @@ export const GraphPage: React.FC = () => {
               order={2} 
               id="details-panel-resizable"
             >
-              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden rounded-md border-l border-input-border shadow-lg">
-                <div className="p-3 border-b border-input-border flex justify-between items-center flex-shrink-0">
-                  <h3 className="text-md font-semibold text-accent-cyan truncate" title={detailsNode.data.name}>
-                    Detalles: {detailsNode.data.name}
+              <div className="bg-bg-secondary h-full flex flex-col overflow-hidden border-l-2 border-accent-main">
+                <div className="p-4 border-b-2 border-border-primary flex justify-between items-center flex-shrink-0">
+                  <h3 className="text-lg font-bold text-text-primary font-mono tracking-wider" title={detailsNode.data.name}>
+                    // DATA LOG: {detailsNode.data.name}
                   </h3>
                   <button 
                     onClick={handleCloseDetailPanel} 
-                    className="text-text-secondary hover:text-accent-red p-1 rounded-full hover:bg-accent-red/10 transition-colors"
-                    aria-label="Cerrar panel de detalles"
+                    className="text-text-secondary hover:text-accent-danger transition-colors p-1 rounded-sm hover:bg-bg-tertiary"
                   >
-                    <X size={18} />
+                    <X size={20} />
                   </button>
                 </div>
-                <div className="flex-grow overflow-auto p-3 space-y-2">
-                  {Object.entries(flattenObject(detailsNode.data.rawJsonData))
-                    .map(([key, value]) => {
-                      // Keys to completely exclude (the final part of the key)
-                      const finalKeyPart = key.includes(' -> ') ? key.substring(key.lastIndexOf(' -> ') + 4) : key;
-                      const excludedLeafKeys = [
-                        'status', '_id', '$oid', 'docProbatorio', 
-                        'claveEntidadRegistro', 'claveMunicipioRegistro',
-                      ];
-
-                      if (excludedLeafKeys.includes(finalKeyPart)) {
-                        return null;
-                      }
-
-                      // Exclude specific path patterns
-                      if (key.includes('data -> codigo') || key.includes('data -> mensaje')) {
-                        // Make sure we're not excluding something we want
-                        if (!key.includes('registros[0] -> datosDocProbatorio ->')) {
-                          return null;
-                        }
-                      }
-                      
-                      // Don't show if value is an empty object
-                      if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
-                        return null;
-                      }
-                      // Don't show if value is null, undefined or empty string
-                      if (value === null || value === undefined || String(value).trim() === '') {
-                        return null;
-                      }
-
-                      const displayKey = formatKeyForDisplay(key);
-                      const displayValue = normalizeValueToSentenceCase(String(value));
-
-                      return (
-                        <div key={key} className="detail-item text-xs p-2 bg-input-bg rounded-sm break-words">
-                          <span className="font-semibold text-accent-cyan-darker">{displayKey}: </span>
-                          <span className="text-text-primary">{displayValue}</span>
+                <div className="flex-grow overflow-auto p-4 font-mono text-xs space-y-4">
+                  {Object.entries(detailsNode.data.rawJsonData || {}).map(([sectionKey, sectionValue]) => {
+                    if (!sectionValue || typeof sectionValue !== 'object' || Object.keys(sectionValue).length === 0) return null;
+                    
+                    return (
+                      <details key={sectionKey} className="group" open>
+                        <summary className="cursor-pointer list-none flex items-center gap-2 text-accent-main hover:brightness-125 transition-all">
+                          <span className="text-accent-warn">$</span>
+                          <span className="uppercase font-bold tracking-widest">{formatKeyForDisplay(sectionKey)}</span>
+                          <div className="flex-grow border-b border-dashed border-border-secondary"></div>
+                        </summary>
+                        <div className="pl-4 pt-3 space-y-1.5">
+                          {Object.entries(flattenObject(sectionValue))
+                            .map(([key, value]) => {
+                              if (value === null || value === undefined || String(value).trim() === '') return null;
+                              const displayKey = formatKeyForDisplay(key);
+                              const displayValue = normalizeValueToSentenceCase(String(value));
+                              return (
+                                <div key={key} className="flex">
+                                  <span className="text-text-secondary w-1/3 truncate pr-2">{displayKey}</span>
+                                  <span className="text-text-primary flex-1 break-all">{displayValue}</span>
+                                </div>
+                              );
+                            })
+                            .filter(Boolean)}
                         </div>
-                      );
-                    })
-                    // Filter out nulls from exclusions
-                    .filter(Boolean)
-                  }
+                      </details>
+                    );
+                  })}
                 </div>
               </div>
             </Panel>
