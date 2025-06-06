@@ -122,29 +122,10 @@ handle_git_changes() {
   fi
 }
 
-# --- MAIN ---
-echo -e "${CYAN}🚀 Iniciando script de pruebas integrado Nodex...${NC}"
-start_time=$(date +%s)
-
 cleanup_ports
 handle_git_changes
 
-# --- Docker Compose ---
-log_info "🐳 Iniciando entorno Docker Compose..."
-
-log_info "🧹 Deteniendo servicios previos (si existen)..."
-
-docker compose down --remove-orphans -t 1 || true
-log_success "Entorno limpiado."
-
-log_info "🏗️  Levantando entorno (build y up)..."
-if docker compose up --build -d; then
-  log_success "Todos los servicios Docker Compose están corriendo."
-else
-  log_error "Error durante 'docker compose up'."
-  docker compose logs --tail=50
-  exit 1
-fi
+./scripts/start.sh
 
 log_success "🎉 Script ejecutado con éxito en $(($(date +%s) - start_time)) segundos."
 exit 0
