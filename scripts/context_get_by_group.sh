@@ -9,7 +9,7 @@ rm -rf auxiliar/code_context/* 2>/dev/null
 declare -A GROUP_FILES
 GROUP_FILES[frontend]="frontend"
 GROUP_FILES[backend]="backend"
-GROUP_FILES[full]="frontend backend docker-compose.yml frontend/Dockerfile docker"
+GROUP_FILES[full]="frontend backend docker-compose.yml docker"
 
 # Extensiones permitidas (sólo para grupos distintos de "full")
 INCLUDE_EXTENSIONS=(py js json yml yaml css html tsx ts r)
@@ -91,5 +91,23 @@ for item in ${GROUP_FILES[$GROUP]}; do
     echo -e "\n" >> "$OUTPUT_FILE"
   done <<< "$files"
 done
+
+# Specifically add all Dockerfiles if the group is "full"
+if [ "$GROUP" == "full" ]; then
+  echo "===== Searching for all Dockerfiles =====" >> "$OUTPUT_FILE"
+  # Find all Dockerfiles, excluding those in .git and other excluded directories
+  dockerfiles=$(find . -type f -name "Dockerfile" -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/venv/*" -not -path "*/__pycache__/*")
+  
+  while IFS= read -r file; do
+    rel_path="${file#./}"
+    if should_exclude_file "$rel_path"; then
+      echo "Skipping excluded file: $rel_path"
+      continue
+    fi
+    echo "===== $rel_path =====" >> "$OUTPUT_FILE"
+    cat "$file" >> "$OUTPUT_FILE"
+    echo -e "\n" >> "$OUTPUT_FILE"
+  done <<< "$dockerfiles"
+fi
 
 echo "Context successfully written to $OUTPUT_FILE"

@@ -16,15 +16,29 @@ from . import crud, models, auth
 
 app = FastAPI(title="SIVG Backend")
 
-# Configuración CORS (permitir peticiones desde el frontend)
-origins = ["*"]  # TEMPORALMENTE permitir todos los orígenes para debug
+# CORS Configuration
+origins = [
+    "https://localhost:4545",
+    "https://127.0.0.1:4545",
+    "https://192.168.0.4:4545",
+    "https://192.168.0.4:8000",  # Backend URL
+    "https://localhost:8000",    # Backend URL
+    # Keep HTTP for development if needed
+    "http://localhost:4545",
+    "http://127.0.0.1:4545",
+    "http://192.168.0.4:4545",
+    "http://192.168.0.4:8000",
+    "http://localhost:8000",
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 @app.on_event("startup")

@@ -31,6 +31,7 @@ import jsPDF from 'jspdf';
 import CustomConnectionLine from '../components/graph/CustomConnectionLine';
 import TopMenuBar from '../components/layout/TopMenuBar';
 import { deepSearchInObject, flattenObject, formatKeyForDisplay, normalizeValueToSentenceCase } from '../utils/dataUtils';
+import config from '../config';
 
 const nodeTypes = {
   person: PersonNode,
@@ -310,7 +311,7 @@ export const GraphPage: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      const response = await fetch('http://localhost:8000/graph-data/', {
+      const response = await fetch(config.api.endpoints.graphData, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
@@ -370,7 +371,7 @@ export const GraphPage: React.FC = () => {
     }
     console.log(`Uploading ${originalFileName} to backend with mode: ${mode}`);
     try {
-      const response = await fetch('http://localhost:8000/graph/load-json', {
+      const response = await fetch(config.api.endpoints.loadJson, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

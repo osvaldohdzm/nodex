@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../assets/css/styles.css';
+import config from '../../config';
 
 interface LoginFormProps {
   onLoginSuccess: () => void; // This prop might become less critical if AppContent handles state
@@ -23,7 +24,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/token', { // Changed from 192.168.0.4 to localhost
+      const response = await fetch(config.api.endpoints.login, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
