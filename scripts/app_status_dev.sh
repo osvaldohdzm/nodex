@@ -72,7 +72,8 @@ check_service_health() {
     fi
   fi
   
-  printf "  %-25s: %s\n" "$service_display_name" "$status_message"
+  # CORRECCIÓN: Usar %b para que printf interprete los códigos de color en la variable.
+  printf "  %-25s: %b\n" "$service_display_name" "$status_message"
   return $result
 }
 

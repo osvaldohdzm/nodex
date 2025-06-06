@@ -15,7 +15,7 @@ import ReactFlow, {
   Background,
   useNodesState,
   useEdgesState,
-  Node, // Usar Node directamente
+  Node,
   Edge,
   Connection,
   useReactFlow,
@@ -325,7 +325,7 @@ export const GraphPage: React.FC = () => {
         }
       } catch (error) { alert('JSON inválido o error al procesar.'); setFileName(''); }
     } else alert('Arrastra un archivo JSON válido.');
-  }, [nodes, uploadJsonToBackend]);
+  }, [nodes, uploadJsonToBackend]); // uploadJsonToBackend es una dependencia
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => { event.preventDefault(); event.stopPropagation(); }, []);
 
@@ -419,7 +419,7 @@ export const GraphPage: React.FC = () => {
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
   let mainContent;
-  if (isLoading) { // Usar la variable de estado 'isLoading'
+  if (isLoading) { // CORREGIDO: Usar la variable de estado 'isLoading'
     mainContent = <div className="flex items-center justify-center h-full w-full text-text-secondary">Cargando datos del grafo...</div>;
   } else if (nodes.length === 0) {
     mainContent = (
@@ -462,7 +462,7 @@ export const GraphPage: React.FC = () => {
           onFileMenuSelect={handleFileMenuAction}
           onEditMenuSelect={handleEditMenuAction}
           onViewMenuSelect={handleViewMenuAction}
-          isGraphEmpty={nodes.length === 0 && !isLoading} // Usar la variable de estado 'isLoading'
+          isGraphEmpty={nodes.length === 0 && !isLoading} // CORREGIDO: Usar la variable de estado 'isLoading'
         />
       </header>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
