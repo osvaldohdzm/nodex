@@ -7,9 +7,11 @@ from redisgraph import Graph
 from fastapi import HTTPException
 import traceback
 
-# NO definas REDIS_HOST, etc., aquí a nivel de módulo si vas a leerlas dentro de la función.
-# Si las dejas aquí, asegúrate de que el problema de scope no exista en tu entorno de ejecución.
-# Para mayor seguridad, las leeremos dentro de init_db_connection.
+# Variables de entorno leídas al inicio del módulo
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
+REDISGRAPH_GRAPH_NAME = os.getenv("REDISGRAPH_GRAPH_NAME", "sivg_graph")
 
 redis_conn = None
 redis_graph = None
@@ -17,31 +19,24 @@ redis_graph = None
 async def init_db_connection():
     global redis_conn, redis_graph
     try:
-        # LEER VARIABLES DE ENTORNO AQUÍ
-        REDIS_HOST_VAL = os.getenv("REDIS_HOST", "localhost")
-        REDIS_PORT_VAL = int(os.getenv("REDIS_PORT", 6379))
-        REDIS_PASSWORD_VAL = os.getenv("REDIS_PASSWORD", None) # Puede ser None si no hay contraseña
-        REDISGRAPH_GRAPH_NAME_VAL = os.getenv("REDISGRAPH_GRAPH_NAME", "sivg_graph")
-
         print(f"DEBUG: backend/app/crud.py - redis-py version: {redis.__version__}")
-        print(f"Attempting to connect to Redis: Host={REDIS_HOST_VAL}, Port={REDIS_PORT_VAL}")
+        print(f"Attempting to connect to Redis: Host={REDIS_HOST}, Port={REDIS_PORT}")
 
         redis_conn = redis.Redis(
-            host=REDIS_HOST_VAL,
-            port=REDIS_PORT_VAL,
-            password=REDIS_PASSWORD_VAL, # Pasa None si no hay contraseña
+            host=REDIS_HOST, # Usar la variable global del módulo
+            port=REDIS_PORT,   # Usar la variable global del módulo
+            password=REDIS_PASSWORD, # Usar la variable global del módulo
             decode_responses=True
         )
         redis_conn.ping()
-        print(f"Successfully connected to Redis at {REDIS_HOST_VAL}:{REDIS_PORT_VAL}")
+        print(f"Successfully connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
 
-        redis_graph = Graph(REDISGRAPH_GRAPH_NAME_VAL, redis_conn)
-        print(f"RedisGraph object initialized successfully for graph: {REDISGRAPH_GRAPH_NAME_VAL}")
+        redis_graph = Graph(REDISGRAPH_GRAPH_NAME, redis_conn) # Usar la variable global del módulo
+        print(f"RedisGraph object initialized successfully for graph: {REDISGRAPH_GRAPH_NAME}")
 
     except redis.exceptions.ConnectionError as e:
         print(f"Failed to connect to Redis: {e}")
-        # Imprime las variables que se intentaron usar para la conexión para depuración
-        print(f"Connection attempt params: Host={os.getenv('REDIS_HOST')}, Port={os.getenv('REDIS_PORT')}")
+        print(f"Connection attempt params: Host={REDIS_HOST}, Port={REDIS_PORT}")
         raise HTTPException(status_code=503, detail=f"Could not connect to Redis: {e}")
     except Exception as e:
         print(f"Failed to initialize RedisGraph object: {e}\n{traceback.format_exc()}")
@@ -57,7 +52,7 @@ async def create_indices_if_needed():
     if not redis_graph:
         print("RedisGraph not initialized. Skipping index creation.")
         return
-    expected_labels = ["person", "company", "UnknownNode"] # Asegúrate que coincidan con tus tipos de nodo
+    expected_labels = ["person", "company", "UnknownNode"]
     for label in expected_labels:
         if not label or not label.strip(): continue
         try:
@@ -89,41 +84,50 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
 
     print(f"process_and_store_json: Found {len(nodes_to_create)} nodes and {len(edges_to_create)} edges in payload.")
 
-    ALLOWED_NODE_PROPERTIES_SERIALIZE_AS_JSON = ['rawJsonData', 'details']
-
     if isinstance(nodes_to_create, list):
         for node_data_from_frontend in nodes_to_create:
             node_frontend_id = node_data_from_frontend.get("id")
             label = node_data_from_frontend.get("type", "UnknownNode")
             if not label or not label.strip(): label = "UnknownNode"
             
+            # El objeto 'position' del frontend no debe ir directamente a las propiedades del nodo en DB
+            # Se usa para la visualización en React Flow. Si se quiere persistir, guardar x, y por separado.
+            position_from_frontend = node_data_from_frontend.get("position", {}) 
+
             props_from_frontend_data_field = node_data_from_frontend.get("data", {})
             if not isinstance(props_from_frontend_data_field, dict):
                 props_from_frontend_data_field = {}
 
             cypher_props = {'frontend_id': node_frontend_id}
             
+            # Añadir x e y si existen en el objeto position del nodo del frontend
+            if isinstance(position_from_frontend, dict):
+                if 'x' in position_from_frontend and isinstance(position_from_frontend['x'], (int, float)):
+                    cypher_props['x'] = position_from_frontend['x']
+                if 'y' in position_from_frontend and isinstance(position_from_frontend['y'], (int, float)):
+                    cypher_props['y'] = position_from_frontend['y']
+            
+            # Iterar sobre las propiedades de 'data' del nodo del frontend
             for key, value in props_from_frontend_data_field.items():
-                if key == 'onImageUpload': # Excluir funciones
+                if key == 'onImageUpload': # EXCLUIR FUNCIONES
                     continue
                 
                 if value is None: # No guardar propiedades None
                     continue
 
-                if isinstance(value, (str, int, float, bool)):
-                    cypher_props[key] = value
-                elif key in ALLOWED_NODE_PROPERTIES_SERIALIZE_AS_JSON:
+                # Lista blanca de propiedades permitidas y cómo tratarlas
+                if key in ['name', 'typeDetails', 'status', 'title', 'location', 'icon', 'imageUrl']:
+                    if isinstance(value, (str, int, float, bool)):
+                        cypher_props[key] = value
+                elif key in ['rawJsonData', 'details']: # Estos se serializan a JSON
                     try:
                         cypher_props[key] = json.dumps(value)
                     except (TypeError, ValueError) as json_err:
                         print(f"Warning: Could not serialize property '{key}' for node {node_frontend_id}: {json_err}")
-                elif isinstance(value, (dict, list)): # Otros objetos/listas se serializan
-                    try:
-                        cypher_props[key] = json.dumps(value)
-                    except (TypeError, ValueError):
-                        print(f"Warning: Could not serialize complex property '{key}' for node {node_frontend_id}")
-                # else: # Opcional: loguear tipos no manejados
-                    # print(f"Warning: Property '{key}' for node {node_frontend_id} has unhandled type {type(value)}. Skipping.")
+                # Ignorar otras propiedades no listadas explícitamente para evitar errores de tipo
+                # else:
+                #     print(f"Warning: Property '{key}' for node {node_frontend_id} is not explicitly handled. Skipping.")
+
 
             query = f"CREATE (n:{label} $props)"
             try:
@@ -133,6 +137,7 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
             except Exception as e:
                 print(f"CRITICAL ERROR creating node {node_frontend_id} ({label}): {e}\nProps sent: {cypher_props}\n{traceback.format_exc()}")
 
+    # ... (Lógica de aristas sin cambios significativos, ya que suelen tener propiedades simples)
     if isinstance(edges_to_create, list):
         for edge_data in edges_to_create:
             source_frontend_id = edge_data.get("source")
@@ -158,9 +163,9 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
             if cypher_edge_props:
                 props_list = []
                 for k, v_prop in cypher_edge_props.items():
-                    param_name = f"edge_prop_{k}" # Crear un nombre de parámetro único
+                    param_name = f"edge_prop_{k}"
                     props_list.append(f"{k}: ${param_name}")
-                    query_params[param_name] = v_prop # Añadir al diccionario de parámetros
+                    query_params[param_name] = v_prop
                 props_cypher_string = "{" + ", ".join(props_list) + "}"
 
             query = f"""
@@ -173,6 +178,7 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
                 redis_graph.query(query, query_params)
             except Exception as e:
                 print(f"Error creating edge from {source_frontend_id} to {target_frontend_id}: {e}\n{traceback.format_exc()}")
+
 
 async def get_all_graph_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     if not redis_graph:
@@ -190,56 +196,41 @@ async def get_all_graph_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any
         nodes_result = redis_graph.query(nodes_query)
         if nodes_result and nodes_result.result_set:
             for row_data in nodes_result.result_set:
-                internal_id, labels, props = row_data
+                internal_id, labels, props_from_db = row_data # Renombrar props
                 
-                parsed_data_props = {}
-                node_position = {"x": 0.0, "y": 0.0} # Posición por defecto
+                # Copiar props para no modificar el original directamente
+                current_node_data_props = dict(props_from_db)
 
-                for key, value in props.items():
-                    if key == 'position' and isinstance(value, str): # 'position' podría venir serializada
-                        try:
-                            pos_dict = json.loads(value)
-                            node_position["x"] = float(pos_dict.get("x", 0))
-                            node_position["y"] = float(pos_dict.get("y", 0))
-                        except (json.JSONDecodeError, TypeError, ValueError):
-                            print(f"Warning: Could not parse position for node {props.get('frontend_id')}")
-                    elif key in ['rawJsonData', 'details'] and isinstance(value, str):
-                        try:
-                            parsed_data_props[key] = json.loads(value)
-                        except json.JSONDecodeError:
-                            parsed_data_props[key] = value 
-                    elif isinstance(value, str): # Otros strings que podrían ser JSON
-                        try:
-                            if (value.startswith('{') and value.endswith('}')) or \
-                               (value.startswith('[') and value.endswith(']')):
-                                parsed_data_props[key] = json.loads(value)
-                            else:
-                                parsed_data_props[key] = value
-                        except json.JSONDecodeError:
-                            parsed_data_props[key] = value
-                    else:
-                        parsed_data_props[key] = value
+                # Extraer y eliminar 'x' e 'y' para el objeto 'position'
+                pos_x = current_node_data_props.pop("x", 0.0) # Valor por defecto si no existe
+                pos_y = current_node_data_props.pop("y", 0.0) # Valor por defecto si no existe
                 
-                # Asegurar que las propiedades base de DemoNodeData estén presentes
-                final_data_props: DemoNodeData = {
-                    "name": parsed_data_props.get("name", "Sin Nombre"),
-                    "typeDetails": parsed_data_props.get("typeDetails", "Sin Detalles"),
-                    "status": parsed_data_props.get("status", "normal"),
-                    "rawJsonData": parsed_data_props.get("rawJsonData", {}),
-                    "title": parsed_data_props.get("title"),
-                    "icon": parsed_data_props.get("icon"),
-                    "details": parsed_data_props.get("details"),
-                    "location": parsed_data_props.get("location"),
-                    "imageUrl": parsed_data_props.get("imageUrl"),
-                    # onImageUpload no se guarda ni se recupera del backend
-                }
+                # Asegurar que x e y sean flotantes
+                try:
+                    pos_x = float(pos_x)
+                except (ValueError, TypeError):
+                    pos_x = 0.0
+                try:
+                    pos_y = float(pos_y)
+                except (ValueError, TypeError):
+                    pos_y = 0.0
 
+                node_position = {"x": pos_x, "y": pos_y}
 
+                # Deserializar campos JSON si existen y son strings
+                for json_key in ['rawJsonData', 'details']:
+                    if json_key in current_node_data_props and isinstance(current_node_data_props[json_key], str):
+                        try:
+                            current_node_data_props[json_key] = json.loads(current_node_data_props[json_key])
+                        except json.JSONDecodeError:
+                            print(f"Warning: Could not parse JSON for key '{json_key}' in node {props_from_db.get('frontend_id')}")
+                            # Mantener como string si falla el parseo, o asignar {} o None según prefieras
+                
                 node_for_frontend = {
-                    "id": props.get("frontend_id", str(internal_id)), 
+                    "id": props_from_db.get("frontend_id", str(internal_id)), 
                     "type": labels[0] if labels else "UnknownNode",
                     "position": node_position,
-                    "data": final_data_props 
+                    "data": current_node_data_props # El resto de las propiedades van a data
                 }
                 processed_nodes_dict[str(internal_id)] = node_for_frontend
 
@@ -274,23 +265,21 @@ async def get_all_graph_data() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any
 async def get_node_properties(node_id: str) -> Dict:
     if not redis_graph:
         raise HTTPException(status_code=503, detail="Database not connected")
-    # Asumimos que node_id es frontend_id
     query = "MATCH (n {frontend_id: $node_id}) RETURN properties(n) as props, labels(n) as labels"
     try:
         result = redis_graph.query(query, {'node_id': node_id}) 
     except Exception as e:
         print(f"Error fetching node properties for frontend_id {node_id}: {e}")
-        return None # Devolver None en lugar de generar una excepción aquí
+        return None
     
     record = result.result_set[0] if result and result.result_set else None
     if record:
         props, labels = record
-        # Deserializar rawJsonData y details si es necesario
         if 'rawJsonData' in props and isinstance(props['rawJsonData'], str):
             try: props['rawJsonData'] = json.loads(props['rawJsonData'])
-            except: pass # Mantener como string si falla
+            except: pass
         if 'details' in props and isinstance(props['details'], str):
             try: props['details'] = json.loads(props['details'])
-            except: pass # Mantener como string si falla
+            except: pass
         return {"properties": props, "labels": labels}
     return None

@@ -51,9 +51,9 @@ import TopMenuBar, {
   FileMenuAction,
   EditMenuAction,
   ViewMenuAction,
-  type FileMenuActionType, // Importar el TIPO
-  type EditMenuActionType, // Importar el TIPO
-  type ViewMenuActionType  // Importar el TIPO
+  type FileMenuActionType,
+  type EditMenuActionType,
+  type ViewMenuActionType
 } from '../components/layout/TopMenuBar';
 
 import { JsonData, DemoNodeData } from '../types/graph';
@@ -419,7 +419,7 @@ export const GraphPage: React.FC = () => {
   }, [handleZoomIn, handleZoomOut, handleFitView]);
 
   let mainContent;
-  if (isLoading) { // CORREGIDO: Usar la variable de estado 'isLoading'
+  if (isLoading) { // Usar la variable de estado 'isLoading'
     mainContent = <div className="flex items-center justify-center h-full w-full text-text-secondary">Cargando datos del grafo...</div>;
   } else if (nodes.length === 0) {
     mainContent = (
@@ -462,7 +462,7 @@ export const GraphPage: React.FC = () => {
           onFileMenuSelect={handleFileMenuAction}
           onEditMenuSelect={handleEditMenuAction}
           onViewMenuSelect={handleViewMenuAction}
-          isGraphEmpty={nodes.length === 0 && !isLoading} // CORREGIDO: Usar la variable de estado 'isLoading'
+          isGraphEmpty={nodes.length === 0 && !isLoading} // Usar la variable de estado 'isLoading'
         />
       </header>
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
