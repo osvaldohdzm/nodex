@@ -23,7 +23,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.0.4:8000/token', { // Ensure this URL is correct
+      const response = await fetch('http://localhost:8000/token', { // Changed from 192.168.0.4 to localhost
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

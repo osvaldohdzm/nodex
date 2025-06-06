@@ -65,9 +65,7 @@ docker run -d \
   -p 8000:8000 \
   -p 4545:4545 \
   "$APP_IMAGE_NAME"
-  # Los puertos 7474 y 7687 son para Neo4j, no RedisGraph. Los comento.
-  # -p 7474:7474 \
-  # -p 7687:7687
+
 echo "✔️ Contenedor de la aplicación '$APP_CONTAINER_NAME' iniciado."
 
 echo ""

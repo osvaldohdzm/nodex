@@ -17,12 +17,7 @@ from . import crud, models, auth
 app = FastAPI(title="SIVG Backend")
 
 # Configuración CORS (permitir peticiones desde el frontend)
-origins = [
-    "http://localhost:4545", # Puerto del frontend
-    "http://localhost:3000", # Puerto de desarrollo de React
-    "http://192.168.0.4:4545", # Nueva IP añadida
-    "http://192.168.0.4:3000",  # Added for dev consistency
-]
+origins = ["*"]  # TEMPORALMENTE permitir todos los orígenes para debug
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,9 +36,10 @@ async def startup_event():
 async def shutdown_event():
     await crud.close_db_connection()
 
-@app.options("/token")
-async def options_token():
-    return JSONResponse(status_code=200, content={"message": "CORS preflight successful"})
+# Comentar temporalmente el manejador OPTIONS explícito
+# @app.options("/token")
+# async def options_token():
+#     return JSONResponse(status_code=200, content={"message": "CORS preflight successful"})
 
 @app.post("/token", response_model=models.Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
