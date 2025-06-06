@@ -1,7 +1,7 @@
-import React, { memo } from 'react';
+import React, { memo, useRef } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import classnames from 'classnames';
-import { User, Briefcase, Fingerprint, AlertTriangle } from 'lucide-react';
+import { User, Briefcase, Fingerprint, AlertTriangle, Upload } from 'lucide-react';
 import { DemoNodeData } from '../../types/graph';
 
 // Estilo para las esquinas biseladas (chamfered corners)
@@ -14,6 +14,25 @@ const ChamferStyle = () => (
 );
 
 const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nodeId }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageContainerClick = () => {
+    if (data.onImageUpload) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && data.onImageUpload) {
+      data.onImageUpload(nodeId, file);
+    }
+    // Reset file input value to allow re-uploading the same file
+    if(event.target) {
+        event.target.value = '';
+    }
+  };
+  
   const statusColor = {
     normal: 'bg-accent-main',
     warning: 'bg-accent-warn',
@@ -48,9 +67,21 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
 
         {/* Contenido Principal */}
         <div className="p-3 flex-grow flex flex-col">
+          <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/png, image/jpeg, image/jpg"
+          />
           <div className="flex gap-3">
-            {/* Imagen con retícula */}
-            <div className="relative w-20 h-20 flex-shrink-0">
+            {/* Imagen con retícula - AHORA CLICABLE */}
+            <div
+                className="relative w-20 h-20 flex-shrink-0 group/image-container"
+                onClick={handleImageContainerClick}
+                style={{ cursor: data.onImageUpload ? 'pointer' : 'default' }}
+                title={data.onImageUpload ? "Haz clic para cambiar la imagen" : ""}
+            >
               <img
                 src={data.imageUrl || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${nodeId}`}
                 alt={data.name}
@@ -62,6 +93,12 @@ const PersonNode: React.FC<NodeProps<DemoNodeData>> = ({ data, selected, id: nod
                 <path d="M0 50H100" stroke="currentColor" strokeWidth="1"/>
                 <rect x="15" y="15" width="70" height="70" stroke="currentColor" strokeWidth="2"/>
               </svg>
+              {/* Overlay on hover to indicate action */}
+              {data.onImageUpload && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/image-container:opacity-100 transition-opacity duration-300">
+                      <Upload size={28} className="text-white" />
+                  </div>
+              )}
             </div>
             {/* Info Primaria */}
             <div className="flex flex-col justify-center overflow-hidden">

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 
 interface RelationshipModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (label: string, isDirected: boolean) => void;
+  onDelete?: () => void; // FIX: Ensure optional prop for delete functionality is defined
   sourceNodeName: string;
   targetNodeName: string;
   initialLabel?: string;
@@ -14,6 +16,7 @@ const RelationshipModal: React.FC<RelationshipModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  onDelete,
   sourceNodeName,
   targetNodeName,
   initialLabel = '',
@@ -21,6 +24,14 @@ const RelationshipModal: React.FC<RelationshipModalProps> = ({
 }) => {
   const [label, setLabel] = useState(initialLabel);
   const [isDirected, setIsDirected] = useState(initialIsDirected);
+
+  // Sync state with initial props when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLabel(initialLabel);
+      setIsDirected(initialIsDirected);
+    }
+  }, [isOpen, initialLabel, initialIsDirected]);
 
   if (!isOpen) return null;
 
@@ -46,7 +57,7 @@ const RelationshipModal: React.FC<RelationshipModalProps> = ({
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Etiqueta (ej. FAMILIAR, SOCIO)"
+              placeholder="Etiqueta (ej. FAMILIAR, NEGOCIO)"
               className="w-full p-2 bg-input-bg border border-node-border rounded text-text-primary focus:border-accent-cyan focus:ring-1 focus:ring-accent-cyan transition"
               required
             />
@@ -62,13 +73,35 @@ const RelationshipModal: React.FC<RelationshipModalProps> = ({
               <span className="ml-2 select-none">Relación dirigida (con flecha)</span>
             </label>
           </div>
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-md text-text-secondary hover:bg-input-bg transition-colors">
-              Cancelar
-            </button>
-            <button type="submit" className="px-4 py-2 bg-accent-cyan text-bg-primary rounded-md hover:bg-accent-cyan-darker transition-colors font-medium">
-              {initialLabel ? 'Actualizar' : 'Crear'}
-            </button>
+          {/* Button container with delete button on the left */}
+          <div className="flex justify-between items-center">
+            <div>
+              {onDelete && ( // Conditional rendering of delete button
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="p-2 rounded-md text-accent-danger hover:bg-accent-danger/20 transition-colors"
+                  title="Eliminar relación"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="px-4 py-2 rounded-md text-text-secondary hover:bg-input-bg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                className="px-4 py-2 bg-accent-cyan text-bg-primary rounded-md hover:bg-accent-cyan-darker transition-colors font-medium"
+              >
+                {initialLabel ? 'Actualizar' : 'Crear'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

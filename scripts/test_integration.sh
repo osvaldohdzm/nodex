@@ -1,3 +1,12 @@
+ Haciendo merge de 'dev-test' en 'dev'...
+error: unable to unlink old 'backend/app/__pycache__/__init__.cpython-310.pyc': Permission denied
+error: unable to create file backend/app/__pycache__/auth.cpython-310.pyc: Permission denied
+error: unable to create file backend/app/__pycache__/crud.cpython-310.pyc: Permission denied
+error: unable to unlink old 'backend/app/__pycache__/main.cpython-310.pyc': Permission denied
+error: unable to create file backend/app/__pycache__/models.cpython-310.pyc: Permission denied
+Merge with strategy ort failed.
+arya@lp-arya01:~/nodex/dev/nodex$ 
+
 #!/bin/bash
 set -euo pipefail
 
@@ -82,6 +91,19 @@ fi
 # 8. Fusionar la rama de prueba
 echo "🔀 Haciendo merge de '$selected_test' en '$base_branch'..."
 git merge --no-ff "$selected_test" -m "Merge rama de prueba '$selected_test' en '$base_branch'"
+
+
+# 7. Cambiar a la rama base y actualizarla si tiene remoto
+echo "🔄 Cambiando a rama base '$base_branch' y actualizándola..."
+git checkout "$base_branch"
+if git ls-remote --exit-code "$REMOTE" "$base_branch" &>/dev/null; then
+  git pull "$REMOTE" "$base_branch"
+fi
+
+# 7.5 Forzar permisos y eliminar archivos .pyc si causan conflictos
+echo "🔧 Ajustando permisos y eliminando archivos conflictivos .pyc en __pycache__..."
+find backend/app/__pycache__ -type f -name "*.pyc" -exec chmod +w {} \; -exec rm -f {} \; 2>/dev/null || true
+
 
 # --- INICIO DE LA MODIFICACIÓN INTELIGENTE ---
 # 9. Aplicar stash si se realizó uno previamente
