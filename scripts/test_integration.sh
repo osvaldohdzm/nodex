@@ -55,22 +55,22 @@ fi
 # --- INICIO DE LA MODIFICACIÓN INTELIGENTE ---
 # 6. Manejar cambios locales antes de cambiar de rama
 echo "🛠️ Verificando cambios locales antes de cambiar de rama..."
-if ! git diff-index --quiet HEAD --; then
-  echo "⚠️ Se detectaron cambios locales sin confirmar. Intentando stash..."
-  if git stash push -m "Automated stash by integration script before switching to $base_branch"; then
-    echo "✅ Cambios locales stasheados exitosamente."
-    # Set a flag to indicate that a stash was performed
-    STASHED_CHANGES=true
-  else
-    echo "❌ No se pudieron stashear los cambios locales. Por favor, revísalos manualmente."
-    exit 1
-  fi
+# Se verifica si hay cambios con 'git status --porcelain'. Esto detecta cambios en archivos rastreados Y archivos sin rastrear.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "⚠️ Se detectaron cambios locales (modificados o sin rastrear). Intentando stash..."
+    # Se usa 'git stash push -u' para incluir los archivos sin rastrear (untracked).
+    if git stash push -u -m "Automated stash by integration script before switching to $base_branch"; then
+        echo "✅ Cambios locales stasheados exitosamente."
+        STASHED_CHANGES=true
+    else
+        echo "❌ No se pudieron stashear los cambios locales. Por favor, revísalos manualmente."
+        exit 1
+    fi
 else
-  echo "✨ No hay cambios locales sin confirmar."
-  STASHED_CHANGES=false
+    echo "✨ No hay cambios locales sin confirmar."
+    STASHED_CHANGES=false
 fi
 # --- FIN DE LA MODIFICACIÓN INTELIGENTE ---
-
 
 # 7. Cambiar a la rama base y actualizarla si tiene remoto
 echo "🔄 Cambiando a rama base '$base_branch' y actualizándola..."
