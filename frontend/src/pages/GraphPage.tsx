@@ -363,7 +363,13 @@ export const GraphPage: React.FC = () => {
 
       if (trigger === 'brujes' || trigger === 'dragdrop') {
         console.log(`Procesando archivo: ${currentFileName}, modo: ${mode}`);
-        const { node: newNodeFromProcessor } = processJsonToSinglePersonNode(parsedJson, nodes);
+        
+        // <-- FIX: Pasar la función de callback al procesador de nodos.
+        const { node: newNodeFromProcessor } = processJsonToSinglePersonNode(
+            parsedJson, 
+            nodes, 
+            handleImageUploadForNode
+        );
 
         if (newNodeFromProcessor) {
           const nodeToSend = JSON.parse(JSON.stringify(newNodeFromProcessor));
@@ -473,6 +479,58 @@ export const GraphPage: React.FC = () => {
     );
   }
 
+  const detailsPanelContent = useMemo(() => {
+    if (!detailsNode?.data?.rawJsonData) return null;
+
+    const renderedKeys = new Set<string>();
+
+    return Object.entries(detailsNode.data.rawJsonData).map(([sectionKey, sectionValue]) => {
+      if (!sectionValue || typeof sectionValue !== 'object' || Object.keys(sectionValue).length === 0) return null;
+
+      const flatSection = flattenObject(sectionValue);
+      if (Object.keys(flatSection).length === 0) return null;
+
+      const sectionItems = Object.entries(flatSection).map(([key, value]) => {
+        if (value === null || value === undefined || String(value).trim() === '') return null;
+
+        const displayKey = formatKeyForDisplay(key);
+
+        if (renderedKeys.has(displayKey)) {
+          return null;
+        }
+        renderedKeys.add(displayKey);
+
+        return (
+          <div key={key} className="grid grid-cols-3 gap-2 items-start">
+            <span className="text-text-secondary truncate pr-1 col-span-1" title={key}>
+              {displayKey}:
+            </span>
+            <span className="text-text-primary col-span-2 break-words">
+              {normalizeValueToSentenceCase(String(value))}
+            </span>
+          </div>
+        );
+      }).filter(Boolean);
+
+      if (sectionItems.length === 0) {
+        return null;
+      }
+
+      return (
+        <details key={sectionKey} className="group" open>
+          <summary className="cursor-pointer list-none flex items-center gap-2 text-accent-main hover:brightness-125 transition-all mb-1">
+            <span className="text-accent-warn">$</span>
+            <span className="uppercase font-bold tracking-widest">{formatKeyForDisplay(sectionKey)}</span>
+            <div className="flex-grow border-b border-dashed border-border-secondary/50"></div>
+          </summary>
+          <div className="pl-4 pt-2 space-y-1.5">
+            {sectionItems}
+          </div>
+        </details>
+      );
+    }).filter(Boolean);
+  }, [detailsNode]);
+
   return (
     <div className="graph-page-container">
       <header className="h-11 w-full bg-bg-secondary border-b border-border-primary flex-shrink-0 z-50">
@@ -507,31 +565,7 @@ export const GraphPage: React.FC = () => {
                     </button>
                   </div>
                   <div className="flex-grow overflow-auto p-4 font-mono text-xs space-y-3 scrollbar-thin scrollbar-thumb-border-secondary scrollbar-track-bg-tertiary">
-                    {Object.entries(detailsNode.data.rawJsonData || {}).map(([sectionKey, sectionValue]) => {
-                      if (!sectionValue || typeof sectionValue !== 'object' || Object.keys(sectionValue).length === 0) return null;
-                      const flatSection = flattenObject(sectionValue);
-                      if (Object.keys(flatSection).length === 0) return null;
-                      return (
-                        <details key={sectionKey} className="group" open>
-                          <summary className="cursor-pointer list-none flex items-center gap-2 text-accent-main hover:brightness-125 transition-all mb-1">
-                            <span className="text-accent-warn">$</span>
-                            <span className="uppercase font-bold tracking-widest">{formatKeyForDisplay(sectionKey)}</span>
-                            <div className="flex-grow border-b border-dashed border-border-secondary/50"></div>
-                          </summary>
-                          <div className="pl-4 pt-2 space-y-1.5">
-                            {Object.entries(flatSection).map(([key, value]) => {
-                              if (value === null || value === undefined || String(value).trim() === '') return null;
-                              return (
-                                <div key={key} className="grid grid-cols-3 gap-2 items-start">
-                                  <span className="text-text-secondary truncate pr-1 col-span-1">{formatKeyForDisplay(key)}:</span>
-                                  <span className="text-text-primary col-span-2 break-words">{normalizeValueToSentenceCase(String(value))}</span>
-                                </div>
-                              );
-                            }).filter(Boolean)}
-                          </div>
-                        </details>
-                      );
-                    })}
+                    {detailsPanelContent}
                   </div>
                 </div>
               </Panel>

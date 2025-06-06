@@ -105,7 +105,11 @@ export const extractPersonInfo = (jsonData: any): { name: string; curp: string; 
   return { name, curp, rfc, otherKeyData };
 };
 
-export const processJsonToSinglePersonNode = (jsonData: any, existingNodes: Node<DemoNodeData>[]): { node: Node<DemoNodeData> | null } => {
+export const processJsonToSinglePersonNode = (
+  jsonData: any,
+  existingNodes: Node<DemoNodeData>[],
+  onImageUpload?: (nodeId: string, file: File) => void
+): { node: Node<DemoNodeData> | null } => {
   const personInfo = extractPersonInfo(jsonData);
 
   if (personInfo.name === "Persona Desconocida" && personInfo.curp === "N/A") {
@@ -139,7 +143,7 @@ export const processJsonToSinglePersonNode = (jsonData: any, existingNodes: Node
     data: {
       name: personInfo.name,
       title: `CURP: ${personInfo.curp}`, // Se mostrará debajo del nombre
-      typeDetails: 'Persona', // Para consistencia con DemoNodeData, no se usa mucho en PersonNode.tsx
+      typeDetails: 'Persona', // Para consistencia con DemoNodeData
       status: 'normal',
       details: { // Estos son los detalles que se muestran en el nodo mismo
           ...(personInfo.rfc !== "N/A" && { RFC: personInfo.rfc }),
@@ -147,6 +151,7 @@ export const processJsonToSinglePersonNode = (jsonData: any, existingNodes: Node
           ...(personInfo.otherKeyData.docId && { "ID Doc.": personInfo.otherKeyData.docId.substring(0,10) + "..." }),
       },
       rawJsonData: jsonData, // El JSON completo para el modal de detalles
+      onImageUpload: onImageUpload, // <-- FIX: Asignar la función de callback
     },
   };
 

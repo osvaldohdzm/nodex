@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+sudo chmod -R u+rw backend/app/__pycache__/
+find backend/app/ -name "*.pyc" -delete
+
+
 REMOTE="origin"
 
 # 1. Detectar ramas de prueba (test/* o *-test)
