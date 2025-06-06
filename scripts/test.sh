@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Define script directory at the start
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # --- Inicio del Script test.sh (Versión Mejorada con Identificación de Feature/Hotfix/Dev) ---
 
 echo "🚀 Iniciando script de pruebas..."
@@ -117,7 +120,4 @@ echo "🎉 Proceso completado los cambios de la prueba han sido guardados. Tus p
 # 9. Ejecutar prueba
 echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
 "$SCRIPT_DIR/start.sh"
-
-echo "🛑 Deteniendo servicios de Docker Compose para liberar puertos..."
-docker-compose down --remove-orphans
 
