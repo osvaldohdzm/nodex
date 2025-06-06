@@ -54,14 +54,12 @@ while read -r branch; do
     continue
   fi
 
-  echo "🧹 Limpiando archivos temporales (.pyc, __pycache__) antes de cambiar de rama..."
-  # Intenta borrar sin sudo; si falla, intenta con sudo
-  if ! find . -type f -name '*.pyc' -exec rm -f {} + 2>/dev/null; then
-    sudo find . -type f -name '*.pyc' -exec rm -f {} +
-  fi
-  if ! find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null; then
-    sudo find . -type d -name '__pycache__' -exec rm -rf {} +
-  fi
+echo "🧹 Limpiando archivos temporales (.pyc, __pycache__) antes de cambiar de rama..."
+# Borrar archivos .pyc sin mostrar error si no existen
+find . -type f -name '*.pyc' -exec rm -f {} + 2>/dev/null || true
+# Borrar carpetas __pycache__ sin mostrar error si no existen
+find . -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
+
 
   echo "🔄 Cambiando a '$branch_name' para sincronizar con '$remote_name'..."
   if git switch "$branch_name" >/dev/null; then
