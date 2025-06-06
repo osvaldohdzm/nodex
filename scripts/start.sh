@@ -45,7 +45,7 @@ docker run -d \
   -p 6379:6379 \
   -p 8001:8001 \
   -v redis_data:/data \
-  "$REDIS_IMAGE_NAME" \
+  "$REDIS_IMAGE_NAME"
   # Opciones de persistencia para Redis (opcional, pero bueno para desarrollo)
   # Si RedisGraph no las soporta directamente en el comando run, se configuran en un redis.conf
   # --save 900 1 --save 300 10 --save 60 10000 \
@@ -64,10 +64,10 @@ docker run -d \
   --network "$NETWORK_NAME" \
   -p 8000:8000 \
   -p 4545:4545 \
+  "$APP_IMAGE_NAME"
   # Los puertos 7474 y 7687 son para Neo4j, no RedisGraph. Los comento.
   # -p 7474:7474 \
-  # -p 7687:7687 \
-  "$APP_IMAGE_NAME"
+  # -p 7687:7687
 echo "✔️ Contenedor de la aplicación '$APP_CONTAINER_NAME' iniciado."
 
 echo ""
