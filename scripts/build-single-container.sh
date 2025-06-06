@@ -60,6 +60,12 @@ docker-compose -f "$ROOT_DIR/docker-compose.yml" up -d --build --force-recreate
 echo "🛠️  Construyendo imagen manual Nodex..."
 docker build -t nodex-single -f "$ROOT_DIR/docker/Dockerfile" "$ROOT_DIR"
 
+# 🔐 Verifica si ya existe un contenedor con el mismo nombre y lo elimina
+if docker ps -a --format '{{.Names}}' | grep -q "^nodex-single$"; then
+  echo "🗑️  Eliminando contenedor existente llamado 'nodex-single'..."
+  docker rm -f nodex-single >/dev/null 2>&1 || true
+fi
+
 echo "🚀 Ejecutando contenedor Nodex..."
 docker run -d \
   --name nodex-single \
