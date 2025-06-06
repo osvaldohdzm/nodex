@@ -1,43 +1,54 @@
 #!/bin/bash
+set -euo pipefail
 
-# ==============================================================================
-# app_status_mejorado.sh
-#
-# Muestra el estado reciente de los servicios de la aplicación (frontend/backend)
-# mostrando las últimas 25 líneas de sus respectivos logs de Docker.
-#
-# Uso:
-# 1. Guarda este archivo como 'app_status_mejorado.sh'.
-# 2. Dale permisos de ejecución: chmod +x app_status_mejorado.sh
-# 3. Ejecútalo: ./app_status_mejorado.sh
-# ==============================================================================
-
-# --- Colores para una mejor legibilidad ---
+# Colores
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
-NC='\033[0m' # Sin Color
+RED='\033[0;31m'
+NC='\033[0m'
 
-# Limpia la pantalla para una vista fresca
+# Servicios internos del contenedor nodex_all_in_one
+declare -A internal_services=(
+  ["API / Backend"]="http://localhost:4545"
+  ["Neo4j Browser"]="http://localhost:7474"
+  ["Neo4j Bolt"]="http://localhost:7687" # No es HTTP pero incluimos su puerto
+  ["Admin / UI Extra"]="http://localhost:8000"
+  ["Frontend"]="http://localhost:3000"
+)
+
+container="nodex_all_in_one"
+
+function check_http_alive() {
+  local url="$1"
+  curl -fs --max-time 2 "$url" > /dev/null 2>&1
+}
+
 clear
 
-# --- Muestra los logs del Frontend ---
-# Usamos "echo -e" para que interprete los códigos de color.
-echo -e "${CYAN}=============================================${NC}"
-echo -e "${CYAN}==  Estado Reciente del Frontend           ==${NC}"
-echo -e "${CYAN}=============================================${NC}"
-# La opción --tail="25" muestra las últimas 25 líneas en lugar de seguir (-f) los logs.
-docker-compose logs --tail="25" frontend
+echo -e "${CYAN}=======================================================${NC}"
+echo -e "${CYAN}==    Estado de Servicios Internos - $container     ==${NC}"
+echo -e "${CYAN}=======================================================${NC}"
 
-# Añade un espacio para separar las secciones
-echo ""
-echo ""
+# Verifica si el contenedor está corriendo
+if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+  echo -e "${GREEN}[OK] Contenedor '$container' está activo.${NC}"
+  echo ""
 
-# --- Muestra los logs del Backend ---
-echo -e "${GREEN}=============================================${NC}"
-echo -e "${GREEN}==  Estado Reciente del Backend            ==${NC}"
-echo -e "${GREEN}=============================================${NC}"
-docker-compose logs --tail="25" backend
+  # Verifica estado de servicios internos
+  for name in "${!internal_services[@]}"; do
+    url="${internal_services[$name]}"
+    if check_http_alive "$url"; then
+      echo -e "${GREEN}- $name:${NC} ${url} ✅ (responde)"
+    else
+      echo -e "${RED}- $name:${NC} ${url} ❌ (NO responde)"
+    fi
+  done
 
-echo ""
-echo -e "${CYAN}=============================================${NC}"
-echo "Script finalizado. Mostrando las últimas 25 líneas de cada servicio."
+  echo -e "\n${CYAN}--- Últimos logs del contenedor '${container}':${NC}"
+  docker logs --tail=15 "$container"
+else
+  echo -e "${RED}[ERROR] El contenedor '$container' no está en ejecución.${NC}"
+fi
+
+echo -e "\n${CYAN}=======================================================${NC}"
+echo -e "Análisis finalizado. Verificación de puertos completada."

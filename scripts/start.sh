@@ -33,3 +33,15 @@ docker ps --filter "name=$CONTAINER_NAME"
 echo ""
 echo "📕 Para ver los logs en vivo, usa:"
 echo "   docker logs -f $CONTAINER_NAME"
+
+echo ""
+echo "🔄 Iniciando contenedor RedisGraph..."
+docker network create sivg-net
+docker run --network sivg-net -p 6379:6379 --name my-redisgraph -v redis_data:/data \
+redislabs/redisgraph \
+--save 900 1 --save 300 10 --save 60 10000 \
+--appendonly no
+
+# Build and run your app
+docker build -t sivg-app -f docker/Dockerfile .
+docker run --network sivg-net -p 8000:8000 -p 4545:4545 --name sivg-instance sivg-app

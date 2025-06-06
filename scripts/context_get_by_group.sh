@@ -2,6 +2,9 @@
 
 set -e
 
+rm -rf auxiliar/code_context/* 2>/dev/null
+
+
 # Asociar grupos con archivos o carpetas
 declare -A GROUP_FILES
 GROUP_FILES[frontend]="frontend"

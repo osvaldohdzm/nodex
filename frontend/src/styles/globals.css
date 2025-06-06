@@ -23,15 +23,15 @@
   --accent-red: #EF4444;
   --accent-yellow: #FBBF24;
 
-  /* Menu colors */
-  --menu-bg: #FFFFFF;
-  --menu-border: #E5E7EB;
-  --menu-text: #374151;
-  --menu-text-secondary: #6B7280;
-  --menu-hover-bg: #F3F4F6;
-  --menu-hover-text: #3B82F6;
-  --menu-active-bg: #E5E7EB;
-  --menu-active-text: #2563EB;
+  /* Menu colors - Updated for dark theme */
+  --menu-bg: var(--bg-secondary);
+  --menu-border: var(--input-border);
+  --menu-text: var(--text-primary);
+  --menu-text-secondary: var(--text-secondary);
+  --menu-hover-bg: var(--input-bg);
+  --menu-hover-text: var(--accent-cyan);
+  --menu-active-bg: var(--input-bg);
+  --menu-active-text: var(--accent-cyan);
 
   /* Graph colors */
   --node-bg: var(--bg-secondary);
@@ -90,27 +90,26 @@ body, #root, .App {
   display: none; 
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--bg-secondary); }
-::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--input-border-hover); }
-
-/* Estas clases ya no son necesarias aquí si el layout se maneja bien con flex/grid y w-full/h-full */
-/* .react-flow-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
+/* Consolidated scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.react-flow__viewport {
-  width: 100%;
-  height: 100%;
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
 }
 
-.react-flow__background {
-  width: 100%;
-  height: 100%;
-} */
+::-webkit-scrollbar-thumb {
+  background: var(--input-border);
+  border-radius: 4px;
+  border: 2px solid var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan-darker);
+}
 
 /* Ensure proper sizing for the graph container */
 /* Esta clase es buena, la usaremos */
@@ -119,22 +118,6 @@ body, #root, .App {
   /* height: 100%; Let flex-grow determine height */
   min-height: 300px; /* Fallback minimum height */
   position: relative; /* Important for ReactFlow's positioning context */
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary); /* Corregido */
-}
-::-webkit-scrollbar-thumb {
-  background: var(--input-border); /* Corregido */
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--input-border-hover); /* Corregido */
 }
 
 /* React Flow specific styles */

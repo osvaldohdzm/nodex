@@ -1,4 +1,4 @@
-import React from 'react';
+  import React from 'react';
 import DropdownMenu, { MenuItem } from './DropdownMenu';
 import { 
   FileText, Edit3, Eye, HelpCircle, Upload, Replace, Layers, Download, 
@@ -64,14 +64,14 @@ const TopMenuBar: React.FC<TopMenuBarProps> = ({
 
   return (
     <div className="flex items-center w-full px-2 bg-menu-bg border-b border-menu-border h-10 shadow-sm flex-shrink-0">
-       <div className="flex items-center h-full">
+       <div className="flex items-center h-full top-menu-bar">
         <DropdownMenu triggerLabel="Archivo" items={fileMenuItems} triggerIcon={FileText} />
         <DropdownMenu triggerLabel="Editar" items={editMenuItems} triggerIcon={Edit3} />
         <DropdownMenu triggerLabel="Datos" items={dataMenuItems} triggerIcon={Layers} />
         <DropdownMenu triggerLabel="Vista" items={viewMenuItems} triggerIcon={Eye} />
       </div>
       <div className="flex-grow" />
-      <div className="flex items-center h-full">
+      <div className="flex items-center h-full top-menu-bar">
         <DropdownMenu triggerLabel="Ayuda" items={helpMenuItems} triggerIcon={HelpCircle} align="right" />
         <div className="ml-2 w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-300 transition-colors">
           <User size={16} />

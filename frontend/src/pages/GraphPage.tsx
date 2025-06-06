@@ -51,6 +51,7 @@ export const GraphPage: React.FC = () => {
   const [detailsNode, setDetailsNode] = useState<Node<DemoNodeData> | null>(null);
   const [isDetailPanelVisible, setIsDetailPanelVisible] = useState(false);
   const [topBarHeight, setTopBarHeight] = useState(60);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [nodes, setNodes, onNodesChange] = useNodesState<DemoNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -75,8 +76,6 @@ export const GraphPage: React.FC = () => {
   };
 
   const connectionLineStyle = { stroke: 'var(--accent-cyan)', strokeWidth: 2.5 };
-
-
 
   // Actualizar el estado de detailsNode y visibilidad del panel
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node<DemoNodeData>) => {
@@ -301,78 +300,108 @@ export const GraphPage: React.FC = () => {
     [setNodes, setEdges, reactFlowInstance, nodes, edges]
   );
 
-  const handleJsonUploaded = useCallback(
-    (uploadedData: JsonData, uploadedFileName: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
-      setFileName(uploadedFileName);
-      const { node: newSingleNode } = processJsonToSinglePersonNode(uploadedData, nodes);
-
-      if (!newSingleNode) {
-        alert("No se pudo identificar una persona en el JSON. No se creó ningún nodo.");
+  // Function to load initial graph data from backend
+  const loadInitialGraph = useCallback(async (showFitView = true) => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log("No auth token, skipping initial graph load.");
+        setIsLoading(false);
         return;
       }
-      
-      // Add the image upload callback to the node data
-      const nodeWithUploadCallback = {
-        ...newSingleNode,
-        data: {
-          ...newSingleNode.data,
-          onImageUpload: handleImageUploadForNode,
-        },
-      };
+      const response = await fetch('http://localhost:8000/graph-data/', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
 
-      if (mode === 'overwrite') {
-        // When overwriting, ensure all nodes have the upload callback
-        const nodesToSet = [nodeWithUploadCallback].map(n => ({
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.error("Unauthorized. Token might be invalid or expired.");
+          // navigate('/login'); // if navigate is available
+        }
+        throw new Error(`Failed to fetch graph data: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data.nodes && data.edges) {
+        const initialNodes = data.nodes.map((n: Node<DemoNodeData>) => ({
           ...n,
           data: {
             ...n.data,
-            onImageUpload: handleImageUploadForNode,
-          }
+            onImageUpload: n.type === 'person' ? handleImageUploadForNode : undefined,
+            isHighlighted: highlightedNodes.has(n.id),
+          },
+          className: 'node-appear-static',
         }));
-        animateGraphLoad(nodesToSet, [], true);
-      } else {
-        // Merge mode
-        const nodeWithAnimation = { 
-          ...nodeWithUploadCallback, 
-          className: `${nodeWithUploadCallback.className || ''} node-appear`.trim() 
-        };
+        const initialEdges = data.edges.map((e: Edge) => ({
+          ...e,
+          className: 'edge-appear-static',
+          markerEnd: e.markerEnd || { type: MarkerType.ArrowClosed, color: 'var(--edge-default-color)' },
+          style: e.style || { stroke: 'var(--edge-default-color)', strokeWidth: 2 },
+        }));
         
-        setNodes((nds) => {
-          // When adding nodes, ensure all person nodes have the upload callback
-          const updatedNodes = [...nds, nodeWithAnimation];
-          return updatedNodes.map(n => 
-            n.type === 'person' ? { ...n, data: { ...n.data, onImageUpload: handleImageUploadForNode } } : n
-          );
-        });
-        
-        const animationDuration = 1000; 
-        const addedNodeId = nodeWithAnimation.id;
+        setNodes(initialNodes);
+        setEdges(initialEdges);
 
-        setTimeout(() => {
-          setNodes((nds) =>
-            nds.map((n) =>
-              n.id === addedNodeId
-                ? { ...n, className: (n.className || '').replace('node-appear', 'node-appear-static').trim() }
-                : n
-            )
-          );
-        }, animationDuration);
-        
-        setTimeout(() => {
-          reactFlowInstance.fitView({ padding: 0.2, duration: 800, nodes: [newSingleNode] });
-        }, 150);
+        if (showFitView && initialNodes.length > 0) {
+          setTimeout(() => {
+            reactFlowInstance.fitView({ padding: 0.2, duration: 0 });
+          }, 50);
+        }
       }
-    },
-    [nodes, animateGraphLoad, reactFlowInstance, setNodes, handleImageUploadForNode]
-  );
+    } catch (error) {
+      console.error("Error loading initial graph data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [reactFlowInstance, setNodes, setEdges, handleImageUploadForNode, highlightedNodes]);
 
+  // Load graph on component mount
   useEffect(() => {
-    return () => { 
-      if (animationCleanupRef.current?.cleanup) {
-        animationCleanupRef.current.cleanup(); 
+    loadInitialGraph();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Function to send JSON data to backend
+  const uploadJsonToBackend = async (jsonDataToUpload: JsonData, mode: 'overwrite' | 'merge', originalFileName: string) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert("Authentication error. Please log in again.");
+      return;
+    }
+    console.log(`Uploading ${originalFileName} to backend with mode: ${mode}`);
+    try {
+      const response = await fetch('http://localhost:8000/graph/load-json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ jsonData: jsonDataToUpload, mode }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown server error' }));
+        throw new Error(`Failed to upload JSON to backend: ${errorData.detail || response.statusText}`);
       }
-    };
-  }, []);
+      
+      alert(`File "${originalFileName}" processed by backend (${mode}). Graph will refresh.`);
+      await loadInitialGraph(true);
+      setSelectedFileContent(null);
+      setFileName('');
+
+    } catch (error) {
+      console.error(`Error ${mode}ing JSON data in backend:`, error);
+      alert(`Failed to ${mode} JSON data in backend: ${error}`);
+    }
+  };
+
+  // This function is now a trigger for sending the JSON file content to the backend
+  const handleJsonUploaded = useCallback(
+    (uploadedData: JsonData, uploadedFileName: string, mode: 'overwrite' | 'merge' = 'overwrite') => {
+      uploadJsonToBackend(uploadedData, mode, uploadedFileName);
+    },
+    [loadInitialGraph]
+  );
 
   const handleUploadAreaClick = () => fileInputRef.current?.click();
 
@@ -513,20 +542,39 @@ export const GraphPage: React.FC = () => {
   const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
   const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
 
-
+  // Show loading state if graph is empty and loading
+  if (isLoading && nodes.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full w-full text-text-secondary">
+        Loading graph data...
+      </div>
+    );
+  }
 
   return (
     <div className="graph-page-container flex flex-col h-full w-full overflow-hidden">
       <TopMenuBar
         onUploadClick={handleUploadAreaClick}
-        onOverwrite={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'overwrite')}
-        onMerge={() => selectedFileContent && handleJsonUploaded(selectedFileContent, fileName, 'merge')}
+        onOverwrite={() => {
+          if (selectedFileContent && fileName) {
+            handleJsonUploaded(selectedFileContent, fileName, 'overwrite');
+          } else {
+            alert("No file selected to overwrite with.");
+          }
+        }}
+        onMerge={() => {
+          if (selectedFileContent && fileName) {
+            handleJsonUploaded(selectedFileContent, fileName, 'merge');
+          } else {
+            alert("No file selected to merge from.");
+          }
+        }}
         onExportPDF={handleExportPDF}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onFitView={handleFitView}
         isFileLoaded={!!selectedFileContent}
-        isGraphEmpty={nodes.length === 0}
+        isGraphEmpty={nodes.length === 0 && !isLoading}
         fileName={fileName}
       />
       

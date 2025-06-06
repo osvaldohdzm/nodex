@@ -72,21 +72,38 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
       >
         <button
           className={`w-full px-3 py-1.5 text-sm text-left flex items-center justify-between gap-4 whitespace-nowrap rounded-sm mx-1
-            ${item.disabled ? 'text-menu-text-secondary/50 cursor-not-allowed' : 'text-menu-text hover:bg-menu-hover-bg hover:text-menu-hover-text'}
+            ${item.disabled 
+              ? 'text-menu-text-secondary/40 cursor-not-allowed' 
+              : 'text-menu-text hover:bg-menu-hover-bg hover:text-menu-hover-text transition-colors duration-150'
+            }
             ${isSubmenuActive ? 'bg-menu-hover-bg text-menu-hover-text' : ''}`}
           onClick={() => handleItemClick(item)}
           disabled={item.disabled}
         >
           <div className="flex items-center gap-2">
-            {item.icon && <item.icon size={16} className={item.disabled ? 'opacity-40' : ''} />}
+            {item.icon && (
+              <item.icon 
+                size={16} 
+                className={`${item.disabled ? 'opacity-40' : ''} transition-colors duration-150`} 
+              />
+            )}
             <span>{item.label}</span>
           </div>
-          {hasSubmenu ? <ChevronRight size={16} /> : null}
-          {item.shortcut && <span className="text-xs text-menu-text-secondary">{item.shortcut}</span>}
+          <div className="flex items-center gap-2">
+            {item.shortcut && (
+              <span className="text-xs text-menu-text-secondary/70">{item.shortcut}</span>
+            )}
+            {hasSubmenu && <ChevronRight size={16} className="text-menu-text-secondary/70" />}
+          </div>
         </button>
 
         {hasSubmenu && isSubmenuActive && (
-          <div className={`absolute top-0 mt-[-5px] ${align === 'right' ? 'right-full mr-1' : 'left-full ml-1'} bg-menu-bg rounded-md shadow-lg border border-menu-border py-1 z-10 min-w-[220px]`}>
+          <div 
+            className={`absolute top-0 mt-[-5px] 
+              ${align === 'right' ? 'right-full mr-1' : 'left-full ml-1'} 
+              bg-menu-bg rounded-md shadow-lg border border-menu-border py-1 z-10 min-w-[220px]
+              transition-opacity duration-150 ease-in-out`}
+          >
             {item.submenu?.map((subItem, subIndex) => renderMenuItem(subItem, subIndex))}
           </div>
         )}
@@ -97,16 +114,31 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
   return (
     <div className="relative h-full" ref={menuRef}>
       <button
-        className={`flex items-center gap-2 px-3 h-full text-sm font-medium transition-colors 
-          hover:bg-menu-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500
-          ${isOpen ? 'bg-menu-active-bg text-menu-active-text' : 'text-menu-text'}`}
+        className={`flex items-center gap-2 px-3 h-full text-sm font-medium transition-colors duration-150
+          hover:bg-menu-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/50
+          ${isOpen 
+            ? 'bg-menu-active-bg text-menu-active-text' 
+            : 'text-menu-text hover:text-menu-hover-text'
+          }`}
         onClick={handleTriggerClick}
       >
-        {TriggerIcon && <TriggerIcon size={16} />}
+        {TriggerIcon && (
+          <TriggerIcon 
+            size={16} 
+            className={`transition-colors duration-150 ${
+              isOpen ? 'text-menu-active-text' : 'text-menu-text'
+            }`} 
+          />
+        )}
         <span>{triggerLabel}</span>
       </button>
       {isOpen && (
-        <div className={`absolute top-full mt-1 bg-menu-bg rounded-md shadow-lg border border-menu-border py-1 z-50 min-w-[240px] ${align === 'right' ? 'right-0' : 'left-0'}`}>
+        <div 
+          className={`absolute top-full mt-1 bg-menu-bg rounded-md shadow-lg border border-menu-border py-1 z-50 min-w-[240px]
+            ${align === 'right' ? 'right-0' : 'left-0'}
+            transition-all duration-150 ease-in-out transform origin-top
+            ${isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+        >
           {items.map((item, index) => renderMenuItem(item, index))}
         </div>
       )}
