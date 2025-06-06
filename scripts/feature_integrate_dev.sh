@@ -105,6 +105,42 @@ echo "🔄 Cambiando a '$DEVELOP_BRANCH' y actualizándola..."
 git checkout "$DEVELOP_BRANCH"
 git pull origin "$DEVELOP_BRANCH"
 
+# --- INICIO: NUEVA SECCIÓN PARA IGNORAR Y LIMPIAR __pycache__ ---
+GITIGNORE_FILE=".gitignore"
+PYCACHE_PATTERN="__pycache__/"
+PYCACHE_COMMENT="# Python cache files and directories"
+PYCACHE_ALREADY_IGNORED=false
+
+if [ -f "$GITIGNORE_FILE" ] && grep -qF "$PYCACHE_PATTERN" "$GITIGNORE_FILE"; then
+    PYCACHE_ALREADY_IGNORED=true
+    echo "✅ '$PYCACHE_PATTERN' ya está en $GITIGNORE_FILE."
+else
+    echo "🛡️ '$PYCACHE_PATTERN' no encontrado en $GITIGNORE_FILE. Añadiéndolo..."
+    # Asegurar que haya una nueva línea antes de añadir si el archivo existe y no termina con una
+    if [ -f "$GITIGNORE_FILE" ] && [ -n "$(tail -c1 "$GITIGNORE_FILE")" ]; then
+        echo "" >> "$GITIGNORE_FILE"
+    fi
+    # Añadir comentario y patrón
+    echo -e "\n$PYCACHE_COMMENT\n$PYCACHE_PATTERN" >> "$GITIGNORE_FILE"
+    git add "$GITIGNORE_FILE"
+    echo "💾 Commiteando actualización de $GITIGNORE_FILE en '$DEVELOP_BRANCH' (si hubo cambios)..."
+    # Este commit solo ocurrirá si .gitignore fue realmente modificado y añadido
+    # El || true es para evitar que el script falle si no hay nada que commitear (ej. .gitignore ya estaba staged)
+    if git commit -m "chore: Ensure $PYCACHE_PATTERN is ignored"; then
+        echo "✅ $GITIGNORE_FILE actualizado y commiteado en '$DEVELOP_BRANCH'."
+        # Considera hacer push de este cambio si es crítico que esté en el remoto inmediatamente
+        # git push origin "$DEVELOP_BRANCH"
+    else
+        echo "ℹ️ No se realizó un nuevo commit para $GITIGNORE_FILE (puede que no hubiera cambios netos o ya estuviera preparado)."
+    fi
+fi
+
+echo "🧹 Limpiando archivos y directorios ignorados sin seguimiento (como $PYCACHE_PATTERN)..."
+# -d para directorios, -f para forzar, -X para solo ignorados (según .gitignore)
+git clean -fdX
+echo "✅ Limpieza de archivos ignorados completada."
+# --- FIN: NUEVA SECCIÓN ---
+
 # 5. Obtener último mensaje de commit en la feature
 last_commit_msg=$(git log -1 --pretty=format:%s "$feature_branch")
 
@@ -112,10 +148,17 @@ last_commit_msg=$(git log -1 --pretty=format:%s "$feature_branch")
 echo "🔎 Probando merge para detectar conflictos..."
 if ! git merge --no-commit --no-ff "$feature_branch"; then
   echo "❌ Conflictos detectados durante merge de prueba. Abortando."
-  git merge --abort
-  echo "Por favor resuelve los conflictos en '$DEVELOP_BRANCH' manualmente y vuelve a ejecutar este script."
+  # Solo abortar si un merge está realmente en progreso
+  if [ -f ".git/MERGE_HEAD" ]; then
+      git merge --abort
+      echo "ℹ️ Merge abortado."
+  else
+      echo "ℹ️ No había un merge en progreso para abortar (probablemente falló antes debido a archivos sin seguimiento, que ahora deberían estar limpios)."
+  fi
+  echo "Por favor resuelve los conflictos en '$DEVELOP_BRANCH' manualmente y vuelve a ejecutar este script, o revisa otros errores."
   exit 1
 else
+  echo "✅ Merge de prueba exitoso. Deshaciendo para merge final..."
   git reset --hard HEAD # Deshacer merge de prueba
 fi
 
@@ -128,6 +171,11 @@ $last_commit_msg"
 echo "🔗 Fusionando '$feature_branch' en '$DEVELOP_BRANCH'..."
 if ! git merge --no-ff "$feature_branch" -m "$merge_msg"; then
   echo "❌ Error inesperado durante merge."
+  # Solo abortar si un merge está realmente en progreso
+  if [ -f ".git/MERGE_HEAD" ]; then
+      git merge --abort
+      echo "ℹ️ Merge abortado."
+  fi
   exit 1
 fi
 
