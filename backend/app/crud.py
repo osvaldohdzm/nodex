@@ -112,21 +112,31 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
                 if key == 'onImageUpload': # EXCLUIR FUNCIONES
                     continue
                 
-                if value is None: # No guardar propiedades None
+                # Skip null values and empty strings
+                if value is None or (isinstance(value, str) and not value.strip()):
                     continue
 
                 # Lista blanca de propiedades permitidas y cómo tratarlas
                 if key in ['name', 'typeDetails', 'status', 'title', 'location', 'icon', 'imageUrl']:
                     if isinstance(value, (str, int, float, bool)):
+                        # Convert empty strings to None to avoid RedisGraph issues
+                        if isinstance(value, str) and not value.strip():
+                            continue
                         cypher_props[key] = value
                 elif key in ['rawJsonData', 'details']: # Estos se serializan a JSON
                     try:
-                        cypher_props[key] = json.dumps(value)
+                        # Skip if value is None or empty
+                        if value is None or (isinstance(value, (dict, list)) and not value):
+                            continue
+                        # Ensure we're only storing simple types that can be JSON serialized
+                        if isinstance(value, (str, int, float, bool, dict, list)):
+                            cypher_props[key] = json.dumps(value)
                     except (TypeError, ValueError) as json_err:
                         print(f"Warning: Could not serialize property '{key}' for node {node_frontend_id}: {json_err}")
-                # Ignorar otras propiedades no listadas explícitamente para evitar errores de tipo
-                # else:
-                #     print(f"Warning: Property '{key}' for node {node_frontend_id} is not explicitly handled. Skipping.")
+                        continue
+                # Ignorar otras propiedades no listadas explícitamente
+                else:
+                    print(f"Warning: Property '{key}' for node {node_frontend_id} is not explicitly handled. Skipping.")
 
 
             query = f"CREATE (n:{label} $props)"
