@@ -53,7 +53,7 @@ done < <(git branch --format='%(refname:short)')
 
 git switch "$current_branch" >/dev/null
 
+git reset --hard HEAD
 git clean -fd
-
 
 echo "✅ Todas las ramas locales con upstream han sido sincronizadas con sus ramas remotas."
