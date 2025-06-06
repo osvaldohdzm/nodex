@@ -51,6 +51,7 @@ COPY backend/ ./backend/
 COPY --from=frontend-builder /app/frontend/build ./frontend/static/
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# Expose both backend and frontend ports
 EXPOSE 8000 4545
 
 ENTRYPOINT ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf", "-n"]

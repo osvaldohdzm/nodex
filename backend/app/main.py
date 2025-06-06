@@ -6,18 +6,41 @@ logging.getLogger('passlib').setLevel(logging.ERROR)
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import json
 from typing import Any, Dict, List
 from datetime import timedelta
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+import os
 
 from . import crud, models, auth
 
 app = FastAPI(title="SIVG Backend")
 
+# Mount the frontend static files
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "static")
+app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+
+# Serve index.html for the root path
+@app.get("/")
+async def read_root():
+    return FileResponse(os.path.join(frontend_dir, "index.html"))
+
+# Serve index.html for all frontend routes
+@app.get("/{path:path}")
+async def serve_frontend(path: str):
+    if path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    return FileResponse(os.path.join(frontend_dir, "index.html"))
+
 # Configuración CORS (permitir peticiones desde el frontend)
-origins = ["*"]  # TEMPORALMENTE permitir todos los orígenes para debug
+origins = [
+    "http://localhost:4545",
+    "http://192.168.0.4:4545",
+    "http://127.0.0.1:4545"
+]
 
 app.add_middleware(
     CORSMiddleware,
