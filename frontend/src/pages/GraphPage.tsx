@@ -1,19 +1,6 @@
 // frontend/src/pages/GraphPage.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactFlow, {
-  Controls,
-  Background,
-  useNodesState,
-  useEdgesState,
-  Node,
-  Edge,
-  Connection,
-  useReactFlow,
-  ReactFlowProvider,
-  MarkerType,
-  addEdge,
-  Node as ReactFlowNode,
-} from 'reactflow';
+import { ReactFlow, Controls, Background, useNodesState, useEdgesState, Node as ReactFlowNode, Edge, Connection, useReactFlow, ReactFlowProvider, MarkerType, addEdge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '../styles/globals.css';
 import '../styles/GraphPage.css';
@@ -246,7 +233,7 @@ export const GraphPage: React.FC = () => {
   }, [searchTerm, nodes]);
 
   const animateGraphLoad = useCallback(
-    (initialNodes: Node<DemoNodeData>[], initialEdges: Edge[], isOverwrite: boolean = false) => {
+    (initialNodes: ReactFlowNode<DemoNodeData>[], initialEdges: Edge[], isOverwrite: boolean = false) => {
       if (animationCleanupRef.current?.cleanup) {
         animationCleanupRef.current.cleanup();
         animationCleanupRef.current = null;
@@ -326,7 +313,7 @@ export const GraphPage: React.FC = () => {
 
       const data = await response.json();
       if (data.nodes && data.edges) {
-        const initialNodes = data.nodes.map((n: Node<DemoNodeData>) => ({
+        const initialNodes = data.nodes.map((n: ReactFlowNode<DemoNodeData>) => ({
           ...n,
           data: {
             ...n.data,
@@ -491,12 +478,12 @@ export const GraphPage: React.FC = () => {
     setIsRelationshipModalOpen(true);
   }, []);
 
-  const onElementsRemove = useCallback((elementsToRemove: (Node<DemoNodeData> | Edge)[]) => {
-    const nodeIdsToRemove = new Set(elementsToRemove.filter((el: Node<DemoNodeData> | Edge) => 'position' in el).map((el: Node<DemoNodeData> | Edge) => el.id));
-    const edgeIdsToRemove = new Set(elementsToRemove.filter((el: Node<DemoNodeData> | Edge) => 'source' in el).map((el: Node<DemoNodeData> | Edge) => el.id));
+  const onElementsRemove = useCallback((elementsToRemove: (ReactFlowNode<DemoNodeData> | Edge)[]) => {
+    const nodeIdsToRemove = new Set(elementsToRemove.filter((el: ReactFlowNode<DemoNodeData> | Edge) => 'position' in el).map((el: ReactFlowNode<DemoNodeData> | Edge) => el.id));
+    const edgeIdsToRemove = new Set(elementsToRemove.filter((el: ReactFlowNode<DemoNodeData> | Edge) => 'source' in el).map((el: ReactFlowNode<DemoNodeData> | Edge) => el.id));
 
     if (nodeIdsToRemove.size > 0) {
-      setNodes((nds: Node<DemoNodeData>[]) => nds.filter((node: Node<DemoNodeData>) => !nodeIdsToRemove.has(node.id)));
+      setNodes((nds: ReactFlowNode<DemoNodeData>[]) => nds.filter((node: ReactFlowNode<DemoNodeData>) => !nodeIdsToRemove.has(node.id)));
       // If a node is removed, also remove its details from the panel
       if (detailsNode && nodeIdsToRemove.has(detailsNode.id)) {
         setDetailsNode(null);
@@ -573,8 +560,8 @@ export const GraphPage: React.FC = () => {
     reactFlowInstance.fitView({ padding: 0.2, duration: 500 });
   }, [reactFlowInstance]);
 
-  const sourceNodeForModal = editingEdge ? nodes.find((n: Node<DemoNodeData>) => n.id === editingEdge.source) : null;
-  const targetNodeForModal = editingEdge ? nodes.find((n: Node<DemoNodeData>) => n.id === editingEdge.target) : null;
+  const sourceNodeForModal = editingEdge ? nodes.find((n: ReactFlowNode<DemoNodeData>) => n.id === editingEdge.source) : null;
+  const targetNodeForModal = editingEdge ? nodes.find((n: ReactFlowNode<DemoNodeData>) => n.id === editingEdge.target) : null;
   
   const sourceNodeNameForModal = sourceNodeForModal?.data?.name || 'Nodo Origen';
   const targetNodeNameForModal = targetNodeForModal?.data?.name || 'Nodo Destino';
