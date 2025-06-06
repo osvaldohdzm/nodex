@@ -1,6 +1,33 @@
 #!/bin/bash
 set -e
 
+# Función para liberar puerto ocupado (por contenedor o proceso)
+function free_port() {
+  local port=$1
+  echo "Checking port $port..."
+
+  # Buscar contenedor que use ese puerto y eliminarlo
+  container_ids=$(docker ps -q --filter "publish=$port")
+  if [ -n "$container_ids" ]; then
+    echo "  Stopping and removing Docker containers using port $port..."
+    docker rm -f $container_ids
+  fi
+
+  # Si algún proceso fuera de Docker está usando el puerto, matarlo
+  pid=$(lsof -t -i :"$port" 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    echo "  Killing process $pid that is using port $port..."
+    kill -9 $pid
+  fi
+}
+
+# Puertos que vamos a liberar antes de correr contenedor
+ports=(4545 8000 7474 7687)
+
+for p in "${ports[@]}"; do
+  free_port "$p"
+done
+
 # Obtener la ruta absoluta del proyecto
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
