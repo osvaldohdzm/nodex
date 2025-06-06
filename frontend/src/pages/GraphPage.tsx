@@ -9,15 +9,13 @@ import React, {
   type DragEvent,
   type ChangeEvent,
   type MouseEvent as ReactMouseEvent,
-  // type FC, // No es necesario si usas React.FC
-  // type PropsWithChildren // No es necesario para GraphPage directamente
 } from 'react';
 import ReactFlow, {
   Controls,
   Background,
   useNodesState,
   useEdgesState,
-  Node,
+  Node, // Usar Node directamente
   Edge,
   Connection,
   useReactFlow,
@@ -29,7 +27,7 @@ import ReactFlow, {
   type OnConnect,
   type OnNodesChange,
   type OnEdgesChange,
-  type NodeMouseHandler,
+  type NodeMouseHandler, // Mantener la importación del tipo
   type EdgeMouseHandler,
   type NodeProps,
   type NodeTypes,
@@ -53,9 +51,9 @@ import TopMenuBar, {
   FileMenuAction,
   EditMenuAction,
   ViewMenuAction,
-  type FileMenuActionType,
-  type EditMenuActionType,
-  type ViewMenuActionType
+  type FileMenuActionType, // Importar el TIPO
+  type EditMenuActionType, // Importar el TIPO
+  type ViewMenuActionType  // Importar el TIPO
 } from '../components/layout/TopMenuBar';
 
 import { JsonData, DemoNodeData } from '../types/graph';
@@ -69,7 +67,7 @@ const nodeTypesDefinition: NodeTypes = {
   company: CompanyNodeComponent as ComponentType<NodeProps<DemoNodeData>>,
 };
 
-export const GraphPage: React.FC = () => { // React.FC es suficiente
+export const GraphPage: React.FC = () => {
   const reactFlowInstance = useReactFlow<DemoNodeData>();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isLoadingBackendOp = useRef(false);
@@ -102,7 +100,7 @@ export const GraphPage: React.FC = () => { // React.FC es suficiente
   // CORRECCIÓN: Quitar el genérico de useCallback si NodeMouseHandler no se resuelve como genérico
   // y tipar los parámetros del callback explícitamente.
   const onNodeClick = useCallback(
-    (event: ReactMouseEvent, node: Node<DemoNodeData>) => {
+    (event: ReactMouseEvent, node: Node<DemoNodeData>) => { // Tipado explícito
       if (node.data?.rawJsonData) {
         setDetailsNode(node);
         setIsDetailPanelVisible(true);
@@ -535,7 +533,7 @@ export const GraphPage: React.FC = () => { // React.FC es suficiente
   );
 };
 
-const GraphPageWithProvider: React.FC = () => ( // React.FC es suficiente
+const GraphPageWithProvider: React.FC = () => (
   <ReactFlowProvider>
     <GraphPage />
   </ReactFlowProvider>
