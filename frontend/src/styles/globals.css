@@ -1,24 +1,129 @@
+/* Tailwind CSS base styles */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* React Flow specific styles */
-/* Estas clases ya no son necesarias aquí si el layout se maneja bien con flex/grid y w-full/h-full */
-/* .react-flow-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
+:root {
+  /* -- BASES TÁCTICAS -- */
+  --bg-primary: #010409; /* Negro con un matiz azul muy oscuro */
+  --bg-secondary: #0D1117; /* Gris carbón-azulado para paneles */
+  --bg-tertiary: #161B22; /* Capa interactiva para inputs */
+  --border-primary: #21262d; /* Borde sutil */
+  --border-secondary: #30363d; /* Borde más visible */
+
+  /* -- TEXTOS -- */
+  --text-primary: #c9d1d9; /* Blanco suave, no puro */
+  --text-secondary: #8b949e; /* Gris para texto de apoyo */
+
+  /* -- ACENTOS DE MISIÓN-CRÍTICA -- */
+  --accent-main: #22a0f1; /* Azul controlado y profesional */
+  --accent-main-glow: #38bdf8; /* Cian brillante para efectos de glow */
+  --accent-warn: #facc15; /* Amarillo/Ámbar para advertencias */
+  --accent-danger: #f87171; /* Rojo suave para errores */
+
+  /* -- COMPONENTES: GRAFO -- */
+  --node-bg: rgba(13, 17, 23, 0.85); /* Fondo de nodo con ligera transparencia */
+  --node-border: var(--border-secondary);
+  --node-border-selected: var(--accent-main-glow);
+  --node-shadow-selected: 0 0 12px var(--accent-main-glow);
+  --graph-bg: var(--bg-primary);
+  --edge-default-color: var(--border-secondary);
+  --edge-selected-color: var(--accent-main-glow);
+
+  /* Consolidated CSS variables */
+  --input-bg: #1E293B;
+  --input-border: #334155;
+  --input-border-hover: #475569;
+
+  /* Accent colors */
+  --accent-cyan: #00E5FF;
+  --accent-cyan-darker: #00B8CC;
+  --accent-green: #34D399;
+  --accent-pink: #F472B6;
+  --accent-purple: #A78BFA;
+  --accent-orange: #FBBF24;
+  --accent-red: #EF4444;
+  --accent-yellow: #FBBF24;
+
+  /* Menu colors - Updated for dark theme */
+  --menu-bg: var(--bg-secondary);
+  --menu-border: var(--input-border);
+  --menu-text: var(--text-primary);
+  --menu-text-secondary: var(--text-secondary);
+  --menu-hover-bg: var(--input-bg);
+  --menu-hover-text: var(--accent-cyan);
+  --menu-active-bg: var(--input-bg);
+  --menu-active-text: var(--accent-cyan);
+
+  --node-text: var(--text-primary);
+  --node-text-secondary: var(--text-secondary);
+  --node-icon-color: var(--accent-cyan);
+
+  --edge-label-color: var(--text-secondary);
 }
 
-.react-flow__viewport {
-  width: 100%;
-  height: 100%;
+body, #root, .App {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.react-flow__background {
-  width: 100%;
-  height: 100%;
-} */
+.react-flow__minimap {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--input-border) !important;
+}
+
+.react-flow__controls-button {
+  background-color: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--input-border) !important;
+  color: var(--text-secondary) !important;
+  fill: var(--text-secondary) !important;
+}
+.react-flow__controls-button:hover {
+  background-color: var(--input-bg) !important;
+}
+
+.react-flow__edge-text {
+  font-size: 12px;
+  font-weight: 500;
+  fill: var(--edge-label-color);
+  paint-order: stroke;
+  stroke: var(--graph-bg);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.react-flow__attribution { 
+  display: none; 
+}
+
+/* Consolidated scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--input-border);
+  border-radius: 4px;
+  border: 2px solid var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan-darker);
+}
 
 /* Ensure proper sizing for the graph container */
 /* Esta clase es buena, la usaremos */
@@ -29,122 +134,17 @@
   position: relative; /* Important for ReactFlow's positioning context */
 }
 
-:root {
-  /* Base colors */
-  --bg-primary: #001F3F;
-  --bg-secondary: #0A0F1A;
-  --text-primary: #FFFFFF;
-  --text-secondary: #94A3B8;
-  --accent-cyan: #00E5FF;
-  --accent-cyan-darker: #00B8CC;
-  --accent-green: #34D399;
-  --accent-purple: #A78BFA;
-  --accent-orange: #FBBF24;
-  --accent-pink: #F472B6;
-  --accent-red: #E53E3E;
-  --accent-yellow: #D69E2E;
-
-  /* Node specific colors */
-  --node-bg: var(--bg-secondary);
-  --node-border: var(--accent-cyan-darker);
-  --node-border-selected: var(--accent-cyan);
-  --node-border-alert: #F56565; /* Rojo brillante para alertas */
-  --node-border-warning: #ECC94B; /* Amarillo/Naranja para warnings */
-  --node-shadow-selected: 0 0 15px var(--accent-cyan);
-  --node-text: var(--text-primary);
-  --node-text-secondary: var(--text-secondary);
-  --node-icon-color: var(--accent-cyan);
-  --node-bg-hover: #0F172A;
-
-  /* Edge colors */
-  --edge-default-color: #6B7280;
-  --edge-selected-color: var(--accent-cyan);
-  --edge-label-color: var(--text-secondary);
-
-  /* RGB components for rgba() usage */
-  --r-accent-cyan: 0;
-  --g-accent-cyan: 229;
-  --b-accent-cyan: 255;
-  --r-node-border-alert: 245;
-  --g-node-border-alert: 101;
-  --b-node-border-alert: 101;
-
-  --bg-glass: rgba(10, 15, 26, 0.6);
-  --border-glass: rgba(0, 229, 255, 0.2);
-  --accent-pink: #F472B6;
-  --accent-purple: #A78BFA;
-  --accent-orange: #F59E0B;
-  --accent-green: #34D399;
-
-  --input-bg: #101827; /* Fondo para inputs */
-  --input-border: #303F5E; /* Borde para inputs y elementos sutiles del grafo */
-  --input-focus-border: var(--accent-cyan); /* Corregido: sin espacio */
-
-  /* Estilos específicos del Grafo */
-  --graph-bg: var(--bg-primary); /* Corregido: sin espacio */
-  --graph-lines-color: var(--input-border);
-
-  --node-person-icon-color: var(--accent-cyan); /* Corregido */
-  --node-company-icon-color: var(--accent-pink); /* Corregido */
-  --node-generic-icon-color: var(--text-secondary); /* Corregido */
-
-  /* Variables de styles.css (para consistencia si se usan en otros lados) */
-  --hue: 200;
-  --saturation-accent: 100%;
-  --lightness-accent: 50%;
-  --first-color: hsl(var(--hue), var(--saturation-accent), var(--lightness-accent)); /* Corregido */
-  --first-color-alt: hsl(var(--hue), var(--saturation-accent), 45%);
-  --first-color-light: hsl(var(--hue), var(--saturation-accent), 65%);
-  --bg-dark-primary: #05080D;
-  --bg-form-color: hsla(212, 70%, 10%, 0.75);
-  --input-bg-color: #0E1625;
-  --title-color: var(--first-color); /* Corregido */
-  --text-color: #C0C8D8;
-  --text-color-light: #8892b0;
-  --text-on-accent: var(--bg-dark-primary); /* Corregido */
-  --body-color: var(--bg-dark-primary); /* Corregido */
-  --container-color: var(--bg-form-color); /* Corregido */
-  --input-border-color: hsl(var(--hue), var(--saturation-accent), 35%);
-}
-
-body, #root, .App {
-  @apply bg-bg-primary text-text-primary font-sans;
-  margin: 0;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1; /* Asegurar que ocupen toda la altura disponible */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary); /* Corregido */
-}
-::-webkit-scrollbar-thumb {
-  background: var(--accent-cyan-darker); /* Corregido */
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-cyan); /* Corregido */
-}
-
 /* React Flow specific styles */
 .react-flow__minimap {
   background-color: var(--bg-secondary) !important;
-  border: 1px solid var(--accent-cyan-darker) !important;
+  border: 1px solid var(--input-border) !important;
   border-radius: 4px;
 }
 .react-flow__controls-button {
   background-color: var(--bg-secondary) !important;
-  border: 1px solid var(--accent-cyan-darker) !important;
-  color: var(--accent-cyan) !important;
-  fill: var(--accent-cyan) !important;
+  border-bottom: 1px solid var(--input-border) !important;
+  color: var(--text-secondary) !important;
+  fill: var(--text-secondary) !important;
   box-shadow: none !important;
 }
 .react-flow__controls-button:hover {
@@ -165,40 +165,70 @@ body, #root, .App {
 
 /* React Flow handle styles */
 .react-flow__handle {
-  width: 12px !important; /* Increased from 8px */
-  height: 12px !important; /* Increased from 8px */
-  border: 2px solid var(--bg-secondary) !important;
+  width: 10px !important;
+  height: 10px !important;
   border-radius: 3px !important;
-  z-index: 100 !important; /* Ensure handles are above other elements */
+  z-index: 10 !important;
   transition: all 0.2s ease !important;
+  opacity: 0.6 !important;
+  background-color: var(--accent-cyan) !important; /* Default, can be overridden */
+  border: 2px solid var(--bg-secondary) !important;
 }
 
-.react-flow__handle:hover {
-  transform: scale(1.2) !important;
-  box-shadow: 0 0 8px var(--accent-cyan) !important;
-}
-
-.react-flow__handle-connecting {
-  background-color: var(--accent-cyan) !important;
-  box-shadow: 0 0 8px var(--accent-cyan) !important;
-}
-
-/* Ensure handles are clickable even when node is not hovered */
-.react-flow__node .react-flow__handle {
-  opacity: 0.8 !important;
-}
-
+.react-flow__handle:hover,
 .react-flow__node:hover .react-flow__handle,
 .react-flow__node.react-flow__node-dragging .react-flow__handle {
+  transform: scale(1.3) !important;
   opacity: 1 !important;
 }
 
-/* Ensure connection line is visible */
+.react-flow__handle-connecting {
+  transform: scale(1.4) !important;
+  opacity: 1 !important;
+}
+
+/* Specific handle type styles */
+.react-flow__handle.handle-source {
+  background-color: var(--accent-pink) !important;
+}
+.react-flow__handle.handle-source:hover {
+  box-shadow: 0 0 6px var(--accent-pink) !important;
+}
+.react-flow__handle.handle-source.react-flow__handle-connecting {
+  background-color: var(--accent-pink) !important;
+  box-shadow: 0 0 8px var(--accent-pink) !important;
+}
+
+.react-flow__handle.handle-target {
+  background-color: var(--accent-green) !important;
+}
+.react-flow__handle.handle-target:hover {
+  box-shadow: 0 0 6px var(--accent-green) !important;
+}
+.react-flow__handle.handle-target.react-flow__handle-connecting {
+  background-color: var(--accent-green) !important;
+  box-shadow: 0 0 8px var(--accent-green) !important;
+}
+
+/* Ensure connection line is visible and styled */
 .react-flow__connection-path,
-.react-flow__connection-line {
+.react-flow__connectionline {
   stroke: var(--accent-cyan) !important;
   stroke-width: 2.5 !important;
-  z-index: 90 !important;
+  z-index: 9 !important; /* Below handles but above other elements */
+}
+
+/* Node selection style */
+.react-flow__node.selected > div {
+  border-color: var(--node-border-selected) !important;
+  box-shadow: var(--node-shadow-selected) !important;
+}
+
+/* Edge selection style */
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--edge-selected-color) !important;
+  stroke-width: 2.5 !important;
 }
 
 @keyframes nodeEnterAnimation {
@@ -352,4 +382,66 @@ body, #root, .App {
 
 .merge-button:hover:not(:disabled) {
   background: #059669;
+}
+
+/* Global styles */
+@layer components {
+  .frosted-glass {
+    @apply bg-bg-secondary/75 backdrop-blur-md border border-border-primary;
+  }
+
+  .glow-main {
+    box-shadow: 0 0 8px var(--accent-main-glow);
+  }
+
+  .bg-grid {
+    background-image: 
+      linear-gradient(var(--border-primary) 1px, transparent 1px),
+      linear-gradient(to right, var(--border-primary) 1px, transparent 1px);
+    background-size: 2rem 2rem;
+  }
+
+  .chamfer-clip {
+    clip-path: polygon(
+      10px 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% calc(100% - 10px),
+      calc(100% - 10px) 100%,
+      10px 100%,
+      0 calc(100% - 10px),
+      0 10px
+    );
+  }
+}
+
+/* Selection styling */
+::selection {
+  background-color: rgba(34, 160, 241, 0.2); /* accent-main con 20% de opacidad */
+  color: var(--text-primary);
+}
+
+/* Focus styles */
+:focus-visible {
+  @apply outline-none ring-2 ring-accent-main ring-offset-2 ring-offset-bg-primary;
+}
+
+/* Transitions */
+.transition-smooth {
+  transition-property: all;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Typography utilities */
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.tracking-wider {
+  letter-spacing: 0.1em;
+}
+
+.tracking-widest {
+  letter-spacing: 0.2em;
 }

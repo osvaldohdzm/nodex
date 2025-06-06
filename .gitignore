@@ -1,7 +1,11 @@
 node_modules
+<<<<<<< HEAD
 code_context.txt
 
 # Python cache files and directories
 __pycache__/
 __pycache__/
 __pycache__/
+=======
+code_context*
+>>>>>>> feature/menu

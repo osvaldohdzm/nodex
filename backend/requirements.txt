@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
-neo4j
+redis==3.5.3
+redisgraph==2.4.4
 pydantic
 python-jose[cryptography]
 passlib[bcrypt]

@@ -1,107 +1,150 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- Inicio del Script test.sh (Versión Mejorada con Identificación de Feature/Hotfix/Dev) ---
+# --- Colores para la Salida ---
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # Sin color
 
-echo "🚀 Iniciando script de pruebas..."
+# --- Configuración ---
+PORTS_TO_CLEAN=("6379" "8000" "4545")
 
-# 1. Verificar si hay cambios sin commitear
-if git diff-index --quiet HEAD --; then
-  echo "⚠️ No hay cambios pendientes en el directorio de trabajo para commitear."
-  no_changes=true
-else
-  echo "🔍 Detectados cambios pendientes en el directorio de trabajo."
-  no_changes=false
-fi
+declare -A SERVICES_TO_CHECK=(
+  ["Frontend (React App)"]="http://localhost:4545"
+  ["Backend API (FastAPI)"]="http://localhost:8000/docs"
+  ["RedisGraph (Puerto TCP)"]="localhost:6379"
+)
 
-# 2. Obtener la rama actual
-current_branch=$(git rev-parse --abbrev-ref HEAD)
-if [[ -z "$current_branch" ]]; then
-  echo "❌ No se pudo detectar la rama actual. Asegúrate de estar en un repositorio Git." >&2
-  exit 1
-fi
-echo "➡️ Rama actual: $current_branch"
+declare -A CONTAINER_NAMES=(
+  ["Frontend (React App)"]="nodex_frontend_dev"
+  ["Backend API (FastAPI)"]="nodex_backend_dev"
+  ["RedisGraph (Puerto TCP)"]="my-redisgraph-dev"
+)
 
-# 3. Determinar la rama de pruebas destino
-target_test_branch=""
-if [[ "$current_branch" == */test ]] || [[ "$current_branch" == *-test ]]; then
-  echo "ℹ️ Ya estás en una rama de pruebas ('$current_branch'). Los cambios (si los hay) se usarán aquí."
-  target_test_branch="$current_branch"
-else
-  target_test_branch="${current_branch}-test"
-  echo "🆕 Rama de pruebas destino: $target_test_branch"
+MAX_RETRIES=12
+RETRY_INTERVAL=5
 
-  if git rev-parse --verify "$target_test_branch" >/dev/null 2>&1; then
-    echo "⚠️ La rama de pruebas '$target_test_branch' ya existe localmente."
-    read -rp "¿Deseas cambiar a '$target_test_branch' y continuar con la prueba allí? (s/N): " switch_to_existing
-    if [[ "${switch_to_existing,,}" == "s" ]]; then
-      if ! git checkout "$target_test_branch"; then
-        echo "❌ No se pudo cambiar a la rama '$target_test_branch'." >&2
-        exit 1
+# --- Funciones de Log ---
+log_info()    { echo -e "${CYAN}ℹ️ $1${NC}"; }
+log_success() { echo -e "${GREEN}✅ $1${NC}"; }
+log_warning() { echo -e "${YELLOW}⚠️ $1${NC}"; }
+log_error()   { echo -e "${RED}❌ $1${NC}"; }
+
+# --- Limpieza de Puertos ---
+cleanup_ports() {
+  log_info "Verificando y liberando puertos necesarios..."
+  for port in "${PORTS_TO_CLEAN[@]}"; do
+    container_id=$(docker ps -q --filter "publish=${port}")
+
+    if [[ -n "$container_id" ]]; then
+      container_name=$(docker inspect --format '{{.Name}}' "$container_id" | sed 's/^\///')
+      log_warning "Puerto $port ocupado por contenedor '$container_name' (ID: $container_id)."
+      log_info "🔪 Eliminando contenedor '$container_name' para liberar el puerto..."
+      if docker rm -f "$container_id"; then
+        log_success "Puerto $port liberado."
+      else
+        log_error "No se pudo eliminar el contenedor '$container_name'. Requiere intervención manual."
       fi
-      echo "✅ Cambiado a la rama existente '$target_test_branch'."
     else
-      echo "🛑 Operación cancelada. No se han realizado cambios."
-      exit 1
+      log_info "👍 Puerto $port está libre."
     fi
+  done
+  echo ""
+}
+
+# --- Manejo de cambios en Git ---
+handle_git_changes() {
+  local current_branch no_changes target_test_branch commit_msg
+
+  if git diff-index --quiet HEAD --; then
+    log_success "No hay cambios pendientes en el directorio de trabajo."
+    no_changes=true
   else
-    echo "🌱 Creando y cambiando a la nueva rama de pruebas '$target_test_branch'..."
-    if ! git checkout -b "$target_test_branch"; then
-      echo "❌ No se pudo crear o cambiar a la rama '$target_test_branch'." >&2
-      exit 1
-    fi
-    echo "✅ Creada y cambiada a la nueva rama '$target_test_branch'."
+    log_warning "Cambios detectados en el directorio de trabajo."
+    no_changes=false
   fi
-fi
 
-# 4. Si hay cambios, preparar y commitear
-if [[ "$no_changes" != true ]]; then
-  echo "➕ Preparando (staging) todos los cambios..."
-  git add .
-
-  # 5. Buscar el último número de "Prueba N" en los commits de esta rama
-  last_test_number=$(git log "$target_test_branch" --pretty=format:"%s" | grep -oP '^Prueba \K\d+' | sort -nr | head -n1)
-  last_test_number="${last_test_number:-0}"
-  next_test_number=$((last_test_number + 1))
-
-  # 6. Detectar nombre de la feature/hotfix/dev original
-  base_branch="${current_branch%-test}"
-  base_branch="${base_branch%/test}"
-
-  # Extraer nombre limpio (sin prefijo tipo feature/, hotfix/, etc.)
-  case "$base_branch" in
-    feature/*) short_name="${base_branch#feature/}" ;;
-    hotfix/*) short_name="${base_branch#hotfix/}" ;;
-    bugfix/*) short_name="${base_branch#bugfix/}" ;;
-    dev) short_name="dev" ;;
-    *) short_name="$base_branch" ;;
-  esac
-
-  echo "🧪 Estás probando la rama: '$short_name'"
-
-  # 7. Construir mensaje por defecto con nombre de la feature
-  default_commit_msg="Prueba $next_test_number de $short_name"
-  read -rp "Mensaje para el commit (deja vacío para '$default_commit_msg'): " user_commit_msg
-  commit_msg="${user_commit_msg:-$default_commit_msg}"
-
-  # 8. Realizar commit
-  if git commit -m "$commit_msg"; then
-    echo "✅ Cambios commiteados en '$target_test_branch' con el mensaje: '$commit_msg'"
-  else
-    echo "❌ Falló el commit. Puede que no haya cambios staged o algún hook pre-commit falló." >&2
-    if git diff --cached --quiet; then
-      echo "ℹ️ No había cambios staged para el commit. Verifica que los archivos no estén vacíos o ignorados."
-    fi
+  current_branch=$(git rev-parse --abbrev-ref HEAD)
+  if [[ -z "$current_branch" ]]; then
+    log_error "No se pudo obtener la rama actual."
     exit 1
   fi
+  log_info "Rama actual: $current_branch"
+
+  if [[ "$no_changes" != true ]]; then
+    if [[ "$current_branch" == */test || "$current_branch" == *-test ]]; then
+      target_test_branch="$current_branch"
+    else
+      target_test_branch="${current_branch}-test"
+      log_info "Rama de pruebas destino: $target_test_branch"
+
+      if ! git show-ref --verify --quiet "refs/heads/$target_test_branch"; then
+        log_info "🌱 Creando nueva rama '$target_test_branch'..."
+        git checkout -b "$target_test_branch"
+      else
+        log_warning "La rama '$target_test_branch' ya existe. Se usará la rama actual '$current_branch'."
+        target_test_branch="$current_branch"
+      fi
+    fi
+
+    git add .
+
+    # Construcción del mensaje de commit
+    local base_branch short_name last_test_number next_test_number default_commit_msg user_commit_msg
+    base_branch="${current_branch%-test}"
+    base_branch="${base_branch%/test}"
+
+    case "$base_branch" in
+      feature/*) short_name="${base_branch#feature/}" ;;
+      hotfix/*)  short_name="${base_branch#hotfix/}"  ;;
+      bugfix/*)  short_name="${base_branch#bugfix/}"  ;;
+      dev)       short_name="dev" ;;
+      *)         short_name="$base_branch" ;;
+    esac
+
+    last_test_number=$(git log --pretty=format:"%s" "$target_test_branch" | grep -oP "^Prueba \K[0-9]+(?= de $short_name)" | sort -rn | head -n1 || echo 0)
+    next_test_number=$((last_test_number + 1))
+
+    default_commit_msg="Prueba $next_test_number de $short_name"
+    read -rp "$(echo -e "${YELLOW}Mensaje para el commit (Enter para usar '${default_commit_msg}'): ${NC}")" user_commit_msg
+    commit_msg="${user_commit_msg:-$default_commit_msg}"
+
+    if git commit -m "$commit_msg"; then
+      log_success "Cambios commiteados: '$commit_msg' en '$target_test_branch'"
+    else
+      log_error "El commit falló. ¿Hay algo para commitear?"
+      exit 1
+    fi
+  else
+    log_info "Sin cambios a commitear, continuando..."
+  fi
+}
+
+# --- MAIN ---
+echo -e "${CYAN}🚀 Iniciando script de pruebas integrado Nodex...${NC}"
+start_time=$(date +%s)
+
+cleanup_ports
+handle_git_changes
+
+# --- Docker Compose ---
+log_info "🐳 Iniciando entorno Docker Compose..."
+
+log_info "🧹 Deteniendo servicios previos (si existen)..."
+
+docker compose down --remove-orphans -t 1 || true
+log_success "Entorno limpiado."
+
+log_info "🏗️  Levantando entorno (build y up)..."
+if docker compose up --build -d; then
+  log_success "Todos los servicios Docker Compose están corriendo."
 else
-  echo "ℹ️ No hay cambios para commitear, pero se continuará con la ejecución de la prueba."
+  log_error "Error durante 'docker compose up'."
+  docker compose logs --tail=50
+  exit 1
 fi
 
-# 9. Ejecutar prueba
-echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
-./scripts/start.sh
-
-echo "🎉 Proceso completado. Tus pruebas se ejecutaron en la rama '$target_test_branch'."
-
-# --- Fin del Script test.sh ---
+log_success "🎉 Script ejecutado con éxito en $(($(date +%s) - start_time)) segundos."
+exit 0

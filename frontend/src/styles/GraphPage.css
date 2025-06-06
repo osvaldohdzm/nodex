@@ -25,6 +25,12 @@
   z-index: 10;
 }
 
+.top-menu-bar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
 /* Botones de acción */
 .graph-action-button {
   display: flex;
@@ -269,45 +275,21 @@
   background-color: var(--accent-cyan);
 }
 
-/* Estilos para los nodos */
+/* Estilos específicos de nodos */
 .react-flow__node {
   transition: all 0.2s ease;
   border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .react-flow__node:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
 }
 
 .react-flow__node.selected {
-  box-shadow: 0 0 0 2px var(--accent-cyan), 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
 }
 
-/* Estilos para los handles */
-.react-flow__handle {
-  width: 8px;
-  height: 8px;
-  background-color: var(--accent-cyan);
-  border: 2px solid var(--bg-primary);
-  transition: all 0.2s ease;
-}
-
-.react-flow__handle:hover {
-  transform: scale(1.2);
-  background-color: var(--accent-cyan-darker);
-}
-
-.handle-source {
-  background-color: var(--accent-pink) !important;
-}
-
-.handle-target {
-  background-color: var(--accent-green) !important;
-}
-
-/* Estilos para las aristas */
+/* Estilos específicos de aristas */
 .react-flow__edge {
   transition: all 0.2s ease;
 }
@@ -321,17 +303,18 @@
 }
 
 .react-flow__edge-path {
-  stroke-width: 2;
   transition: all 0.2s ease;
 }
 
 .react-flow__edge-text {
-  font-size: 0.75rem;
-  fill: var(--text-primary);
-  text-anchor: middle;
-  dominant-baseline: middle;
-  pointer-events: none;
-  transition: all 0.2s ease;
+  font-size: 12px;
+  font-weight: 500;
+  fill: var(--edge-label-color);
+  paint-order: stroke;
+  stroke: var(--graph-bg);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .react-flow__edge-text:hover {
@@ -344,38 +327,41 @@
 }
 
 .edge-appear-static {
-  animation: none;
+  opacity: 1;
 }
 
 @keyframes edgeAppear {
-  0% {
+  from {
     opacity: 0;
-    stroke-dasharray: 5;
-    stroke-dashoffset: 100;
+    stroke-dasharray: 2000;
+    stroke-dashoffset: 2000;
   }
-  100% {
+  to {
     opacity: 1;
-    stroke-dasharray: none;
     stroke-dashoffset: 0;
   }
 }
 
 .node-appear {
-  animation: nodeAppear 0.4s ease-out forwards;
+  animation: nodeAppear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
 .node-appear-static {
-  animation: none;
+  opacity: 1;
 }
 
 @keyframes nodeAppear {
   0% {
+    transform: scale(0.3) translateZ(0);
     opacity: 0;
-    transform: scale(0.8);
+  }
+  70% {
+    transform: scale(1.1) translateZ(0);
+    opacity: 0.9;
   }
   100% {
+    transform: scale(1) translateZ(0);
     opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -395,4 +381,9 @@
 .react-flow__node.react-flow__node-dragging .react-flow__handle {
   opacity: 1;
   transform: scale(1.2);
+}
+
+.node-highlighted > div {
+  border-color: var(--accent-yellow) !important;
+  box-shadow: 0 0 15px var(--accent-yellow) !important;
 }

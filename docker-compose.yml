@@ -1,52 +1,66 @@
-version: '3.8'
+# docker-compose.yml (CORREGIDO)
+# La directiva 'version' es obsoleta y se ha eliminado.
 
 services:
-  neo4j:
-    image: neo4j:4.4
-    container_name: nodex_neo4j_v3  # Renamed container
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    volumes:
-      - neo4j_data:/data
-    environment:
-      - NEO4J_AUTH=neo4j/yourStrongPassword
-      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
-
+  # Servicio de Backend (FastAPI) con recarga automática
   backend:
-    build: ./backend
-    container_name: nodex_backend_v3  # Renamed container
-    ports:
-      - "0.0.0.0:8000:8000"
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.dev.backend
+    container_name: nodex_backend_dev
     volumes:
-      - ./backend/app:/app/app
-      - ./backend/sample_data.json:/app/sample_data.json
-    depends_on:
-      - neo4j
+      # Monta tu código de backend directamente en el contenedor.
+      # Cualquier cambio que hagas en tu editor se refleja al instante.
+      - ./backend:/code
+    ports:
+      - "8000:8000"
+    networks:
+      - sivg-net
     environment:
-      - NEO4J_URI=bolt://nodex_neo4j_v3:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=yourStrongPassword
-      - JWT_SECRET_KEY=tu_super_secreto_jwt
-      - ALGORITHM=HS256
-      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      # Asegúrate que el backend pueda hablar con Redis
+      - REDIS_HOST=redisgraph
+      - REDIS_PORT=6379
+    # El comando para iniciar el servidor de desarrollo de FastAPI con recarga automática
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # Servicio de Frontend (React) con Hot Module Replacement (HMR)
   frontend:
-    build: ./frontend
-    container_name: nodex_frontend_v3  # Renamed container
-    ports:
-      - "0.0.0.0:4545:3000"
+    image: node:18-alpine
+    container_name: nodex_frontend_dev
+    working_dir: /app
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-    stdin_open: true
-    tty: true
-    depends_on:
-      - backend
+      # Monta el código del frontend y los node_modules para persistencia y velocidad
+      - ./frontend:/app
+      - /app/node_modules # Previene que el node_modules local sobreescriba el del contenedor
+    ports:
+      # Expone el puerto del servidor de desarrollo de React
+      - "4545:4545"
+    networks:
+      - sivg-net
     environment:
-      - WDS_SOCKET_HOST=0.0.0.0
+      - PORT=4545
+      - BROWSER=none
+      # Permite la recarga en caliente (HMR) incluso dentro de Docker
       - WDS_SOCKET_PORT=4545
-      - WDS_SOCKET_PATH=/ws
+      - CHOKIDAR_USEPOLLING=true # Mejora la detección de cambios en algunos sistemas
+    # Instala dependencias si no existen y luego inicia el dev server
+    command: sh -c "npm install && npm start"
+
+  # Servicio de RedisGraph (para desarrollo)
+  redisgraph:
+    image: redislabs/redisgraph:latest
+    container_name: my-redisgraph-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - sivg-net
+
+networks:
+  sivg-net:
+    # Let Docker Compose manage the network
+    # Remove external: true to allow Compose to create and manage the network
 
 volumes:
-  neo4j_data:
+  redis_data_dev: 
