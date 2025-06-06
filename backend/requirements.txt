@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
-redis[graph]>=4.5.1
+redis>=4.5.1
+redisgraph>=2.8.0
 pydantic
 python-jose[cryptography]
 passlib[bcrypt]

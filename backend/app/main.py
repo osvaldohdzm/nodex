@@ -114,12 +114,17 @@ async def get_graph_data(
     nodes, relationships = await crud.get_all_graph_data()
     return {"nodes": nodes, "edges": relationships}
 
-@app.get("/node-details/{node_frontend_id}")
+@app.get("/node-details/{node_id}")
 async def get_node_details(
-    node_frontend_id: str,
+    node_id: str,
     current_user: models.User = Depends(auth.get_current_active_user)
 ):
-    details = await crud.get_node_properties(node_frontend_id)
+    try:
+        node_id_int = int(node_id)  # Convert to int since we're using internal IDs
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid node ID format")
+        
+    details = await crud.get_node_properties(node_id)
     if not details:
         raise HTTPException(status_code=404, detail="Node not found")
     return details
