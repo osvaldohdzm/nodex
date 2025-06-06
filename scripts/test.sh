@@ -116,7 +116,6 @@ fi
 
 echo "🎉 Proceso completado los cambios de la prueba han sido guardados. Tus pruebas se ejecutarán en la rama '$target_test_branch'."
 
-
 # 9. Ejecutar prueba
 echo "🧪 Ejecutando script de prueba: ./scripts/start.sh"
 "$SCRIPT_DIR/start.sh"
