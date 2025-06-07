@@ -255,16 +255,7 @@ main() {
     fi
 
     log_success "Test and checkpoint process completed in $(($(date +%s) - start_time)) seconds."
-    # Vuelve a la rama inicial solo si se cambió a una rama de prueba
-    if [[ "$initial_branch" != "$target_test_branch" ]]; then
-        log_info "Returning to initial branch: $initial_branch..."
-        if git checkout "$initial_branch"; then
-            log_success "Returned to branch '$initial_branch'."
-        else
-            log_error "Could not return to branch '$initial_branch'. Please do it manually."
-        fi
-    fi
-    exit 0
+
 }
 
 # Ejecuta la función principal
