@@ -85,9 +85,7 @@ handle_previous_git_state() {
 handle_previous_git_state
 clean_python_artifacts
 
----
-
-## Detección y Selección de Ramas de Prueba
+# --- Detección y Selección de Ramas de Prueba ---
 
 echo "🔍 Buscando ramas de prueba ('test/*' o '*-test')..."
 mapfile -t test_branches < <(
@@ -104,16 +102,14 @@ fi
 
 echo "🌿 Ramas de prueba disponibles:"
 for i in "${!test_branches[@]}"; do
-    printf "  [%d] %s\n" "$((i+1))" "${test_branches[i]}"
+    printf "  [%d] %s\n" "$((i+1))" "${test_branches[i]}"
 done
 
 # Seleccionar automáticamente la primera rama de prueba encontrada.
 selected_test="${test_branches[0]}"
 echo "🟢 Seleccionando automáticamente la primera rama de prueba: '$selected_test'"
 
----
-
-## Determinación de la Rama Base
+# --- Determinación de la Rama Base ---
 
 base_branch=""
 if [[ "$selected_test" == test/* ]]; then
@@ -135,9 +131,7 @@ for protected_branch in "${PROTECTED_BASE_BRANCHES[@]}"; do
     fi
 done
 
----
-
-## Preparación del Entorno Git
+# --- Preparación del Entorno Git ---
 
 # Guardar la rama actual para regresar a ella al final
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -179,9 +173,7 @@ else
     echo "✨ No hay cambios locales sin confirmar."
 fi
 
----
-
-## Proceso de Integración
+# --- Proceso de Integración ---
 
 # 1. Cambiar a la rama de prueba y actualizarla (pull)
 echo "🔄 Cambiando a la rama de prueba '$selected_test' y actualizándola..."
@@ -228,9 +220,7 @@ if ! git merge --ff-only "$selected_test"; then
     fi
 fi
 
----
-
-## Finalización y Limpieza
+# --- Finalización y Limpieza ---
 
 # Aplicar stash si se realizó uno previamente
 if [ "$STASHED_CHANGES" = true ]; then
@@ -267,15 +257,5 @@ fi
 
 echo "✅ Integración completada exitosamente en '$base_branch'."
 echo "🎉 ¡La rama '$base_branch' ahora contiene los cambios de '$selected_test'!"
-
-# Regresar a la rama original si se hizo un stash y se cambió de rama
-if [[ "$CURRENT_BRANCH" != "$base_branch" ]]; then
-    echo "🔄 Volviendo a la rama original '$CURRENT_BRANCH'..."
-    if git checkout "$CURRENT_BRANCH"; then
-        echo "✅ Regresado a la rama original '$CURRENT_BRANCH'."
-    else
-        echo "❌ No se pudo volver a la rama original '$CURRENT_BRANCH'. Actualmente estás en la rama '$base_branch'."
-    fi
-fi
 
 echo "Script finalizado."

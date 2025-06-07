@@ -12,8 +12,9 @@ NC='\033[0m' # Sin Color
 # Puertos que se verificarán y liberarán si están en uso por contenedores Docker.
 PORTS_TO_CLEAN=("6379" "8000" "4545")
 
-# Variable global para force-accept
+# Variables globales para opciones
 FORCE_ACCEPT=false
+NO_SAVE=false
 
 # --- Definiciones de Funciones ---
 
@@ -74,9 +75,10 @@ generate_commit_message() {
 
 # Función para mostrar el uso del script
 show_usage() {
-    echo "Usage: $0 [--force-accept]"
+    echo "Usage: $0 [--force-accept] [--no-save]"
     echo "Options:"
     echo "  --force-accept    Automatically accept test as successful and save all changes"
+    echo "  --no-save         Run test without creating branches or saving changes"
     exit 1
 }
 
@@ -86,6 +88,10 @@ process_args() {
         case "$1" in
             --force-accept)
                 FORCE_ACCEPT=true
+                shift
+                ;;
+            --no-save)
+                NO_SAVE=true
                 shift
                 ;;
             --help|-h)
@@ -109,6 +115,21 @@ main() {
 
     # Limpia los puertos antes de iniciar cualquier servicio
     cleanup_ports
+
+    log_info "Starting test script..."
+
+    if [[ "$NO_SAVE" == "true" ]]; then
+        log_info "Running in no-save mode - will only execute test without branch management or saving changes"
+        # Ejecutar la aplicación de prueba directamente
+        if [ -f "./scripts/start.sh" ]; then
+            ./scripts/start.sh
+            log_success "Test execution completed in $(($(date +%s) - start_time)) seconds."
+        else
+            log_error "./scripts/start.sh not found. Cannot run test."
+            exit 1
+        fi
+        return
+    fi
 
     log_info "Starting test script with checkpoint..."
 
