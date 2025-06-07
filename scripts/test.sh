@@ -16,6 +16,9 @@ PORTS_TO_CLEAN=("6379" "8000" "4545")
 FORCE_ACCEPT=false
 NO_SAVE=false
 
+# Ramas protegidas donde no se permiten ramas de prueba
+PROTECTED_BRANCHES=("main" "master")
+
 # --- Definiciones de Funciones ---
 
 # Funciones de registro para diferentes tipos de mensajes
@@ -46,6 +49,21 @@ cleanup_ports() {
     fi
   done
   echo "" # Añade una nueva línea para mejor legibilidad
+}
+
+# Función para limpiar archivos Python con permisos elevados
+cleanup_python_cache() {
+    log_info "Limpiando archivos Python cache con permisos elevados..."
+    # Primero intentamos con permisos normales
+    find backend/app/ -name "*.pyc" -delete 2>/dev/null || true
+    rm -rf backend/app/__pycache__/ 2>/dev/null || true
+
+    # Si hay archivos que requieren permisos elevados, usamos sudo
+    if [ -d "backend/app/__pycache__" ] || [ -n "$(find backend/app/ -name '*.pyc' 2>/dev/null)" ]; then
+        log_info "Solicitando permisos de superusuario para limpiar archivos restantes..."
+        sudo find backend/app/ -name "*.pyc" -delete 2>/dev/null || true
+        sudo rm -rf backend/app/__pycache__/ 2>/dev/null || true
+    fi
 }
 
 # Función para generar un mensaje de commit predeterminado
@@ -105,10 +123,48 @@ process_args() {
     done
 }
 
+# Función para verificar si una rama está protegida
+is_protected_branch() {
+    local branch="$1"
+    for protected in "${PROTECTED_BRANCHES[@]}"; do
+        if [[ "$branch" == "$protected" ]]; then
+            return 0  # true, está protegida
+        fi
+    done
+    return 1  # false, no está protegida
+}
+
 # --- Ejecución Principal ---
 main() {
+    # VERIFICACIÓN INICIAL DE RAMA PROTEGIDA - DEBE SER LO PRIMERO
+    local current_branch
+    current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    if [[ -z "$current_branch" ]]; then
+        log_error "No se pudo detectar la rama actual. Asegúrate de estar en un repositorio Git."
+        exit 1
+    fi
+
+    # Verificar inmediatamente si estamos en una rama protegida
+    if is_protected_branch "$current_branch"; then
+        log_warning "⚠️ ADVERTENCIA CRÍTICA: Estás en la rama protegida '$current_branch'"
+        log_warning "Las pruebas en ramas protegidas (main/master) solo pueden ejecutarse en modo no-save"
+        log_warning "No se permiten ramas de prueba ni guardar cambios en estas ramas"
+        log_warning "El script se ejecutará en modo no-save automáticamente"
+        NO_SAVE=true
+    fi
+
+    # Verificar si intentamos crear una rama de prueba desde una rama protegida
+    if [[ "$current_branch" != */test ]] && [[ "$current_branch" != *-test ]]; then
+        if is_protected_branch "$current_branch"; then
+            log_error "❌ NO SE PERMITE crear ramas de prueba desde la rama protegida '$current_branch'"
+            log_error "Por favor, cambia a una rama de desarrollo antes de crear ramas de prueba"
+            exit 1
+        fi
+    fi
+
+    # Ahora sí, continuamos con el resto del script
     local start_time
-    start_time=$(date +%s) # Captura el tiempo de inicio
+    start_time=$(date +%s)
 
     # Procesar argumentos
     process_args "$@"
@@ -124,6 +180,50 @@ main() {
         if [ -f "./scripts/start.sh" ]; then
             ./scripts/start.sh
             log_success "Test execution completed in $(($(date +%s) - start_time)) seconds."
+
+            # Si estamos en rama protegida, preguntar por limpieza final
+            if is_protected_branch "$current_branch"; then
+                echo ""
+                log_warning "⚠️ IMPORTANTE: Estás en la rama protegida '$current_branch'"
+                log_warning "Se recomienda limpiar cualquier cambio residual de la prueba"
+                while true; do
+                    read -rp "$(echo -e "${YELLOW}¿Desea terminar el flujo de prueba en rama $current_branch? (si/no): ${NC}")" confirm_cleanup
+                    case "${confirm_cleanup,,}" in
+                        si|s|yes|y)
+                            log_info "Limpiando cambios residuales en rama protegida..."
+                            
+                            # 1. Primero limpiar archivos Python con permisos elevados
+                            cleanup_python_cache
+                            
+                            # 2. Luego hacer reset y clean de git
+                            if git reset --hard HEAD; then
+                                # 3. Limpiar node_modules y otros archivos no rastreados
+                                if git clean -fdx; then
+                                    # 4. Verificar si quedaron archivos Python
+                                    if [ -d "backend/app/__pycache__" ] || [ -n "$(find backend/app/ -name '*.pyc' 2>/dev/null)" ]; then
+                                        log_warning "⚠️ Algunos archivos Python cache no se pudieron eliminar automáticamente"
+                                        log_warning "Puedes eliminarlos manualmente con: sudo rm -rf backend/app/__pycache__/ && sudo find backend/app/ -name '*.pyc' -delete"
+                                    else
+                                        log_success "✅ Rama protegida '$current_branch' limpiada exitosamente"
+                                    fi
+                                else
+                                    log_error "❌ Error al limpiar archivos no rastreados. Por favor, verifica manualmente"
+                                fi
+                            else
+                                log_error "❌ Error al resetear la rama. Por favor, verifica manualmente"
+                            fi
+                            break
+                            ;;
+                        no|n)
+                            log_warning "⚠️ No se limpiaron los cambios. Por favor, verifica manualmente el estado de la rama"
+                            break
+                            ;;
+                        *)
+                            log_warning "Respuesta inválida. Por favor, responde 'si' o 'no'"
+                            ;;
+                    esac
+                done
+            fi
         else
             log_error "./scripts/start.sh not found. Cannot run test."
             exit 1
