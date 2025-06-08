@@ -127,6 +127,54 @@ async def process_and_store_json(data: Dict[str, Any], mode: str = "overwrite"):
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error al escribir en la base de datos para el nodo {node_data.get('id')}: {e}")
 
+    edges_to_create = data.get("edges", [])
+    print(f"INFO: Se procesarán {len(edges_to_create)} aristas.")
+
+    for edge_data in edges_to_create:
+        try:
+            source_id = edge_data.get("source")
+            target_id = edge_data.get("target")
+            relationship_type = edge_data.get("label", "RELATED_TO") # Proporcionar un valor por defecto
+
+            if not all([source_id, target_id, relationship_type]):
+                print(f"ERROR: Saltando arista inválida: {edge_data}")
+                continue
+
+            # Sanitizar el tipo de relación para asegurarse de que es un identificador válido en Cypher
+            # Solo caracteres alfanuméricos y guiones bajos, no empezar con número.
+            # Convertir a mayúsculas es una convención común para tipos de relación.
+            sanitized_relationship_type = "".join(c for c in relationship_type if c.isalnum() or c == '_').upper()
+            if not sanitized_relationship_type or (sanitized_relationship_type and sanitized_relationship_type[0].isdigit()):
+                original_type = relationship_type
+                sanitized_relationship_type = "RELATED_TO"
+                # Solo imprimir el aviso si el tipo original no era ya RELATED_TO o vacío/inválido
+                if original_type.upper() != "RELATED_TO" and original_type.strip():
+                     print(f"AVISO: Tipo de relación inválido '{original_type}', usando '{sanitized_relationship_type}' en su lugar para la arista {source_id}->{target_id}.")
+                elif not original_type.strip():
+                    print(f"AVISO: Tipo de relación vacío para la arista {source_id}->{target_id}, usando '{sanitized_relationship_type}'.")
+
+
+            # Construir la consulta Cypher para crear la relación
+            # Se usan parámetros para evitar inyecciones de Cypher y manejar correctamente los tipos de datos.
+            query = (
+                f"MATCH (a {{frontend_id: $source_id}}), (b {{frontend_id: $target_id}}) "
+                f"CREATE (a)-[r:{sanitized_relationship_type}]->(b)"
+            )
+
+            parameters = {
+                "source_id": source_id,
+                "target_id": target_id
+            }
+
+            print(f" -> Creando arista: Origen='{source_id}', Destino='{target_id}', Tipo='{sanitized_relationship_type}'")
+            redis_graph.query(query, parameters)
+
+        except Exception as e:
+            print(f"ERROR CRÍTICO irrecuperable al procesar la arista desde {edge_data.get('source')} hacia {edge_data.get('target')}: {e}")
+            traceback.print_exc()
+            # Considerar si se debe detener todo o solo esta arista. Por ahora, se lanza una excepción.
+            raise HTTPException(status_code=500, detail=f"Error al escribir la arista en la base de datos: {e}")
+
     print("--- Finalizado process_and_store_json ---")
 
 
